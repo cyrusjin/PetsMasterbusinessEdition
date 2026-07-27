@@ -1,0 +1,14 @@
+<view class="merchant-tab-bar">
+  <view class="tab-item {{active === 'daily' ? 'active' : ''}}" bindtap="onTabDaily">
+    <image class="tab-icon-img" src="{{active === 'daily' ? '/images/tab/tab-order-active.png' : '/images/tab/tab-order.png'}}" mode="aspectFit" />
+    <text class="tab-text">日常管理</text>
+  </view>
+  <view class="tab-item {{active === 'statistics' ? 'active' : ''}}" bindtap="onTabStatistics">
+    <image class="tab-icon-img" src="/images/card/card-stats.png" mode="aspectFit" />
+    <text class="tab-text">营收统计</text>
+  </view>
+  <view class="tab-item {{active === 'store' ? 'active' : ''}}" bindtap="onTabStore">
+    <image class="tab-icon-img" src="{{active === 'store' ? '/images/tab/tab-shop-active.png' : '/images/tab/tab-shop.png'}}" mode="aspectFit" />
+    <text class="tab-text">我的店铺</text>
+  </view>
+</view>

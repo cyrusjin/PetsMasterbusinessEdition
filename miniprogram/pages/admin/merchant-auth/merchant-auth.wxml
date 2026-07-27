@@ -1,0 +1,51 @@
+<view class="container">
+  <view class="card admin-tools-card">
+    <view class="admin-tools-head">
+      <text class="admin-tools-title">管理工具</text>
+    </view>
+    <text class="admin-tools-desc">清除本机缓存可解决数据异常、体验模式残留等问题，不影响云端数据。</text>
+    <button
+      class="btn-outline clear-cache-btn"
+      bindtap="onClearCache"
+      loading="{{clearing}}"
+      disabled="{{clearing}}"
+    >清除本地缓存</button>
+  </view>
+
+  <view class="card" wx:if="{{loading}}">
+    <text class="text-gray">加载中...</text>
+  </view>
+
+  <view class="card empty-card" wx:elif="{{!applications.length}}">
+    <text class="empty-title">暂无待审核申请</text>
+    <text class="empty-desc">有新的商家提交入驻申请后会显示在这里</text>
+  </view>
+
+  <view class="card apply-card" wx:for="{{applications}}" wx:key="store_id">
+    <view class="apply-head">
+      <text class="apply-name">{{item.name}}</text>
+      <text class="apply-status">待审核</text>
+    </view>
+    <view class="detail-row"><text class="text-gray">负责人</text><text>{{item.legalName || '--'}}</text></view>
+    <view class="detail-row"><text class="text-gray">联系电话</text><text>{{item.contactPhone || '--'}}</text></view>
+    <view class="detail-row"><text class="text-gray">营业地址</text><text class="detail-value">{{item.address || '--'}}</text></view>
+    <view class="detail-row"><text class="text-gray">申请人</text><text>{{item.applicantName || '--'}}</text></view>
+    <view class="detail-row"><text class="text-gray">申请时间</text><text>{{item.applyTimeText || '--'}}</text></view>
+    <view class="apply-actions">
+      <button
+        class="btn-outline reject-btn"
+        data-id="{{item.store_id}}"
+        bindtap="onReject"
+        loading="{{processingId === item.store_id}}"
+        disabled="{{!!processingId}}"
+      >拒绝</button>
+      <button
+        class="btn-primary approve-btn"
+        data-id="{{item.store_id}}"
+        bindtap="onApprove"
+        loading="{{processingId === item.store_id}}"
+        disabled="{{!!processingId}}"
+      >同意开通</button>
+    </view>
+  </view>
+</view>

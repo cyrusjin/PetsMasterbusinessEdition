@@ -1,0 +1,113 @@
+<view class="merchant-page has-tab-bar" style="padding-bottom: 160rpx;">
+  <view class="container">
+    <view class="demo-banner" wx:if="{{isDemoMode}}">
+      <text class="demo-banner-text">体验模式 · 数据仅保存在本地，提交入驻申请后可使用完整功能</text>
+    </view>
+    <view class="demo-banner pending-banner" wx:elif="{{isPendingReview}}">
+      <text class="demo-banner-text">入驻审核中 · 日常管理将在审核通过后开放，请前往「申请入驻」查看进度</text>
+    </view>
+    <view class="demo-banner disabled-banner" wx:elif="{{isAdminDisabled}}">
+      <text class="demo-banner-text">{{adminDisableReason || '店铺已被平台关闭 · 暂无法使用商家端功能'}}</text>
+    </view>
+
+    <view class="card">
+      <view class="card-title">快捷操作</view>
+      <view class="quick-grid">
+        <view class="quick-item quick-item-badge-wrap" bindtap="onGoMerchantOrders">
+          <image class="quick-icon-img" src="/images/card/card-orders.png" mode="aspectFit" />
+          <text>订单管理</text>
+          <view class="quick-badge" wx:if="{{pendingOrderCount > 0}}">{{pendingOrderCount > 99 ? '99+' : pendingOrderCount}}</view>
+        </view>
+        <view class="quick-item quick-item-badge-wrap" bindtap="onGoDailyCheck">
+          <image class="quick-icon-img" src="/images/card/card-check.png" mode="aspectFit" />
+          <text>日常打卡</text>
+          <view class="quick-badge" wx:if="{{uncheckedPetCount > 0}}">{{uncheckedPetCount > 99 ? '99+' : uncheckedPetCount}}</view>
+        </view>
+        <view class="quick-item quick-item-badge-wrap" bindtap="onGoPickupManage">
+          <image class="quick-icon-img" src="/images/card/card-reserve.png" mode="aspectFit" />
+          <text>接送管理</text>
+          <view class="quick-badge" wx:if="{{pickupPendingCount > 0}}">{{pickupPendingCount > 99 ? '99+' : pickupPendingCount}}</view>
+        </view>
+        <view class="quick-item" bindtap="onGoDailyLogs">
+          <image class="quick-icon-img" src="/images/card/card-camera.png" mode="aspectFit" />
+          <text>打卡记录</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">{{isStoreOwner && !isDemoMode ? '分享与员工' : '分享店铺'}}</view>
+      <view class="share-actions-grid {{isStoreOwner && !isDemoMode ? '' : 'share-grid-solo'}}">
+        <view class="share-action-col">
+          <view class="quick-item share-item-wrap">
+            <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+            <text>分享给客人</text>
+            <button
+              class="share-hit-btn"
+              open-type="share"
+              data-share-type="customer"
+              hover-class="none"
+            ></button>
+          </view>
+          <text class="share-action-hint">客人打开后可浏览店铺、预约寄养</text>
+        </view>
+        <view class="share-action-col" wx:if="{{isStoreOwner && !isDemoMode}}">
+          <view class="quick-item share-item-wrap">
+            <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+            <text>分享给员工</text>
+            <button
+              class="share-hit-btn"
+              open-type="share"
+              data-share-type="staff"
+              hover-class="none"
+            ></button>
+          </view>
+          <text class="share-action-hint">同事接受邀请后可协助管理</text>
+        </view>
+      </view>
+
+      <view
+        wx:if="{{isStoreOwner && !isDemoMode}}"
+        class="share-staff-row"
+        bindtap="onGoStaffManage"
+      >
+        <image class="share-staff-icon" src="/images/card/card-pets.png" mode="aspectFit" />
+        <view class="share-staff-body">
+          <text class="share-staff-title">员工管理</text>
+          <text class="share-staff-desc">查看并移除已授权员工</text>
+        </view>
+        <text class="share-staff-badge" wx:if="{{staffCount > 0}}">{{staffCount}}人</text>
+        <text class="share-staff-arrow">›</text>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{boardingList.length > 0}}">
+      <view class="card-title">在住宠物 ({{boardingList.length}})</view>
+      <view class="boarding-item" wx:for="{{boardingList}}" wx:key="id">
+        <view class="boarding-main" bindtap="onGoDetail" data-id="{{item.id}}">
+          <cached-image wx:if="{{item.petPhoto}}" src="{{item.petPhoto}}" mode="aspectFill" custom-class="pet-avatar-small" />
+          <view wx:else class="pet-avatar-small">{{item.petName[0]}}</view>
+          <view class="boarding-info">
+            <view class="boarding-name-row">
+              <text class="boarding-name">{{item.petName}}</text>
+              <text class="expiring-tag" wx:if="{{item.isExpiringToday}}">今日到期</text>
+            </view>
+            <text class="text-gray boarding-date">下单：{{item.createTimeText}}</text>
+            <text class="text-gray boarding-date">到期：{{item.endDate}}</text>
+          </view>
+        </view>
+        <view class="boarding-actions">
+          <text class="check-count">今日打卡 {{item.todayCheckCount}} 次</text>
+          <button
+            class="go-check-btn"
+            size="mini"
+            catchtap="onGoDailyCheckForOrder"
+            data-id="{{item.id}}"
+          >去打卡</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+</view>
+<hidden-admin-entry id="hiddenAdminEntry" />

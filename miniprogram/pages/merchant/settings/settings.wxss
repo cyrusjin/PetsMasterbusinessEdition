@@ -1,0 +1,126 @@
+.billing-mode-group { display: flex; flex-direction: column; gap: 16rpx; }
+.billing-mode-item { display: flex; align-items: center; gap: 16rpx; padding: 20rpx; border-radius: 16rpx; border: 2rpx solid #F2DEC9; background: #F7F8FA; }
+.billing-mode-item.mode-active { background: #FFF1E7; border-color: #E98657; }
+.mode-info { flex: 1; }
+.mode-title { font-size: 28rpx; font-weight: 500; color: #333333; display: block; }
+.mode-desc { font-size: 22rpx; color: #999999; display: block; margin-top: 4rpx; }
+.pricing-section { background: #F7F8FA; border-radius: 16rpx; padding: 20rpx; }
+.section-title { font-size: 24rpx; color: #999999; margin-bottom: 16rpx; }
+.weight-row { display: flex; align-items: center; gap: 16rpx; padding: 12rpx 0; border-bottom: 1rpx solid #F2DEC9; }
+.weight-row:last-child { border-bottom: none; }
+.weight-label { font-size: 26rpx; color: #333333; width: 140rpx; flex-shrink: 0; }
+.weight-range-tip {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: 22rpx;
+  color: #999999;
+  line-height: 1.5;
+}
+.weight-range-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #F2DEC9;
+}
+.weight-range-row:last-of-type { border-bottom: none; }
+.weight-input {
+  width: 96rpx;
+  height: 72rpx;
+  min-height: 72rpx;
+  text-align: center;
+  font-size: 28rpx;
+  line-height: 72rpx;
+  color: #333333;
+  padding: 0 12rpx;
+  background: #fff;
+  border-radius: 10rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.weight-sep {
+  font-size: 26rpx;
+  color: #999999;
+  flex-shrink: 0;
+}
+.weight-unit {
+  font-size: 24rpx;
+  color: #666666;
+  flex-shrink: 0;
+}
+.weight-range-delete {
+  margin-left: auto;
+  padding: 0 16rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  font-size: 22rpx;
+  color: #E53935;
+  background: #FFE8E8;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+.weight-range-add {
+  margin-top: 16rpx;
+  padding: 18rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #E98657;
+  background: #fff;
+  border: 2rpx dashed #E98657;
+  border-radius: 12rpx;
+}
+.price-input {
+  flex: 1;
+  min-width: 0;
+  height: 72rpx;
+  min-height: 72rpx;
+  text-align: right;
+  font-size: 28rpx;
+  line-height: 72rpx;
+  color: #E98657;
+  font-weight: 600;
+  padding: 0 16rpx;
+  background: #fff;
+  border-radius: 10rpx;
+  box-sizing: border-box;
+}
+.price-unit { font-size: 24rpx; color: #999999; flex-shrink: 0; }
+.room-price-row { display: flex; gap: 16rpx; }
+.room-price-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; }
+.room-label { font-size: 26rpx; color: #333333; }
+.room-price-item .price-input { width: 100%; text-align: center; }
+.room-config-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #F2DEC9;
+}
+.room-config-row:last-of-type { border-bottom: none; }
+.room-name-input {
+  width: 160rpx;
+  height: 72rpx;
+  min-height: 72rpx;
+  font-size: 28rpx;
+  line-height: 72rpx;
+  color: #333333;
+  padding: 0 12rpx;
+  background: #fff;
+  border-radius: 10rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.room-field-label {
+  font-size: 26rpx;
+  color: #666666;
+  flex-shrink: 0;
+}
+.logo-group { margin-bottom: 24rpx; }
+.logo-picker { display: flex; align-items: center; gap: 20rpx; }
+.logo-preview { width: 120rpx; height: 120rpx; border-radius: 16rpx; background: #F2DEC9; flex-shrink: 0; }
+.logo-tip { font-size: 24rpx; color: #999999; }
+.store-id-text { font-size: 24rpx; color: #E98657; word-break: break-all; font-weight: 600; }
+.copyable-code { display: block; }
+.store-id-hint { display: block; margin-top: 8rpx; font-size: 22rpx; color: #999999; }

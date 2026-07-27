@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "欢迎加入",
+  "navigationBarBackgroundColor": "#FFF4E7",
+  "usingComponents": {
+    "cached-image": "/components/cached-image/cached-image"
+  }
+}

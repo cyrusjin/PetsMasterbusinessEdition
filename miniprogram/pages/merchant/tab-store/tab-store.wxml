@@ -1,0 +1,433 @@
+<view class="merchant-page has-tab-bar" style="padding-bottom: 160rpx;">
+  <view class="container">
+    <block wx:if="{{isAdminDisabled}}">
+      <view class="card apply-disabled-card">
+        <view class="card-title">店铺已关闭</view>
+        <text class="apply-tip">{{adminDisableReason || '您的店铺已被平台关闭，如有疑问请联系客服。'}}</text>
+      </view>
+    </block>
+
+    <!-- 体验模式：入驻申请表单 -->
+    <block wx:elif="{{isDemoMode}}">
+      <view class="card apply-pending-card" wx:if="{{applyStatus === 'pending'}}">
+        <view class="card-title">审核中</view>
+        <text class="apply-tip">您的入驻申请已提交，请等待管理员审核。审核通过后即可使用商家端完整功能。</text>
+      </view>
+      <view class="card apply-rejected-card" wx:if="{{applyStatus === 'rejected'}}">
+        <view class="card-title">审核未通过</view>
+        <text class="apply-tip">{{applyRejectReason || '您的入驻申请未通过审核，请修改资料后重新提交。'}}</text>
+      </view>
+      <view class="card">
+        <view class="card-title">申请入驻</view>
+        <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后可完善店铺详情。日常管理可先体验本地演示数据。</text>
+        <view class="form-group">
+          <text class="form-label">店铺名称</text>
+          <input class="form-input" placeholder="请输入店铺名称" value="{{applyShop.name}}" bindinput="onApplyField" data-field="name" disabled="{{applyStatus === 'pending'}}" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">营业地址</text>
+          <view class="address-box">
+            <view class="address-content">
+              <text class="address-text {{applyShop.address ? '' : 'address-placeholder'}}">{{applyShop.address || '暂未选择地址'}}</text>
+              <text class="address-coord" wx:if="{{applyShop.latitude != null && applyShop.longitude != null}}">已选择地图位置</text>
+            </view>
+            <view class="address-action-btn" catchtap="onApplyChooseAddress" wx:if="{{applyStatus !== 'pending'}}">地图选点</view>
+          </view>
+        </view>
+        <view class="form-group">
+          <text class="form-label">联系电话</text>
+          <input class="form-input" type="number" maxlength="11" placeholder="请输入联系电话" value="{{applyShop.contactPhone}}" bindinput="onApplyField" data-field="contactPhone" disabled="{{applyStatus === 'pending'}}" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">负责人姓名</text>
+          <input class="form-input" placeholder="请输入负责人姓名" value="{{applyShop.legalName}}" bindinput="onApplyField" data-field="legalName" disabled="{{applyStatus === 'pending'}}" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">店铺照片</text>
+          <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张</text>
+          <view class="store-photos-grid">
+            <view class="store-photo-item" wx:for="{{applyStorePhotos}}" wx:key="*this">
+              <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewApplyPhoto" data-url="{{item}}" />
+              <view class="store-photo-delete" catchtap="onDeleteApplyPhoto" data-index="{{index}}" wx:if="{{applyStatus !== 'pending'}}">×</view>
+            </view>
+            <view class="store-photo-add" wx:if="{{applyStorePhotos.length < maxStorePhotos && applyStatus !== 'pending'}}" bindtap="onChooseApplyPhotos">
+              <text class="store-photo-add-icon">+</text>
+              <text class="store-photo-add-text">上传</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="card" wx:if="{{applyStatus !== 'pending'}}">
+        <view class="card-title">入驻合作协议</view>
+        <view class="contract-agreement">
+          <view class="contract-preview" bindtap="onViewCoopContract">
+            <text class="contract-icon">📄</text>
+            <view class="contract-info">
+              <text class="contract-title">商家入驻平台合作协议</text>
+              <text class="contract-desc">含平台合作性质、各方责任及免责条款</text>
+            </view>
+            <text class="contract-link">预览</text>
+          </view>
+          <view class="contract-sign-row" wx:if="{{!agreedToCoopContract}}">
+            <button class="btn-contract-sign" bindtap="onGoSignCoopContract">阅读并签署协议</button>
+            <text class="contract-sign-hint">签署后方可提交入驻申请</text>
+          </view>
+          <view class="contract-signed-row" wx:else>
+            <text class="contract-signed-icon">✓</text>
+            <view class="contract-signed-info">
+              <text class="contract-signed-title">协议已签署</text>
+              <text class="contract-signed-time" wx:if="{{signedCoopContractDraft.signTime}}">{{signedCoopContractDraft.signTime}}</text>
+            </view>
+            <text class="contract-resign" bindtap="onGoSignCoopContract">重新签署</text>
+          </view>
+        </view>
+      </view>
+
+      <button class="btn-primary {{agreedToCoopContract ? '' : 'btn-disabled'}}" bindtap="onSubmitApply" loading="{{submitting}}" disabled="{{submitting || applyStatus === 'pending' || !agreedToCoopContract}}">{{applyStatus === 'pending' ? '等待审核' : (applyStatus === 'rejected' ? '重新提交申请' : '申请入驻')}}</button>
+    </block>
+
+    <!-- 已审核商家：完整店铺设置 -->
+    <block wx:else>
+    <view class="incomplete-tip" wx:if="{{businessStatus === '未营业'}}">
+      <text class="incomplete-tip-text">店铺当前未营业，请完善以下信息并点击「保存设置」后开始接单</text>
+    </view>
+    <view class="card">
+      <view class="store-info-header">
+        <text class="store-info-title">店铺信息</text>
+        <view class="store-status-area">
+          <text wx:if="{{businessStatus === '未营业'}}" class="store-status-badge incomplete">未营业</text>
+          <radio-group wx:else class="business-status-group" bindchange="onBusinessStatusChange">
+            <label class="business-status-item {{businessStatus === '营业中' ? 'active open' : ''}}">
+              <radio value="营业中" checked="{{businessStatus === '营业中'}}" color="#E98657" />
+              <text>营业中</text>
+            </label>
+            <label class="business-status-item {{businessStatus === '已闭店' ? 'active closed' : ''}}">
+              <radio value="已闭店" checked="{{businessStatus === '已闭店'}}" color="#E98657" />
+              <text>已闭店</text>
+            </label>
+          </radio-group>
+        </view>
+      </view>
+      <view class="form-group logo-group">
+        <text class="form-label">店铺头像</text>
+        <view class="logo-picker" bindtap="onChooseLogo">
+          <cached-image custom-class="logo-preview" src="{{shop.logo}}" default-src="/images/default-avatar.png" mode="aspectFill" />
+          <text class="logo-tip">点击上传，用于分享卡片展示</text>
+        </view>
+      </view>
+      <view class="form-group" wx:if="{{shop.displayNo}}">
+        <text class="form-label">店铺编号</text>
+        <text class="store-id-text copyable-code" bindtap="onCopyStoreDisplayNo">{{shop.displayNo}}</text>
+        <text class="store-id-hint">点击复制店铺编号</text>
+      </view>
+      <view class="form-group"><text class="form-label">店铺名称</text><input class="form-input" placeholder="店铺名称" value="{{shop.name}}" bindinput="onField" data-field="name" /></view>
+      <view class="form-group">
+        <text class="form-label">营业地址</text>
+        <view class="address-box">
+          <view class="address-content">
+            <text class="address-text {{shop.address ? '' : 'address-placeholder'}}">{{shop.address || '暂未选择地址'}}</text>
+            <text class="address-coord" wx:if="{{shop.locationName && shop.locationName !== shop.address}}">{{shop.locationName}}</text>
+            <text class="address-coord" wx:if="{{shop.latitude != null && shop.longitude != null}}">已选择地图位置</text>
+          </view>
+          <view class="address-action-btn" catchtap="onChooseAddress">地图选点</view>
+        </view>
+      </view>
+      <view class="form-group business-hours-group">
+        <text class="form-label">营业时间</text>
+        <view class="weekday-row">
+          <view
+            wx:for="{{weekdayOptions}}"
+            wx:key="value"
+            class="weekday-chip {{item.selected ? 'active' : ''}}"
+            bindtap="onToggleWeekday"
+            data-value="{{item.value}}"
+          >{{item.label}}</view>
+        </view>
+        <view class="business-time-row">
+          <view class="business-time-item">
+            <text class="time-picker-title">开始时间</text>
+            <picker mode="time" value="{{businessHours.openTime}}" bindchange="onBusinessTimeChange" data-field="openTime">
+              <view class="time-picker-value">{{businessHours.openTime}}</view>
+            </picker>
+          </view>
+          <text class="business-time-sep">至</text>
+          <view class="business-time-item">
+            <text class="time-picker-title">结束时间</text>
+            <picker mode="time" value="{{businessHours.closeTime}}" bindchange="onBusinessTimeChange" data-field="closeTime">
+              <view class="time-picker-value">{{businessHours.closeTime}}</view>
+            </picker>
+          </view>
+        </view>
+        <text class="business-hours-summary">{{hoursSummary}}</text>
+      </view>
+      <view class="form-group"><text class="form-label">店铺介绍</text><textarea class="form-textarea" placeholder="店铺介绍" value="{{shop.intro}}" bindinput="onField" data-field="intro" /></view>
+      <view class="form-group">
+        <text class="form-label">接待范围</text>
+        <checkbox-group class="reception-range-group" bindchange="onReceptionRangeChange">
+          <label
+            class="reception-range-item {{item.checked ? 'active' : ''}}"
+            wx:for="{{receptionRangeOptions}}"
+            wx:key="value"
+          >
+            <checkbox value="{{item.value}}" checked="{{item.checked}}" color="#E98657" />
+            <text>{{item.label}}</text>
+          </label>
+        </checkbox-group>
+        <text class="reception-range-summary" wx:if="{{receptionRangeSummary}}">已选：{{receptionRangeSummary}}</text>
+      </view>
+      <view class="form-group">
+        <text class="form-label">店铺照片</text>
+        <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张，支持相册或拍照</text>
+        <view class="store-photos-grid">
+          <view class="store-photo-item" wx:for="{{storePhotos}}" wx:key="*this">
+            <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewStorePhoto" data-url="{{item}}" />
+            <view class="store-photo-delete" catchtap="onDeleteStorePhoto" data-index="{{index}}">×</view>
+          </view>
+          <view class="store-photo-add" wx:if="{{storePhotos.length < maxStorePhotos}}" bindtap="onChooseStorePhotos">
+            <text class="store-photo-add-icon">+</text>
+            <text class="store-photo-add-text">上传</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="card">
+      <view class="card-title">收费模式</view>
+      <radio-group class="billing-mode-group" bindchange="onBillingMode">
+        <label class="billing-mode-item {{billingMode === 'weight' ? 'mode-active' : ''}}">
+          <radio value="weight" checked="{{billingMode === 'weight'}}" color="#E98657" />
+          <view class="mode-info">
+            <text class="mode-title">按宠物体重区间收费</text>
+            <text class="mode-desc">根据宠物体重自动匹配价格区间</text>
+          </view>
+        </label>
+        <label class="billing-mode-item {{billingMode === 'room' ? 'mode-active' : ''}}">
+          <radio value="room" checked="{{billingMode === 'room'}}" color="#E98657" />
+          <view class="mode-info">
+            <text class="mode-title">按房间类型收费</text>
+            <text class="mode-desc">宠物主人按房间名称与体重限制选择</text>
+          </view>
+        </label>
+      </radio-group>
+      <view wx:if="{{billingMode === 'weight'}}" class="pricing-section mt-20">
+        <view class="section-title">体重区间价格（元/天）</view>
+        <view class="weight-range-tip">可自定义每个区间的起止体重与价格，最后一行为「以上」区间</view>
+        <view class="weight-range-row" wx:for="{{weightPricing}}" wx:key="index">
+          <block wx:if="{{item.isAbove}}">
+            <input class="weight-input" type="digit" placeholder="体重" value="{{item.min}}" bindinput="onWeightRangeField" data-index="{{index}}" data-field="min" />
+            <text class="weight-unit">kg以上</text>
+            <input class="price-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onWeightRangeField" data-index="{{index}}" data-field="price" />
+            <text class="price-unit">元</text>
+          </block>
+          <block wx:else>
+            <input class="weight-input" type="digit" placeholder="起" value="{{item.min}}" bindinput="onWeightRangeField" data-index="{{index}}" data-field="min" />
+            <text class="weight-sep">-</text>
+            <input class="weight-input" type="digit" placeholder="止" value="{{item.max}}" bindinput="onWeightRangeField" data-index="{{index}}" data-field="max" />
+            <text class="weight-unit">kg</text>
+            <input class="price-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onWeightRangeField" data-index="{{index}}" data-field="price" />
+            <text class="price-unit">元</text>
+            <view
+              wx:if="{{weightPricing.length > 2}}"
+              class="weight-range-delete"
+              catchtap="onRemoveWeightRange"
+              data-index="{{index}}"
+            >删除</view>
+          </block>
+        </view>
+        <view class="weight-range-add" bindtap="onAddWeightRange">+ 添加区间</view>
+      </view>
+      <view wx:if="{{billingMode === 'room'}}" class="pricing-section mt-20">
+        <view class="section-title">房间类型价格（元/天）</view>
+        <view class="weight-range-tip">可自定义房间名称、最大允许体重与价格</view>
+        <view class="room-config-row" wx:for="{{roomPricing}}" wx:key="id">
+          <input class="room-name-input" placeholder="房间名称" value="{{item.name}}" bindinput="onRoomField" data-index="{{index}}" data-field="name" />
+          <text class="room-field-label">≤</text>
+          <input class="weight-input" type="digit" placeholder="体重" value="{{item.maxWeight}}" bindinput="onRoomField" data-index="{{index}}" data-field="maxWeight" />
+          <text class="weight-unit">kg</text>
+          <input class="price-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onRoomField" data-index="{{index}}" data-field="price" />
+          <text class="price-unit">元</text>
+          <view
+            wx:if="{{roomPricing.length > 1}}"
+            class="weight-range-delete"
+            catchtap="onRemoveRoom"
+            data-index="{{index}}"
+          >删除</view>
+        </view>
+        <view class="weight-range-add" bindtap="onAddRoom">+ 添加房间</view>
+      </view>
+
+      <view class="charge-section mt-20">
+        <view class="section-title">入住当天收费原则</view>
+        <radio-group class="day-charge-group" bindchange="onCheckInDayCharge">
+          <label class="day-charge-item {{checkInDayCharge === 'full' ? 'mode-active' : ''}}">
+            <radio value="full" checked="{{checkInDayCharge === 'full'}}" color="#E98657" />
+            <text>全价</text>
+          </label>
+          <label class="day-charge-item {{checkInDayCharge === 'half' ? 'mode-active' : ''}}">
+            <radio value="half" checked="{{checkInDayCharge === 'half'}}" color="#E98657" />
+            <text>半价</text>
+          </label>
+          <label class="day-charge-item {{checkInDayCharge === 'free' ? 'mode-active' : ''}}">
+            <radio value="free" checked="{{checkInDayCharge === 'free'}}" color="#E98657" />
+            <text>免费</text>
+          </label>
+        </radio-group>
+      </view>
+
+      <view class="charge-section mt-20">
+        <view class="section-title">离店当天收费</view>
+        <radio-group class="day-charge-group" bindchange="onDepartureDayCharge">
+          <label class="day-charge-item {{departureDayCharge === 'full' ? 'mode-active' : ''}}">
+            <radio value="full" checked="{{departureDayCharge === 'full'}}" color="#E98657" />
+            <text>全价</text>
+          </label>
+          <label class="day-charge-item {{departureDayCharge === 'free' ? 'mode-active' : ''}}">
+            <radio value="free" checked="{{departureDayCharge === 'free'}}" color="#E98657" />
+            <text>免费</text>
+          </label>
+          <label class="day-charge-item {{departureDayCharge === 'half' ? 'mode-active' : ''}}">
+            <radio value="half" checked="{{departureDayCharge === 'half'}}" color="#E98657" />
+            <text>时间段</text>
+          </label>
+        </radio-group>
+
+        <block wx:if="{{departureDayCharge === 'half'}}">
+          <text class="charge-hint mt-16">按离店时间分段计费，可参考：12点前免费，12-18点计半天，18点后计全天</text>
+          <view class="time-picker-row">
+            <view class="time-picker-label">
+              <text class="time-picker-title">免费时间段</text>
+              <text class="time-picker-desc">离店当天此时间前不计费</text>
+            </view>
+            <picker mode="time" value="{{departureCharge.freeUntil}}" bindchange="onDepartureTimeChange" data-field="freeUntil">
+              <view class="time-picker-value">{{departureCharge.freeUntil}}</view>
+            </picker>
+          </view>
+          <view class="time-picker-row">
+            <view class="time-picker-label">
+              <text class="time-picker-title">半价时间段</text>
+              <text class="time-picker-desc">超过免费时间，此时间前计半天</text>
+            </view>
+            <picker mode="time" value="{{departureCharge.halfUntil}}" bindchange="onDepartureTimeChange" data-field="halfUntil">
+              <view class="time-picker-value">{{departureCharge.halfUntil}}</view>
+            </picker>
+          </view>
+          <view class="time-picker-row">
+            <view class="time-picker-label">
+              <text class="time-picker-title">全价时间段</text>
+              <text class="time-picker-desc">离店当天此时间后起计全天</text>
+            </view>
+            <picker mode="time" value="{{departureCharge.fullFrom}}" bindchange="onDepartureTimeChange" data-field="fullFrom">
+              <view class="time-picker-value">{{departureCharge.fullFrom}}</view>
+            </picker>
+          </view>
+        </block>
+
+        <view class="charge-summary">{{chargeSummary}}</view>
+      </view>
+    </view>
+    <view class="card">
+      <view class="card-title">接送设置</view>
+      <radio-group class="day-charge-group" bindchange="onPickupServiceChange">
+        <label class="day-charge-item {{shop.pickupService === 'yes' ? 'mode-active' : ''}}">
+          <radio value="yes" checked="{{shop.pickupService === 'yes'}}" color="#E98657" />
+          <text>有接送</text>
+        </label>
+        <label class="day-charge-item {{shop.pickupService !== 'yes' ? 'mode-active' : ''}}">
+          <radio value="no" checked="{{shop.pickupService !== 'yes'}}" color="#E98657" />
+          <text>无接送</text>
+        </label>
+      </radio-group>
+      <block wx:if="{{shop.pickupService === 'yes'}}">
+        <view class="form-group pickup-pricing-group">
+          <text class="form-label">收费方式 <text class="required-star">*</text></text>
+          <radio-group class="day-charge-group" bindchange="onPickupPricingModeChange">
+            <label class="day-charge-item {{shop.pickupPricingMode !== 'distance' ? 'mode-active' : ''}}">
+              <radio value="flat" checked="{{shop.pickupPricingMode !== 'distance'}}" color="#E98657" />
+              <text>一口价（单程）</text>
+            </label>
+            <label class="day-charge-item {{shop.pickupPricingMode === 'distance' ? 'mode-active' : ''}}">
+              <radio value="distance" checked="{{shop.pickupPricingMode === 'distance'}}" color="#E98657" />
+              <text>按距离收费</text>
+            </label>
+          </radio-group>
+        </view>
+        <view class="form-group" wx:if="{{shop.pickupPricingMode !== 'distance'}}">
+          <text class="form-label">单程价格（元） <text class="required-star">*</text></text>
+          <input class="form-input" type="digit" placeholder="请输入单程接送价格" value="{{shop.pickupFlatPrice}}" bindinput="onField" data-field="pickupFlatPrice" />
+        </view>
+        <view class="form-group" wx:if="{{shop.pickupPricingMode === 'distance'}}">
+          <text class="form-label">每公里价格（元） <text class="required-star">*</text></text>
+          <input class="form-input" type="digit" placeholder="请输入每公里价格" value="{{shop.pickupPricePerKm}}" bindinput="onField" data-field="pickupPricePerKm" />
+        </view>
+        <view class="form-group pickup-notice-group">
+          <text class="form-label">接送须知 <text class="required-star">*</text></text>
+          <textarea class="form-textarea" placeholder="接送须知..." value="{{shop.pickupNotice}}" bindinput="onField" data-field="pickupNotice" />
+        </view>
+      </block>
+    </view>
+    <view class="card">
+      <view class="card-title">寄养须知</view>
+      <textarea class="form-textarea" placeholder="寄养须知..." value="{{shop.notice}}" bindinput="onField" data-field="notice" />
+    </view>
+    <view class="card">
+      <view class="card-title">寄养协议</view>
+      <text class="contract-clause-tip">客户预约签署时将使用以下条款；可按店铺实际情况自定义修改。</text>
+      <view class="contract-preview tappable" bindtap="onOpenContractModal">
+        <image class="contract-preview-icon" src="/images/card/card-settings.png" mode="aspectFit" />
+        <view class="contract-info">
+          <text class="contract-title">寄养协议默认条款</text>
+          <text class="contract-desc">{{contractClauseSummary}}</text>
+        </view>
+        <text class="contract-custom-badge" wx:if="{{contractClauseCustomized}}">已自定义</text>
+        <text class="contract-link">编辑</text>
+      </view>
+    </view>
+    <view class="card">
+      <view class="card-title">押金设置</view>
+      <view class="form-group"><text class="form-label">押金金额（元）</text><input class="form-input" type="digit" placeholder="不填默认 0 元" value="{{shop.deposit}}" bindinput="onField" data-field="deposit" /></view>
+    </view>
+    <button class="btn-primary" bindtap="onSave">保存设置</button>
+    </block>
+  </view>
+
+  <view class="clause-modal" wx:if="{{showContractModal}}">
+    <view class="clause-modal-mask" catchtouchmove="preventMove" bindtap="onCloseContractModal"></view>
+    <view class="clause-modal-panel">
+      <view class="clause-modal-header" catchtouchmove="preventMove">
+        <text class="clause-modal-title">编辑寄养协议条款</text>
+        <text class="clause-modal-close" bindtap="onCloseContractModal">×</text>
+      </view>
+      <view class="clause-modal-body">
+        <view class="form-group" catchtouchmove="preventMove">
+          <text class="form-label">意外赔付上限（元）</text>
+          <input
+            class="form-input"
+            type="digit"
+            placeholder="不填则默认按 0 元写入协议"
+            value="{{contractCompensationDraft}}"
+            bindinput="onContractCompensationInput"
+          />
+          <text class="clause-field-hint">将自动填入第二条赔付约定中的金额上限；不填默认 0 元</text>
+        </view>
+        <view class="form-group clause-editor-group">
+          <text class="form-label" catchtouchmove="preventMove">协议条款正文</text>
+          <text class="clause-field-hint" catchtouchmove="preventMove">请保留「一、」「二、」等章节标题，条款使用「1.」「2.」编号，便于客户阅读。</text>
+          <textarea
+            class="form-textarea clause-textarea"
+            value="{{contractClauseDraft}}"
+            bindinput="onContractClauseInput"
+            maxlength="-1"
+            show-confirm-bar="{{false}}"
+            auto-height="{{false}}"
+          />
+        </view>
+      </view>
+      <view class="clause-modal-footer" catchtouchmove="preventMove">
+        <button class="clause-btn clause-btn-ghost" bindtap="onResetContractClause">恢复默认</button>
+        <button class="clause-btn clause-btn-primary" bindtap="onConfirmContractClause">确定</button>
+      </view>
+    </view>
+  </view>
+
+</view>
+<hidden-admin-entry id="hiddenAdminEntry" />

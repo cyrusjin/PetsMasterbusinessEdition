@@ -1,0 +1,67 @@
+<view class="landing-page">
+  <view class="landing-bg-paw landing-bg-paw-a"></view>
+  <view class="landing-bg-paw landing-bg-paw-b"></view>
+
+  <view class="landing-shell" wx:if="{{phase === 'loading'}}">
+    <view class="landing-badge">宠物大家庭</view>
+    <view class="landing-spinner"></view>
+    <text class="landing-title">正在准备欢迎页</text>
+    <text class="landing-desc">马上带您认识新的寄养伙伴</text>
+  </view>
+
+  <view class="landing-shell" wx:else>
+    <view class="landing-badge">欢迎加入</view>
+
+    <view class="store-hero" wx:if="{{!loadError}}">
+      <view class="store-logo-wrap">
+        <cached-image
+          wx:if="{{storeLogo}}"
+          custom-class="store-logo"
+          src="{{storeLogo}}"
+          default-src="/images/default-avatar.png"
+          mode="aspectFill"
+        />
+        <view wx:else class="store-logo store-logo-fallback">🐾</view>
+      </view>
+      <text class="store-name">{{storeName}}</text>
+      <text class="store-address" wx:if="{{storeAddress}}">{{storeAddress}}</text>
+    </view>
+
+    <view class="welcome-card">
+      <text class="welcome-title" wx:if="{{!loadError}}">您已被邀请加入宠物大家庭</text>
+      <text class="welcome-title welcome-title-error" wx:else>无法打开邀请</text>
+      <text class="welcome-text">{{loadError || welcomeText}}</text>
+    </view>
+
+    <view class="perk-list" wx:if="{{!loadError}}">
+      <view class="perk-item" wx:for="{{perks}}" wx:key="title">
+        <image class="perk-icon" src="{{item.icon}}" mode="aspectFit" />
+        <view class="perk-body">
+          <text class="perk-title">{{item.title}}</text>
+          <text class="perk-desc">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="action-area" wx:if="{{!loadError}}">
+      <view class="jump-fail-banner" wx:if="{{jumpFailed}}">
+        <text class="jump-fail-badge">暂未跳转成功</text>
+        <text class="jump-fail-title">请手动打开宠主端</text>
+        <text class="jump-fail-desc" wx:if="{{storeName}}">{{storeName}} 正在等您加入</text>
+        <text class="jump-fail-desc" wx:else>请搜索「宠大师」小程序，或通过体验版进入</text>
+      </view>
+
+      <view class="jump-hint" wx:if="{{jumping}}">
+        <view class="landing-spinner landing-spinner-small"></view>
+        <text>正在打开预约小程序…</text>
+      </view>
+      <button
+        wx:else
+        class="landing-btn"
+        bindtap="onContinue"
+        hover-class="landing-btn-hover"
+      >{{jumpFailed ? '重新打开宠主端' : '进入宠物大家庭'}}</button>
+      <text class="action-tip">打开后可浏览店铺、预约寄养、查看每日动态</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,17 @@
+@import '../../../styles/merchant-tab.wxss';
+@import '../settings/settings.wxss';
+@import '../tab-store/tab-store.wxss';
+
+.apply-pending-card {
+  margin-bottom: 24rpx;
+  background: #FFF1E7;
+  border: 1rpx solid #F2C39E;
+}
+
+.apply-tip {
+  display: block;
+  margin-bottom: 24rpx;
+  font-size: 24rpx;
+  color: #999999;
+  line-height: 1.6;
+}

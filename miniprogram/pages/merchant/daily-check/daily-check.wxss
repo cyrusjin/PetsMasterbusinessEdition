@@ -1,0 +1,39 @@
+.card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16rpx; }
+.select-all-btn { font-size: 24rpx; color: #E98657; }
+.pet-select-list { display: flex; flex-direction: column; gap: 12rpx; }
+.pet-select-item { display: flex; align-items: center; gap: 16rpx; padding: 20rpx; background: #F7F8FA; border-radius: 16rpx; border: 2rpx solid transparent; }
+.pet-select-item.selected { background: #FFF1E7; border-color: #E98657; }
+.pet-select-check { width: 40rpx; height: 40rpx; border-radius: 50%; border: 2rpx solid #F2DEC9; display: flex; align-items: center; justify-content: center; font-size: 24rpx; color: #E98657; flex-shrink: 0; }
+.pet-select-item.selected .pet-select-check { background: #E98657; border-color: #E98657; color: #fff; }
+.pet-select-info { flex: 1; min-width: 0; }
+.pet-select-name-row { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; }
+.pet-select-name { font-size: 28rpx; color: #333333; font-weight: 600; }
+.pet-select-meta { font-size: 22rpx; color: #666666; }
+.pet-select-date { display: block; font-size: 22rpx; margin-top: 6rpx; }
+.empty-hint { font-size: 24rpx; color: #999999; text-align: center; padding: 24rpx 0; }
+.check-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16rpx; }
+.check-item { display: flex; flex-direction: column; align-items: center; padding: 20rpx 0; background: #F7F8FA; border-radius: 16rpx; font-size: 24rpx; color: #999999; border: 2rpx solid transparent; }
+.check-item.checked { background: #FFF1E7; border-color: #E98657; color: #E98657; font-weight: 600; }
+.check-icon { font-size: 36rpx; margin-bottom: 6rpx; }
+.upload-grid { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.upload-preview-wrap { position: relative; }
+.upload-preview { width: 160rpx; height: 160rpx; border-radius: 16rpx; border: 3rpx solid #F2DEC9; }
+.upload-btn { width: 160rpx; height: 160rpx; border-radius: 16rpx; background: #F7F8FA; border: 2rpx dashed #F2DEC9; display: flex; align-items: center; justify-content: center; font-size: 48rpx; color: #F7AA78; }
+.upload-remove { position: absolute; top: -10rpx; right: -10rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; font-size: 28rpx; display: flex; align-items: center; justify-content: center; }
+.video-thumb-wrap { position: relative; background: linear-gradient(135deg, #E98657, #F7AA78); overflow: hidden; }
+.video-thumb-wrap.has-cover { background: #FFF1E7; }
+.video-play-badge { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 56rpx; height: 56rpx; border-radius: 50%; background: rgba(0,0,0,0.45); color: #fff; font-size: 24rpx; display: flex; align-items: center; justify-content: center; padding-left: 4rpx; }
+.optional-tag { margin-left: 12rpx; font-size: 22rpx; color: #999999; font-weight: normal; }
+.quick-phrase-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 16rpx; }
+.quick-phrase-chip { display: inline-flex; align-items: center; gap: 8rpx; padding: 12rpx 12rpx 12rpx 20rpx; font-size: 24rpx; color: #666666; background: #F7F8FA; border: 2rpx solid #F2DEC9; border-radius: 999rpx; line-height: 1.4; box-sizing: border-box; }
+.quick-phrase-chip.selected { color: #E98657; background: #FFF1E7; border-color: #E98657; font-weight: 600; }
+.quick-phrase-chip.add-chip { padding: 12rpx 20rpx; color: #E98657; background: #fff; border-style: dashed; }
+.quick-phrase-text { max-width: 420rpx; }
+.quick-phrase-remove { width: 32rpx; height: 32rpx; line-height: 30rpx; text-align: center; font-size: 28rpx; color: #999999; border-radius: 50%; flex-shrink: 0; }
+.quick-phrase-chip.selected .quick-phrase-remove { color: #E98657; }
+.required-tag { margin-left: 12rpx; font-size: 22rpx; color: #E98657; font-weight: normal; }
+.daily-item { padding: 20rpx 0; border-bottom: 1rpx solid #F2DEC9; }
+.daily-item:last-child { border-bottom: none; }
+.daily-checks { display: flex; flex-wrap: wrap; gap: 8rpx; margin-bottom: 8rpx; }
+.daily-desc { font-size: 26rpx; color: #666666; line-height: 1.5; margin-bottom: 8rpx; }
+.tag-orange { background: #FFF1E7; color: #E98657; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; }

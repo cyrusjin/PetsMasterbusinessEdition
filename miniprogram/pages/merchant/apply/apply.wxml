@@ -1,0 +1,49 @@
+<view class="merchant-page">
+  <view class="container">
+    <view class="card apply-pending-card" wx:if="{{applyStatus === 'pending'}}">
+      <view class="card-title">审核中</view>
+      <text class="apply-tip">您的入驻申请已提交，请等待管理员审核。审核通过后即可使用商家端功能。</text>
+    </view>
+    <view class="card">
+      <view class="card-title">入驻申请</view>
+      <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后可完善店铺详情。</text>
+      <view class="form-group">
+        <text class="form-label">店铺名称</text>
+        <input class="form-input" placeholder="请输入店铺名称" value="{{shop.name}}" bindinput="onField" data-field="name" disabled="{{applyStatus === 'pending'}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">营业地址</text>
+        <view class="address-box">
+          <view class="address-content">
+            <text class="address-text {{shop.address ? '' : 'address-placeholder'}}">{{shop.address || '暂未选择地址'}}</text>
+            <text class="address-coord" wx:if="{{shop.latitude != null && shop.longitude != null}}">已选择地图位置</text>
+          </view>
+          <view class="address-action-btn" catchtap="onChooseAddress" wx:if="{{applyStatus !== 'pending'}}">地图选点</view>
+        </view>
+      </view>
+      <view class="form-group">
+        <text class="form-label">联系电话</text>
+        <input class="form-input" type="number" maxlength="11" placeholder="请输入联系电话" value="{{shop.contactPhone}}" bindinput="onField" data-field="contactPhone" disabled="{{applyStatus === 'pending'}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">负责人姓名</text>
+        <input class="form-input" placeholder="请输入负责人姓名" value="{{shop.legalName}}" bindinput="onField" data-field="legalName" disabled="{{applyStatus === 'pending'}}" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">店铺照片</text>
+        <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张</text>
+        <view class="store-photos-grid">
+          <view class="store-photo-item" wx:for="{{storePhotos}}" wx:key="*this">
+            <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewStorePhoto" data-url="{{item}}" />
+            <view class="store-photo-delete" catchtap="onDeleteStorePhoto" data-index="{{index}}" wx:if="{{applyStatus !== 'pending'}}">×</view>
+          </view>
+          <view class="store-photo-add" wx:if="{{storePhotos.length < maxStorePhotos && applyStatus !== 'pending'}}" bindtap="onChooseStorePhotos">
+            <text class="store-photo-add-icon">+</text>
+            <text class="store-photo-add-text">上传</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <button class="btn-primary" bindtap="onSubmit" loading="{{submitting}}" disabled="{{submitting || applyStatus === 'pending'}}">{{applyStatus === 'pending' ? '等待审核' : '申请入驻'}}</button>
+  </view>
+</view>

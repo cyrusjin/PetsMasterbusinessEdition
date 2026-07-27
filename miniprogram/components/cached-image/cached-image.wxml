@@ -1,0 +1,13 @@
+<view class="cached-image-box custom-class">
+  <image
+    wx:if="{{displaySrc}}"
+    class="cached-image-el {{sizing === 'auto' ? 'cached-image-auto' : ''}}"
+    src="{{displaySrc}}"
+    mode="{{mode}}"
+    lazy-load="{{lazyLoad}}"
+    show-menu-by-longpress="{{showMenuByLongpress}}"
+    bindtap="onImageTap"
+    bindload="onImageLoad"
+    binderror="onImageError"
+  />
+</view>

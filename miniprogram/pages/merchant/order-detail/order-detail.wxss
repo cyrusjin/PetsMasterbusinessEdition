@@ -1,0 +1,111 @@
+.copy-hint {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.detail-row { display: flex; justify-content: space-between; align-items: center; padding: 14rpx 0; font-size: 26rpx; color: #333333; border-bottom: 1rpx solid #FFF1E7; }
+.detail-row:last-child { border-bottom: none; }
+.detail-row-stack { align-items: flex-start; gap: 16rpx; }
+.detail-value { flex: 1; text-align: right; line-height: 1.6; word-break: break-all; }
+.pet-profile-head { display: flex; justify-content: center; margin-bottom: 20rpx; }
+.pet-profile-photo { width: 220rpx; height: 220rpx; border-radius: 16rpx; }
+.pet-profile-placeholder {
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 16rpx;
+  background: #F7F8FA;
+  border: 1rpx solid #F2DEC9;
+  color: #999999;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.order-export-canvas {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 750px;
+  height: 2000px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.price-pending-desc {
+  display: block;
+  font-size: 26rpx;
+  color: #E65100;
+  line-height: 1.6;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.detail-action-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.detail-action-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 80rpx;
+  padding: 18rpx 24rpx;
+  box-sizing: border-box;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.detail-action-full {
+  width: 100%;
+}
+
+.detail-action-btn.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.detail-action-primary {
+  background: #E98657;
+  color: #FFFFFF;
+}
+
+.detail-action-blue {
+  background: #F7AA78;
+  color: #FFFFFF;
+}
+
+.detail-action-outline {
+  background: #FFFFFF;
+  color: #E98657;
+  border: 2rpx solid #E98657;
+}
+
+.detail-action-warning {
+  background: #F57C00;
+  color: #FFFFFF;
+}
+
+.detail-action-danger {
+  background: #E53935;
+  color: #FFFFFF;
+}

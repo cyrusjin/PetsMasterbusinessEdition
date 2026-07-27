@@ -1,0 +1,112 @@
+<view class="container">
+  <view class="card">
+    <view class="flex-between mb-20">
+      <text class="card-title" style="border:none;padding:0;margin:0;">订单详情</text>
+      <view class="status-badge {{order.pricePendingConfirm ? 'status-price-pending' : 'status-' + order.status}}">
+        <text wx:if="{{order.pricePendingConfirm}}">待确认价格</text>
+        <text wx:else>{{statusLabel}}</text>
+      </view>
+    </view>
+    <text class="copy-hint">点击内容可复制</text>
+    <copyable-detail-row label="订单编号" value="{{order.displayNo}}" />
+    <copyable-detail-row wx:if="{{order.createTimeText}}" label="下单时间" value="{{order.createTimeText}}" />
+    <copyable-detail-row label="服务类型" value="{{order.serviceType}}" />
+    <copyable-detail-row label="宠主" value="{{order.contactName || order.userNickName}}" />
+    <copyable-detail-row label="联系电话" value="{{order.contactPhone || order.userPhone}}" />
+    <copyable-detail-row wx:if="{{order.emergencyPhone}}" label="紧急联系电话" value="{{order.emergencyPhone}}" />
+    <copyable-detail-row label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
+    <copyable-detail-row label="房间" value="{{order.roomName}}" />
+    <copyable-detail-row label="接送服务" value="{{order.needPickup ? '需要' : '不需要'}}" />
+    <block wx:if="{{order.needPickup}}">
+      <copyable-detail-row label="接送地址" value="{{order.pickupAddress}}" stack="{{true}}" />
+      <copyable-detail-row label="接送联系电话" value="{{order.pickupContactPhone}}" />
+      <copyable-detail-row label="接送时间" value="{{order.startDate}} {{order.pickupTime || order.startTime}}" />
+      <copyable-detail-row label="接送范围" value="{{pickupLegsText}}" />
+      <copyable-detail-row label="接送进度" value="{{pickupProgressText}}" />
+    </block>
+    <copyable-detail-row label="天数" value="{{order.days}}天" />
+    <copyable-detail-row label="特殊需求" value="{{order.specialNeeds}}" stack="{{true}}" />
+    <copyable-detail-row wx:if="{{order.contractSigned || order.contractSnapshot || order.contractId}}" label="协议状态" value="{{order.contractSigned ? '已签署' : '待签署'}}" />
+  </view>
+
+  <view class="card" wx:if="{{order.pricePendingConfirm}}">
+    <view class="card-title">改价待确认</view>
+    <text class="price-pending-desc">已调整订单价格，等待宠主确认前不可再次修改订单</text>
+  </view>
+
+  <view class="card">
+    <view class="card-title">费用明细</view>
+    <order-fee-detail detail="{{feeDetail}}" />
+  </view>
+
+  <view class="card">
+    <view class="card-title">宠物信息</view>
+    <view class="pet-profile-head">
+      <cached-image wx:if="{{petView.photo}}" src="{{petView.photo}}" mode="aspectFill" custom-class="pet-profile-photo" />
+      <view wx:else class="pet-profile-placeholder">暂无宠物照片</view>
+    </view>
+    <copyable-detail-row label="宠物名称" value="{{order.petName}}" />
+    <copyable-detail-row label="宠物类型" value="{{order.petType}}" />
+    <copyable-detail-row label="品种" value="{{petView.breed}}" />
+    <copyable-detail-row label="性别" value="{{petView.gender}}" />
+    <copyable-detail-row label="年龄" value="{{petView.ageText}}" />
+    <copyable-detail-row label="体重" value="{{petView.weightText}}" />
+    <copyable-detail-row label="毛色" value="{{petView.color}}" />
+  </view>
+
+  <view class="card">
+    <view class="card-title">健康信息</view>
+    <copyable-detail-row label="疫苗接种" value="{{petView.vaccination}}" />
+    <copyable-detail-row label="驱虫时间" value="{{petView.dewormDate}}" />
+    <copyable-detail-row label="过敏史" value="{{petView.allergyText}}" stack="{{true}}" />
+    <copyable-detail-row label="既往病史" value="{{petView.medicalHistoryText}}" stack="{{true}}" />
+    <copyable-detail-row label="是否怀孕" value="{{petView.isPregnant}}" />
+    <copyable-detail-row label="是否发情" value="{{petView.inHeat}}" />
+    <copyable-detail-row label="是否绝育" value="{{petView.isNeutered}}" />
+    <copyable-detail-row label="是否办理犬证" value="{{petView.hasDogLicense}}" />
+  </view>
+
+  <view class="card">
+    <view class="card-title">生活习性</view>
+    <copyable-detail-row label="性格特点" value="{{petView.character}}" stack="{{true}}" />
+    <copyable-detail-row label="饮食禁忌" value="{{petView.dietTaboo}}" stack="{{true}}" />
+    <copyable-detail-row label="特殊照料需求" value="{{petView.specialCare}}" stack="{{true}}" />
+    <copyable-detail-row label="备注" value="{{petView.remark}}" stack="{{true}}" />
+  </view>
+
+  <view class="card">
+    <view class="card-title">操作</view>
+    <view class="detail-actions">
+      <view class="detail-action-row" wx:if="{{order.status === 'boarding' || order.contractSigned || order.contractSnapshot || order.contractId}}">
+        <view
+          wx:if="{{order.status === 'boarding'}}"
+          class="detail-action-btn detail-action-blue"
+          bindtap="onGoDaily"
+        >打卡记录</view>
+        <view
+          wx:if="{{order.contractSigned || order.contractSnapshot || order.contractId}}"
+          class="detail-action-btn detail-action-outline"
+          bindtap="onGoContract"
+        >查看寄养协议</view>
+      </view>
+      <view class="detail-action-row" wx:if="{{canMerchantOperate && (order.status === 'boarding' || order.status === 'pending' || order.status === 'awaiting_arrival')}}">
+        <view
+          wx:if="{{canMerchantOperate && order.status === 'boarding'}}"
+          class="detail-action-btn detail-action-danger"
+          bindtap="onComplete"
+        >结束寄养</view>
+        <view
+          wx:if="{{canMerchantOperate && (order.status === 'pending' || order.status === 'awaiting_arrival' || order.status === 'boarding')}}"
+          class="detail-action-btn detail-action-warning"
+          bindtap="onEditPrice"
+        >修改价格</view>
+      </view>
+      <view
+        class="detail-action-btn detail-action-primary detail-action-full {{exporting ? 'is-disabled' : ''}}"
+        bindtap="onExportShare"
+      >{{exporting ? '导出中...' : '导出订单详情并分享给好友'}}</view>
+    </view>
+  </view>
+
+  <canvas type="2d" id="orderExportCanvas" class="order-export-canvas"></canvas>
+</view>

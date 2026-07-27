@@ -1,0 +1,58 @@
+<view class="container" wx:if="{{order.id}}">
+  <view class="summary-card">
+    <text class="summary-label">修改后合计</text>
+    <text class="summary-total">¥{{totalFeeText}}</text>
+    <view class="summary-breakdown">
+      <text>寄养费用：¥{{boardingFeeText}}</text>
+      <text wx:if="{{order.needPickup}}">接送运费：¥{{shippingFeeText}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">订单信息</view>
+    <view class="detail-row"><text class="text-gray">宠物</text><text>{{order.petName}}</text></view>
+    <view class="detail-row"><text class="text-gray">宠主</text><text>{{order.userNickName || '--'}}</text></view>
+    <view class="detail-row" wx:if="{{order.createTimeText}}"><text class="text-gray">下单时间</text><text>{{order.createTimeText}}</text></view>
+    <view class="detail-row"><text class="text-gray">寄养时间</text><text>{{order.startDate}} ~ {{order.endDate}}</text></view>
+    <view class="detail-row" wx:if="{{order.needPickup}}"><text class="text-gray">接送服务</text><text>需要</text></view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">价格设置</view>
+    <view class="form-group">
+      <text class="form-label">寄养费用（元）</text>
+      <input class="form-input" type="digit" value="{{boardingFeeInput}}" bindinput="onBoardingFeeInput" placeholder="请输入寄养费用" />
+    </view>
+    <view class="form-group" wx:if="{{order.needPickup}}">
+      <text class="form-label">接送运费（元）</text>
+      <input class="form-input" type="digit" value="{{shippingFeeInput}}" bindinput="onShippingFeeInput" placeholder="默认 0 元" />
+      <text class="hint-text">宠主已选择接送服务，可在此填写实际运费</text>
+      <view class="pickup-detail">
+        <text class="pickup-detail-title">接运详情</text>
+        <view class="pickup-detail-row">
+          <text class="pickup-detail-label">接运方式</text>
+          <text class="pickup-detail-value">{{pickupTripTypeText || '--'}}</text>
+        </view>
+        <view class="pickup-detail-row">
+          <text class="pickup-detail-label">接送范围</text>
+          <text class="pickup-detail-value">{{pickupLegsText || '--'}}</text>
+        </view>
+        <view class="pickup-detail-row pickup-detail-row--stack">
+          <text class="pickup-detail-label">接送地址</text>
+          <text class="pickup-detail-value pickup-detail-address">{{order.pickupAddress || '--'}}</text>
+          <text class="pickup-detail-sub" wx:if="{{order.pickupLocationName && order.pickupLocationName !== order.pickupAddress}}">{{order.pickupLocationName}}</text>
+        </view>
+        <view class="pickup-detail-row">
+          <text class="pickup-detail-label">联系电话</text>
+          <text class="pickup-detail-value">{{order.pickupContactPhone || '--'}}</text>
+        </view>
+        <view class="pickup-detail-row">
+          <text class="pickup-detail-label">接送时间</text>
+          <text class="pickup-detail-value">{{pickupTimeText || '--'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <button class="btn-primary" bindtap="onSave">保存价格</button>
+</view>

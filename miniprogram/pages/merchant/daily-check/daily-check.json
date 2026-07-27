@@ -1,0 +1,1 @@
+{ "navigationBarTitleText": "日常打卡", "enablePullDownRefresh": true, "usingComponents": { "cached-image": "/components/cached-image/cached-image" } }

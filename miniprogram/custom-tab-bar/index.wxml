@@ -1,0 +1,38 @@
+<view class="merchant-tab-bar">
+  <view
+    class="tab-item {{selected === 0 ? 'active' : ''}}"
+    data-path="/pages/merchant/tab-daily/tab-daily"
+    data-index="0"
+    bindtap="onSwitchTab"
+  >
+    <image
+      class="tab-icon-img"
+      catchtap="onAdminSecretTap"
+      src="{{selected === 0 ? '/images/tab/tab-order-active.png' : '/images/tab/tab-order.png'}}"
+      mode="aspectFit"
+    />
+    <text class="tab-text">日常管理</text>
+  </view>
+  <view
+    class="tab-item {{selected === 1 ? 'active' : ''}}"
+    data-path="/pages/merchant/tab-statistics/tab-statistics"
+    data-index="1"
+    bindtap="onSwitchTab"
+  >
+    <image class="tab-icon-img" src="/images/card/card-stats.png" mode="aspectFit" />
+    <text class="tab-text">营收统计</text>
+  </view>
+  <view
+    class="tab-item {{selected === 2 ? 'active' : ''}}"
+    data-path="/pages/merchant/tab-store/tab-store"
+    data-index="2"
+    bindtap="onSwitchTab"
+  >
+    <image
+      class="tab-icon-img"
+      src="{{selected === 2 ? '/images/tab/tab-shop-active.png' : '/images/tab/tab-shop.png'}}"
+      mode="aspectFit"
+    />
+    <text class="tab-text">{{isDemoMode ? '申请入驻' : '我的店铺'}}</text>
+  </view>
+</view>

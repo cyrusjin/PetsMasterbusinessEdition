@@ -1,0 +1,22 @@
+
+<view class="admin-pwd-mask" wx:if="{{showPasswordModal}}" catchtap="onCancelPassword">
+  <view class="admin-pwd-panel" catchtap="onPanelTap">
+    <text class="admin-pwd-title">管理员验证</text>
+    <text class="admin-pwd-desc">请输入访问密码</text>
+    <input
+      class="admin-pwd-input"
+      type="text"
+      password
+      placeholder="请输入密码"
+      value="{{passwordInput}}"
+      bindinput="onPasswordInput"
+      confirm-type="done"
+      bindconfirm="onConfirmPassword"
+      focus="{{showPasswordModal}}"
+    />
+    <view class="admin-pwd-actions">
+      <button class="admin-pwd-btn cancel" bindtap="onCancelPassword">取消</button>
+      <button class="admin-pwd-btn confirm" bindtap="onConfirmPassword">确认</button>
+    </view>
+  </view>
+</view>

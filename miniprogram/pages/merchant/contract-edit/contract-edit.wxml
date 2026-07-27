@@ -1,0 +1,9 @@
+<view class="container">
+  <view class="card">
+    <view class="card-title">协议模板编辑</view>
+    <view class="form-group"><text class="form-label">协议内容（支持自定义条款）</text></view>
+    <textarea class="form-textarea" style="min-height:600rpx;" value="{{template}}" bindinput="onInput" placeholder="编辑协议模板内容..." />
+  </view>
+  <button class="btn-primary" bindtap="onSave">保存模板</button>
+  <view style="height:40rpx;"></view>
+</view>

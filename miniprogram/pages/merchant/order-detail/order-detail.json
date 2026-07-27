@@ -1,0 +1,1 @@
+{ "navigationBarTitleText": "订单详情", "enablePullDownRefresh": true, "usingComponents": { "order-fee-detail": "/components/order-fee-detail/order-fee-detail", "cached-image": "/components/cached-image/cached-image", "copyable-detail-row": "/components/copyable-detail-row/copyable-detail-row" } }

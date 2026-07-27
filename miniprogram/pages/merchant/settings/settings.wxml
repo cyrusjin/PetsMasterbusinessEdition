@@ -1,0 +1,80 @@
+<view class="container">
+  <view class="card">
+    <view class="card-title">店铺信息</view>
+    <view class="form-group logo-group">
+      <text class="form-label">店铺头像</text>
+      <view class="logo-picker" bindtap="onChooseLogo">
+        <cached-image custom-class="logo-preview" src="{{shop.logo}}" default-src="/images/default-avatar.png" mode="aspectFill" />
+        <text class="logo-tip">点击上传，用于分享卡片展示</text>
+      </view>
+    </view>
+    <view class="form-group" wx:if="{{shop.displayNo}}">
+      <text class="form-label">店铺编号</text>
+      <text class="store-id-text copyable-code" bindtap="onCopyStoreDisplayNo">{{shop.displayNo}}</text>
+      <text class="store-id-hint">点击复制店铺编号</text>
+    </view>
+    <view class="form-group"><text class="form-label">店铺名称</text><input class="form-input" placeholder="店铺名称" value="{{shop.name}}" bindinput="onField" data-field="name" /></view>
+    <view class="form-group"><text class="form-label">营业地址</text><input class="form-input" placeholder="营业地址" value="{{shop.address}}" bindinput="onField" data-field="address" /></view>
+    <view class="form-group"><text class="form-label">营业时间</text><input class="form-input" placeholder="如 9:00-18:00" value="{{shop.hours}}" bindinput="onField" data-field="hours" /></view>
+    <view class="form-group"><text class="form-label">店铺介绍</text><textarea class="form-textarea" placeholder="店铺介绍" value="{{shop.intro}}" bindinput="onField" data-field="intro" /></view>
+    <view class="form-group"><text class="form-label">接待范围</text><input class="form-input" placeholder="如：猫咪、小型犬" value="{{shop.range}}" bindinput="onField" data-field="range" /></view>
+    <view class="form-group"><text class="form-label">床位容量</text><input class="form-input" type="number" placeholder="最大接待数量" value="{{shop.capacity}}" bindinput="onField" data-field="capacity" /></view>
+  </view>
+  <view class="card">
+    <view class="card-title">收费模式</view>
+    <radio-group class="billing-mode-group" bindchange="onBillingMode">
+      <label class="billing-mode-item {{billingMode === 'weight' ? 'mode-active' : ''}}">
+        <radio value="weight" checked="{{billingMode === 'weight'}}" color="#E98657" />
+        <view class="mode-info">
+          <text class="mode-title">按宠物体重区间收费</text>
+          <text class="mode-desc">根据宠物体重自动匹配价格区间</text>
+        </view>
+      </label>
+      <label class="billing-mode-item {{billingMode === 'room' ? 'mode-active' : ''}}">
+        <radio value="room" checked="{{billingMode === 'room'}}" color="#E98657" />
+        <view class="mode-info">
+          <text class="mode-title">按房间类型收费</text>
+          <text class="mode-desc">宠物主人选择大/中/小房间</text>
+        </view>
+      </label>
+    </radio-group>
+    <view wx:if="{{billingMode === 'weight'}}" class="pricing-section mt-20">
+      <view class="section-title">体重区间价格（元/天）</view>
+      <view class="weight-row" wx:for="{{weightPricing}}" wx:key="label">
+        <text class="weight-label">{{item.label}}</text>
+        <input class="price-input" type="digit" value="{{item.price}}" bindinput="onWeightPrice" data-index="{{index}}" />
+        <text class="price-unit">元</text>
+      </view>
+    </view>
+    <view wx:if="{{billingMode === 'room'}}" class="pricing-section mt-20">
+      <view class="section-title">房间价格（元/天）</view>
+      <view class="room-price-row">
+        <view class="room-price-item">
+          <text class="room-label">小房间</text>
+          <input class="price-input" type="digit" value="{{roomPricing.small}}" bindinput="onRoomPrice" data-key="small" />
+          <text class="price-unit">元</text>
+        </view>
+        <view class="room-price-item">
+          <text class="room-label">中房间</text>
+          <input class="price-input" type="digit" value="{{roomPricing.medium}}" bindinput="onRoomPrice" data-key="medium" />
+          <text class="price-unit">元</text>
+        </view>
+        <view class="room-price-item">
+          <text class="room-label">大房间</text>
+          <input class="price-input" type="digit" value="{{roomPricing.large}}" bindinput="onRoomPrice" data-key="large" />
+          <text class="price-unit">元</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="card">
+    <view class="card-title">寄养须知</view>
+    <textarea class="form-textarea" placeholder="寄养须知..." value="{{shop.notice}}" bindinput="onField" data-field="notice" />
+  </view>
+  <view class="card">
+    <view class="card-title">押金设置</view>
+    <view class="form-group"><text class="form-label">押金金额（元）</text><input class="form-input" type="digit" placeholder="押金金额" value="{{shop.deposit}}" bindinput="onField" data-field="deposit" /></view>
+  </view>
+  <button class="btn-primary" bindtap="onSave">保存设置</button>
+  <view style="height:40rpx;"></view>
+</view>

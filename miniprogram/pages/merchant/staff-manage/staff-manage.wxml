@@ -1,0 +1,35 @@
+<view class="container">
+  <view class="card tip-card">
+    <text class="tip-text">以下人员已通过员工邀请获得店铺管理权限，可随时移除。邀请新员工请返回首页使用「分享给员工」。</text>
+  </view>
+
+  <view class="card" wx:if="{{loading}}">
+    <text class="text-gray">加载中...</text>
+  </view>
+
+  <view class="card empty-card" wx:elif="{{!staffList.length}}">
+    <text class="empty-title">暂无授权员工</text>
+    <text class="empty-desc">返回日常管理页，使用「分享给员工」邀请同事加入</text>
+  </view>
+
+  <view class="card" wx:else>
+    <view class="card-title">已授权员工 ({{staffList.length}})</view>
+    <view class="staff-item" wx:for="{{staffList}}" wx:key="openid">
+      <view class="staff-avatar">{{item.realName[0] || item.nickName[0] || '员'}}</view>
+      <view class="staff-info">
+        <text class="staff-name">{{item.realName || item.nickName || '微信用户'}}</text>
+        <text class="staff-meta" wx:if="{{item.phone}}">{{item.phone}}</text>
+        <text class="staff-meta" wx:elif="{{item.nickName}}">{{item.nickName}}</text>
+      </view>
+      <button
+        class="staff-remove-btn"
+        size="mini"
+        data-openid="{{item.openid}}"
+        data-name="{{item.realName || item.nickName}}"
+        bindtap="onRemoveStaff"
+        loading="{{removingStaffId === item.openid}}"
+        disabled="{{!!removingStaffId}}"
+      >移除</button>
+    </view>
+  </view>
+</view>

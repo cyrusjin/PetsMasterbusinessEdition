@@ -1,0 +1,135 @@
+<view class="merchant-page stats-page has-tab-bar" style="padding-bottom: 160rpx;">
+  <view class="container">
+    <view class="demo-banner" wx:if="{{isDemoMode}}">
+      <text class="demo-banner-text">体验模式 · 以下为演示数据，入驻后可查看真实经营报表</text>
+    </view>
+
+    <view class="period-tabs">
+      <view
+        class="period-tab {{periodKey === item.key ? 'active' : ''}}"
+        wx:for="{{periodTabs}}"
+        wx:key="key"
+        data-key="{{item.key}}"
+        bindtap="onPeriodTab"
+      >{{item.label}}</view>
+    </view>
+
+    <view class="revenue-hero">
+      <view class="hero-top">
+        <text class="hero-label">{{periodLabel}}营业收入</text>
+        <text class="hero-updated" wx:if="{{updatedAt}}">更新于 {{updatedAt}}</text>
+      </view>
+      <text class="hero-amount">¥{{summary.revenue}}</text>
+      <text class="hero-compare" wx:if="{{summary.compareText}}">{{summary.compareText}}</text>
+      <view class="hero-metrics">
+        <view class="hero-metric">
+          <text class="hero-metric-value">¥{{summary.pipeline}}</text>
+          <text class="hero-metric-label">本期流水</text>
+        </view>
+        <view class="hero-divider"></view>
+        <view class="hero-metric">
+          <text class="hero-metric-value">¥{{summary.inTransit}}</text>
+          <text class="hero-metric-label">在途总额</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">经营概览</view>
+      <view class="kpi-grid">
+        <view class="kpi-item" wx:for="{{kpis}}" wx:key="key">
+          <text class="kpi-value">{{item.value}}</text>
+          <text class="kpi-label">{{item.label}}</text>
+          <text class="kpi-hint">{{item.hint}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">营收构成</view>
+      <view class="composition-empty" wx:if="{{!composition.hasData}}">
+        <text class="text-gray">本期暂无已完成订单，完成寄养后将显示费用构成</text>
+      </view>
+      <block wx:else>
+        <view class="composition-row">
+          <view class="composition-head">
+            <text class="composition-name">寄养服务费</text>
+            <text class="composition-amount">¥{{composition.boardingFee}}</text>
+          </view>
+          <view class="composition-bar">
+            <view class="composition-fill boarding" style="width: {{composition.boardingPct}}%;"></view>
+          </view>
+        </view>
+        <view class="composition-row">
+          <view class="composition-head">
+            <text class="composition-name">接送服务费</text>
+            <text class="composition-amount">¥{{composition.shippingFee}}</text>
+          </view>
+          <view class="composition-bar">
+            <view class="composition-fill shipping" style="width: {{composition.shippingPct}}%;"></view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="card">
+      <view class="card-title-row">
+        <text class="card-title inline">订单概况</text>
+        <text class="card-link" bindtap="onGoOrders">查看全部 ›</text>
+      </view>
+      <view class="status-grid">
+        <view class="status-chip pending">
+          <text class="status-num">{{orderStats.pending}}</text>
+          <text class="status-name">待确认</text>
+        </view>
+        <view class="status-chip boarding">
+          <text class="status-num">{{orderStats.boarding}}</text>
+          <text class="status-name">寄养中</text>
+        </view>
+        <view class="status-chip completed">
+          <text class="status-num">{{orderStats.completed}}</text>
+          <text class="status-name">已完成</text>
+        </view>
+        <view class="status-chip cancelled">
+          <text class="status-num">{{orderStats.cancelled}}</text>
+          <text class="status-name">已取消</text>
+        </view>
+      </view>
+      <view class="order-period-tip">
+        <text class="text-gray">本期共 {{orderStats.periodTotal}} 单</text>
+        <text class="text-gray" wx:if="{{orderStats.periodCancelled > 0}}"> · 取消 {{orderStats.periodCancelled}} 单</text>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{recentOrders.length}}">
+      <view class="card-title-row">
+        <text class="card-title inline">近期订单</text>
+        <text class="card-link" bindtap="onGoOrders">订单管理 ›</text>
+      </view>
+      <view
+        class="recent-item"
+        wx:for="{{recentOrders}}"
+        wx:key="id"
+        bindtap="onGoOrderDetail"
+        data-id="{{item.id}}"
+      >
+        <view class="recent-main">
+          <text class="recent-pet">{{item.petName}}</text>
+          <text class="recent-date text-gray">下单：{{item.createTimeText}}</text>
+          <text class="recent-date text-gray">寄养：{{item.dateText}}</text>
+        </view>
+        <view class="recent-side">
+          <text class="recent-amount">¥{{item.amount}}</text>
+          <text class="recent-status status-{{item.status}}">{{item.statusLabel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card empty-card" wx:if="{{!loading && !recentOrders.length}}">
+      <text class="empty-title">暂无订单数据</text>
+      <text class="empty-desc">分享店铺给客人或等待预约，营收将在此汇总展示</text>
+    </view>
+  </view>
+
+</view>
+<hidden-admin-entry id="hiddenAdminEntry" />

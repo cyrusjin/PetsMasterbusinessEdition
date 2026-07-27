@@ -1,0 +1,4 @@
+<view class="detail-row {{stack ? 'detail-row-stack' : ''}}" bindtap="onCopy">
+  <text class="text-gray">{{label}}</text>
+  <text class="detail-value copyable-value">{{displayValue}}</text>
+</view>

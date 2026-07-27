@@ -1,0 +1,15 @@
+<view class="container">
+  <view wx:if="{{contracts.length > 0}}">
+    <view class="card" wx:for="{{contracts}}" wx:key="id">
+      <view class="flex-between mb-16"><text class="text-gray">协议编号</text><text>{{item.id}}</text></view>
+      <view class="flex-between mb-16"><text class="text-gray">宠物</text><text>{{item.petName}}</text></view>
+      <view class="flex-between mb-16"><text class="text-gray">签署状态</text><text class="{{item.signed ? 'text-green' : 'text-red'}}">{{item.signed ? '已签署' : '待签署'}}</text></view>
+      <view class="flex-row gap-16 mt-20">
+        <button class="btn-sm btn-blue" bindtap="onView" data-id="{{item.id}}">查看</button>
+        <button wx:if="{{!item.signed}}" class="btn-sm btn-orange" bindtap="onPush" data-id="{{item.id}}">推送用户</button>
+      </view>
+    </view>
+  </view>
+  <view wx:else class="empty-state"><text class="empty-icon">📄</text><text class="empty-text">暂无协议</text></view>
+  <button class="btn-primary mt-20" bindtap="onEditTemplate">编辑协议模板</button>
+</view>

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "打卡记录",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "cached-image": "/components/cached-image/cached-image"
+  }
+}

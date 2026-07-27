@@ -1,0 +1,35 @@
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14rpx 0;
+  font-size: 26rpx;
+  color: #333333;
+  border-bottom: 1rpx solid #FFF1E7;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row-stack {
+  align-items: flex-start;
+  gap: 16rpx;
+  flex-direction: column;
+}
+
+.detail-value {
+  flex: 1;
+  text-align: right;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.detail-row-stack .detail-value {
+  text-align: left;
+  width: 100%;
+}
+
+.copyable-value {
+  color: #E98657;
+}

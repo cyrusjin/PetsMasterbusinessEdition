@@ -1,0 +1,68 @@
+<view class="container">
+  <view class="order-tabs">
+    <view class="order-tab {{tab === 'all' ? 'active' : ''}}" bindtap="onTab" data-tab="all">全部</view>
+    <view class="order-tab {{tab === 'pending' ? 'active' : ''}}" bindtap="onTab" data-tab="pending">
+      <text>待确认</text>
+      <text class="tab-badge" wx:if="{{pendingBadge > 0}}">{{pendingBadge > 99 ? '99+' : pendingBadge}}</text>
+    </view>
+    <view class="order-tab {{tab === 'awaiting_arrival' ? 'active' : ''}}" bindtap="onTab" data-tab="awaiting_arrival">待到店</view>
+    <view class="order-tab {{tab === 'boarding' ? 'active' : ''}}" bindtap="onTab" data-tab="boarding">寄养中</view>
+    <view class="order-tab {{tab === 'completed' ? 'active' : ''}}" bindtap="onTab" data-tab="completed">已完成</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading-wrap">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:elif="{{filtered.length > 0}}">
+    <view class="card" wx:for="{{filtered}}" wx:key="id">
+      <view class="flex-between mb-16">
+        <view class="flex-row gap-16">
+          <cached-image wx:if="{{item.petPhoto}}" src="{{item.petPhoto}}" mode="aspectFill" custom-class="pet-avatar-small" />
+          <view wx:else class="pet-avatar-small">{{item.petName ? item.petName[0] : '宠'}}</view>
+          <view>
+            <text class="boarding-name">{{item.petName}}</text>
+            <text class="text-gray order-subline">{{item.petType}} · {{item.serviceType}}</text>
+            <text class="text-gray order-subline">品种：{{item.petBreed || '--'}} · {{item.petGender || '--'}} · {{item.petAgeText}}</text>
+            <text class="text-gray order-subline">下单：{{item.createTimeText}}</text>
+            <text class="text-gray order-subline">寄养：{{item.boardingTime}}</text>
+            <text class="text-gray order-subline" wx:if="{{item.userNickName}}">宠主：{{item.userNickName}}</text>
+          </view>
+        </view>
+        <view class="status-badge {{item.pricePendingConfirm ? 'status-price-pending' : 'status-' + item.status}}">
+          <text wx:if="{{item.pricePendingConfirm}}">待确认价格</text>
+          <text wx:elif="{{item.status === 'pending'}}">待确认</text>
+          <text wx:elif="{{item.status === 'awaiting_arrival'}}">待到店</text>
+          <text wx:elif="{{item.status === 'confirmed'}}">待签协议</text>
+          <text wx:elif="{{item.status === 'boarding'}}">寄养中</text>
+          <text wx:elif="{{item.status === 'completed'}}">已完成</text>
+          <text wx:else>已取消</text>
+        </view>
+      </view>
+      <view class="order-info">
+        <view class="order-info-texts">
+          <view class="order-no-row">
+            <text class="text-gray">订单号：</text>
+            <text class="copyable-order-no" catchtap="onCopyOrderNo" data-no="{{item.displayNo}}">{{item.displayNo}}</text>
+          </view>
+        </view>
+        <text class="fee-highlight" style="font-size:28rpx;">¥{{item.totalFee}}</text>
+      </view>
+      <view class="price-pending-tip" wx:if="{{item.pricePendingConfirm}}">价格待用户确认，暂不可操作订单</view>
+      <view class="order-actions">
+        <button wx:if="{{item.status === 'pending' && !item.pricePendingConfirm}}" class="btn-sm btn-green" bindtap="onAccept" data-id="{{item.id}}">确认接单</button>
+        <button wx:if="{{item.status === 'pending' && !item.pricePendingConfirm}}" class="btn-sm btn-danger-outline" bindtap="onReject" data-id="{{item.id}}">拒绝</button>
+        <button wx:if="{{item.status === 'awaiting_arrival' && !item.pricePendingConfirm}}" class="btn-sm btn-green" bindtap="onConfirmArrival" data-id="{{item.id}}">确认到店</button>
+        <button wx:if="{{item.status === 'boarding' && !item.pricePendingConfirm}}" class="btn-sm btn-blue" bindtap="onDetail" data-id="{{item.id}}">管理</button>
+        <button wx:if="{{item.status === 'boarding' && !item.pricePendingConfirm}}" class="btn-sm btn-red" bindtap="onComplete" data-id="{{item.id}}">结束寄养</button>
+        <button wx:if="{{(item.status === 'pending' || item.status === 'awaiting_arrival' || item.status === 'boarding') && !item.pricePendingConfirm}}" class="btn-sm btn-orange" bindtap="onEditPrice" data-id="{{item.id}}">修改价格</button>
+        <button class="btn-sm btn-gray" bindtap="onDetail" data-id="{{item.id}}">详情</button>
+      </view>
+    </view>
+  </block>
+
+  <view wx:else class="empty-state">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">{{loadError || '暂无订单'}}</text>
+  </view>
+</view>

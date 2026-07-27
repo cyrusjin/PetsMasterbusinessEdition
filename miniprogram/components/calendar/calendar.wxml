@@ -1,0 +1,17 @@
+<view class="calendar">
+  <view class="cal-header">
+    <view class="cal-arrow" bindtap="onPrev">◀</view>
+    <view class="cal-title">{{year}}年{{month}}月</view>
+    <view class="cal-arrow" bindtap="onNext">▶</view>
+  </view>
+  <view class="cal-weekdays">
+    <text class="cal-wd" wx:for="{{['日','一','二','三','四','五','六']}}" wx:key="*this">{{item}}</text>
+  </view>
+  <view class="cal-grid">
+    <view wx:for="{{cells}}" wx:key="dateStr" class="cal-cell {{item.cls}}" data-date="{{item.dateStr}}" bindtap="onTap">
+      <text class="cal-day">{{item.day}}</text>
+      <view wx:if="{{item.isStart}}" class="cal-tag">开始</view>
+      <view wx:if="{{item.isEnd}}" class="cal-tag">结束</view>
+    </view>
+  </view>
+</view>

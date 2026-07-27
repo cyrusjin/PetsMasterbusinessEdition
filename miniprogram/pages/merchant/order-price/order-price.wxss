@@ -1,0 +1,110 @@
+.summary-card {
+  background: #E98657;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 20rpx;
+  color: #fff;
+}
+
+.summary-label {
+  font-size: 24rpx;
+  opacity: 0.9;
+  display: block;
+}
+
+.summary-total {
+  font-size: 52rpx;
+  font-weight: 700;
+  margin-top: 8rpx;
+  display: block;
+}
+
+.summary-breakdown {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  opacity: 0.95;
+  line-height: 1.8;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.hint-text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.pickup-detail {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  background: #F7F9FF;
+  border-radius: 16rpx;
+}
+
+.pickup-detail-title {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #E98657;
+}
+
+.pickup-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24rpx;
+  padding: 12rpx 0;
+  font-size: 24rpx;
+  line-height: 1.5;
+  border-bottom: 1rpx solid #E8ECF8;
+}
+
+.pickup-detail-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pickup-detail-row--stack {
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.pickup-detail-label {
+  flex-shrink: 0;
+  color: #999999;
+}
+
+.pickup-detail-value {
+  color: #333333;
+  text-align: right;
+}
+
+.pickup-detail-row--stack .pickup-detail-value {
+  text-align: left;
+}
+
+.pickup-detail-address {
+  word-break: break-all;
+}
+
+.pickup-detail-sub {
+  font-size: 22rpx;
+  color: #666666;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14rpx 0;
+  font-size: 26rpx;
+  color: #333333;
+  border-bottom: 1rpx solid #FFF1E7;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}

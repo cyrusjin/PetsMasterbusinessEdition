@@ -1,0 +1,18 @@
+<view class="container">
+  <scroll-view scroll-y class="chat-list" scroll-into-view="{{scrollToView}}">
+    <view wx:if="{{messages.length > 0}}">
+      <view class="chat-msg {{item.from === 'merchant' ? 'msg-right' : 'msg-left'}}" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+        <view class="msg-bubble {{item.from === 'merchant' ? 'bubble-right' : 'bubble-left'}}">
+          <text>{{item.content}}</text>
+          <cached-image wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill" sizing="auto" custom-class="msg-img" bindtap="onPreview" data-url="{{item.image}}" />
+        </view>
+        <text class="msg-time">{{item.timeStr}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-state" style="padding:200rpx 0;"><text class="empty-icon">💬</text><text class="empty-text">暂无客户消息</text></view>
+  </scroll-view>
+  <view class="chat-input-bar">
+    <input class="chat-input" placeholder="回复客户..." value="{{inputText}}" bindinput="onInput" confirm-type="send" bindconfirm="onSend" />
+    <view class="chat-btn" bindtap="onSend">发送</view>
+  </view>
+</view>

@@ -1,0 +1,51 @@
+<view class="order-fee-detail">
+  <block wx:if="{{detail.ready}}">
+    <view class="fee-breakdown">
+      <view class="fee-breakdown-title copyable-fee" bindtap="onCopyValue" data-value="费用明细（¥{{detail.basePriceText}}/天）">费用明细（¥{{detail.basePriceText}}/天）</view>
+      <view class="fee-day-row copyable-fee" wx:for="{{detail.dailyBreakdown}}" wx:key="date" bindtap="onCopyValue" data-value="{{item.dateDisplay}} {{item.dayLabel}} {{item.factorText}} ¥{{item.feeText}}">
+        <text class="fee-day-date">{{item.dateDisplay}}</text>
+        <text class="fee-day-label">{{item.dayLabel}}</text>
+        <text class="fee-day-factor">{{item.factorText}}</text>
+        <text class="fee-day-amount">¥{{item.feeText}}</text>
+      </view>
+    </view>
+    <view class="flex-between fee-total-row copyable-fee" bindtap="onCopyValue" data-value="共计 {{detail.daysText}} 天 寄养 ¥{{detail.boardingFeeText}}">
+      <text>共计 {{detail.daysText}} 天</text>
+      <text>寄养 ¥{{detail.boardingFeeText}}</text>
+    </view>
+    <text class="charge-summary-tip copyable-fee" wx:if="{{detail.chargeSummary}}" bindtap="onCopyValue" data-value="{{detail.chargeSummary}}">{{detail.chargeSummary}}</text>
+    <text class="price-adjusted-tip" wx:if="{{detail.priceAdjusted}}">商家已调整寄养费用，日均明细仅供参考</text>
+    <view class="fee-extra-row copyable-fee" wx:if="{{detail.needPickup}}" bindtap="onCopyValue" data-value="接送运费 ¥{{detail.shippingFeeText}}">
+      <text class="text-gray">接送运费</text>
+      <text>¥{{detail.shippingFeeText}}</text>
+    </view>
+    <view class="fee-extra-row copyable-fee" wx:if="{{detail.showDeposit}}" bindtap="onCopyValue" data-value="押金 ¥{{detail.depositText}}">
+      <text class="text-gray">押金</text>
+      <text>¥{{detail.depositText}}</text>
+    </view>
+    <view class="flex-between fee-grand-total copyable-fee" bindtap="onCopyValue" data-value="费用合计 ¥{{detail.totalFeeText}}">
+      <text>费用合计</text>
+      <text class="fee-highlight">¥{{detail.totalFeeText}}</text>
+    </view>
+    <text class="deposit-tip" wx:if="{{detail.showDeposit}}">押金离店无损坏时退还，不计入上方合计</text>
+  </block>
+  <block wx:else>
+    <view class="fee-extra-row copyable-fee" bindtap="onCopyValue" data-value="寄养费用 ¥{{detail.boardingFeeText}}">
+      <text class="text-gray">寄养费用</text>
+      <text>¥{{detail.boardingFeeText}}</text>
+    </view>
+    <view class="fee-extra-row copyable-fee" wx:if="{{detail.needPickup}}" bindtap="onCopyValue" data-value="接送运费 ¥{{detail.shippingFeeText}}">
+      <text class="text-gray">接送运费</text>
+      <text>¥{{detail.shippingFeeText}}</text>
+    </view>
+    <view class="fee-extra-row copyable-fee" wx:if="{{detail.showDeposit}}" bindtap="onCopyValue" data-value="押金 ¥{{detail.depositText}}">
+      <text class="text-gray">押金</text>
+      <text>¥{{detail.depositText}}</text>
+    </view>
+    <view class="flex-between fee-grand-total copyable-fee" bindtap="onCopyValue" data-value="费用合计 ¥{{detail.totalFeeText}}">
+      <text>费用合计</text>
+      <text class="fee-highlight">¥{{detail.totalFeeText}}</text>
+    </view>
+    <text class="deposit-tip" wx:if="{{detail.showDeposit}}">押金离店无损坏时退还，不计入上方合计</text>
+  </block>
+</view>

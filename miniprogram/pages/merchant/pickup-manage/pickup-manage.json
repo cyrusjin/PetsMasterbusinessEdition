@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "接送管理",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "cached-image": "/components/cached-image/cached-image"
+  }
+}

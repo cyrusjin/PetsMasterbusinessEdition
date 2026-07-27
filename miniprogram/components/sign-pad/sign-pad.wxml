@@ -1,0 +1,9 @@
+<view class="sign-pad">
+  <view class="sign-canvas-wrap">
+    <canvas class="sign-canvas" canvas-id="signCanvas" disable-scroll="true" bindtouchstart="onStart" bindtouchmove="onMove" bindtouchend="onEnd"></canvas>
+  </view>
+  <view class="sign-actions">
+    <button class="btn-sm btn-gray" bindtap="onClear">清除重签</button>
+    <button class="btn-sm btn-green" bindtap="onConfirm">确认签名</button>
+  </view>
+</view>

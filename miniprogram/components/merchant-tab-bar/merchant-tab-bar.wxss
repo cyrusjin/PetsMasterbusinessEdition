@@ -1,0 +1,28 @@
+.merchant-tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: rgba(255, 253, 248, 0.96);
+  border-top: 1rpx solid #F2DEC9;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -8rpx 28rpx rgba(132, 90, 58, 0.08);
+  z-index: 999;
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 0 16rpx;
+  color: #B9A89B;
+}
+.tab-item.active { color: #E98657; }
+.tab-icon-img {
+  width: 44rpx;
+  height: 44rpx;
+  display: block;
+}
+.tab-text { font-size: 22rpx; margin-top: 4rpx; font-weight: 500; }
