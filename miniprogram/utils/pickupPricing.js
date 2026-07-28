@@ -66,7 +66,7 @@ function parsePickupCoords(pickupLatitude, pickupLongitude) {
   return parseCoordPair(pickupLatitude, pickupLongitude);
 }
 
-/** 店铺与接送地址之间的球面直线距离（公里），保留 1 位小数并向上取整 */
+/** 球面直线距离（公里），仅作兜底/调试；计费请用驾车导航距离 */
 function calcDistanceKm(lat1, lng1, lat2, lng2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
   const r = 6371;
@@ -76,6 +76,12 @@ function calcDistanceKm(lat1, lng1, lat2, lng2) {
     + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const km = r * c;
+  return Math.ceil(km * 10) / 10;
+}
+
+function normalizeDrivingDistanceKm(value) {
+  const km = parseFloat(value);
+  if (!Number.isFinite(km) || km < 0) return null;
   return Math.ceil(km * 10) / 10;
 }
 
@@ -91,6 +97,8 @@ function buildPickupFeeQuote(store, options) {
     standardText: '',
     distanceKm: null,
     distanceText: '',
+    distanceMode: '',
+    distancePending: false,
     perLegFee: 0,
     perLegFeeText: '0',
     legCount: 0,
@@ -105,7 +113,9 @@ function buildPickupFeeQuote(store, options) {
     pickupIncludeOutbound,
     pickupIncludeReturn,
     pickupLatitude,
-    pickupLongitude
+    pickupLongitude,
+    distanceKm: distanceKmOpt,
+    distanceMode: distanceModeOpt
   } = options || {};
 
   const legCount = countPickupLegs({ pickupIncludeOutbound, pickupIncludeReturn });
@@ -125,6 +135,8 @@ function buildPickupFeeQuote(store, options) {
       standardText: `¥${flat}/单程`,
       distanceKm: null,
       distanceText: '',
+      distanceMode: '',
+      distancePending: false,
       perLegFee: flat,
       perLegFeeText: String(flat),
       legCount,
@@ -149,12 +161,17 @@ function buildPickupFeeQuote(store, options) {
   }
   if (!pickupCoords) return empty;
 
-  const km = calcDistanceKm(
-    storeCoords.lat,
-    storeCoords.lng,
-    pickupCoords.lat,
-    pickupCoords.lng
-  );
+  const km = normalizeDrivingDistanceKm(distanceKmOpt);
+  if (km == null) {
+    return {
+      ...empty,
+      mode,
+      standardText: `¥${pricePerKm}/公里`,
+      distancePending: true
+    };
+  }
+
+  const distanceMode = distanceModeOpt === 'straight' ? 'straight' : 'driving';
   const perLegFee = Math.round(km * pricePerKm * 100) / 100;
   const fee = Math.round(perLegFee * legCount * 100) / 100;
 
@@ -164,7 +181,11 @@ function buildPickupFeeQuote(store, options) {
     mode,
     standardText: `¥${pricePerKm}/公里`,
     distanceKm: km,
-    distanceText: `直线约 ${km} 公里`,
+    distanceMode,
+    distanceText: distanceMode === 'straight'
+      ? `直线约 ${km} 公里`
+      : `驾车约 ${km} 公里`,
+    distancePending: false,
     perLegFee,
     perLegFeeText: perLegFee.toFixed(2),
     legCount,
@@ -189,15 +210,16 @@ function formatPickupPricingSummary(store) {
     return flat ? `接送收费：¥${flat}/单程` : '';
   }
   const perKm = parsePositiveMoney(store.pickupPricePerKm);
-  return perKm ? `接送收费：¥${perKm}/公里（按地图直线距离计算）` : '';
+  return perKm ? `接送收费：¥${perKm}/公里（按驾车导航距离计算）` : '';
 }
 
-function canCalcDistancePickupFee(store, pickupLatitude, pickupLongitude) {
+function canCalcDistancePickupFee(store, pickupLatitude, pickupLongitude, distanceKm) {
   if (!store || normalizePickupPricingMode(store.pickupPricingMode) !== PICKUP_PRICING_MODE.DISTANCE) {
     return true;
   }
   if (!parseStoreCoords(store)) return false;
-  return !!parsePickupCoords(pickupLatitude, pickupLongitude);
+  if (!parsePickupCoords(pickupLatitude, pickupLongitude)) return false;
+  return normalizeDrivingDistanceKm(distanceKm) != null;
 }
 
 function buildPickupFeeDetail(store, options) {
@@ -206,7 +228,8 @@ function buildPickupFeeDetail(store, options) {
   if (quote.mode === PICKUP_PRICING_MODE.FLAT) {
     return quote.calcText;
   }
-  return `直线 ${quote.distanceKm} 公里 · ${quote.calcText}`;
+  const label = quote.distanceMode === 'straight' ? '直线' : '驾车';
+  return `${label} ${quote.distanceKm} 公里 · ${quote.calcText}`;
 }
 
 module.exports = {
@@ -216,6 +239,7 @@ module.exports = {
   validatePickupPricing,
   countPickupLegs,
   calcDistanceKm,
+  normalizeDrivingDistanceKm,
   calcPickupShippingFee,
   formatPickupPricingSummary,
   canCalcDistancePickupFee,

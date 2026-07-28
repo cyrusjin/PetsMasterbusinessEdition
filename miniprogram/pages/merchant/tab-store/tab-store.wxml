@@ -350,6 +350,7 @@
               <text>按距离收费</text>
             </label>
           </radio-group>
+          <text class="charge-hint" wx:if="{{shop.pickupPricingMode === 'distance'}}">按店铺到接送地址的驾车导航距离计费</text>
         </view>
         <view class="form-group" wx:if="{{shop.pickupPricingMode !== 'distance'}}">
           <text class="form-label">单程价格（元） <text class="required-star">*</text></text>
