@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "营收统计",
   "enablePullDownRefresh": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "hidden-admin-entry": "/components/hidden-admin-entry/hidden-admin-entry"
+  }
 }

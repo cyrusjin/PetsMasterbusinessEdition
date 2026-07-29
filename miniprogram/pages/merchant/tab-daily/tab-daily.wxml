@@ -6,6 +6,9 @@
     <view class="demo-banner pending-banner" wx:elif="{{isPendingReview}}">
       <text class="demo-banner-text">入驻审核中 · 日常管理将在审核通过后开放，请前往「申请入驻」查看进度</text>
     </view>
+    <view class="demo-banner rejected-banner" wx:elif="{{isApplyRejected}}">
+      <text class="demo-banner-text">入驻未通过 · 请前往「申请入驻」查看驳回理由并修改后重新提交</text>
+    </view>
     <view class="demo-banner disabled-banner" wx:elif="{{isAdminDisabled}}">
       <text class="demo-banner-text">{{adminDisableReason || '店铺已被平台关闭 · 暂无法使用商家端功能'}}</text>
     </view>
@@ -44,12 +47,11 @@
             <text>分享给客人</text>
             <button
               class="share-hit-btn"
-              open-type="share"
-              data-share-type="customer"
+              bindtap="onShareToCustomer"
               hover-class="none"
             ></button>
           </view>
-          <text class="share-action-hint">客人打开后可浏览店铺、预约寄养</text>
+          <text class="share-action-hint">发送邀请海报给好友，扫码关注即可绑定本店</text>
         </view>
         <view class="share-action-col" wx:if="{{isStoreOwner && !isDemoMode}}">
           <view class="quick-item share-item-wrap">

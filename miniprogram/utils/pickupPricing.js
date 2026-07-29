@@ -10,6 +10,26 @@ function parsePositiveMoney(value) {
   return Math.round(num * 100) / 100;
 }
 
+function parsePickupFreeMinDays(value) {
+  if (value === '' || value === null || value === undefined) return 0;
+  const num = parseInt(value, 10);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return num;
+}
+
+function normalizePickupFreeMinDays(value) {
+  const days = parsePickupFreeMinDays(value);
+  return days > 0 ? days : '';
+}
+
+function isPickupFreeByStayDays(store, stayDays) {
+  const minDays = parsePickupFreeMinDays(store && store.pickupFreeMinDays);
+  if (!minDays) return false;
+  const days = parseFloat(stayDays);
+  if (!Number.isFinite(days) || days <= 0) return false;
+  return days >= minDays;
+}
+
 function normalizePickupPricingMode(mode) {
   return mode === PICKUP_PRICING_MODE.DISTANCE
     ? PICKUP_PRICING_MODE.DISTANCE
@@ -25,7 +45,8 @@ function normalizePickupPricing(shop) {
       : '',
     pickupPricePerKm: source.pickupPricePerKm != null && source.pickupPricePerKm !== ''
       ? String(source.pickupPricePerKm)
-      : ''
+      : '',
+    pickupFreeMinDays: normalizePickupFreeMinDays(source.pickupFreeMinDays)
   };
 }
 
@@ -34,9 +55,14 @@ function validatePickupPricing(shop) {
   const mode = normalizePickupPricingMode(shop.pickupPricingMode);
   if (mode === PICKUP_PRICING_MODE.FLAT) {
     if (!parsePositiveMoney(shop.pickupFlatPrice)) return '请填写接送单程一口价';
-    return '';
+  } else if (!parsePositiveMoney(shop.pickupPricePerKm)) {
+    return '请填写接送每公里价格';
   }
-  if (!parsePositiveMoney(shop.pickupPricePerKm)) return '请填写接送每公里价格';
+  if (shop.pickupFreeMinDays !== '' && shop.pickupFreeMinDays != null) {
+    if (!parsePickupFreeMinDays(shop.pickupFreeMinDays)) {
+      return '请填写有效的免费接送天数（至少 1 天）';
+    }
+  }
   return '';
 }
 
@@ -89,10 +115,35 @@ function hasPickupService(store) {
   return !!(store && (store.pickupService === 'yes' || store.hasPickup));
 }
 
+function buildFreeStayQuote(store, legCount, mode) {
+  const minDays = parsePickupFreeMinDays(store.pickupFreeMinDays);
+  const legCountText = formatLegCountLabel(legCount);
+  return {
+    ready: true,
+    fee: 0,
+    freeByStay: true,
+    freeMinDays: minDays,
+    mode,
+    standardText: `寄养满 ${minDays} 天及以上免费接送`,
+    distanceKm: null,
+    distanceText: '',
+    distanceMode: '',
+    distancePending: false,
+    perLegFee: 0,
+    perLegFeeText: '0',
+    legCount,
+    legCountText,
+    calcText: `寄养满 ${minDays} 天，接送免费`,
+    storeLocationMissing: false
+  };
+}
+
 function buildPickupFeeQuote(store, options) {
   const empty = {
     ready: false,
     fee: 0,
+    freeByStay: false,
+    freeMinDays: 0,
     mode: PICKUP_PRICING_MODE.FLAT,
     standardText: '',
     distanceKm: null,
@@ -115,13 +166,18 @@ function buildPickupFeeQuote(store, options) {
     pickupLatitude,
     pickupLongitude,
     distanceKm: distanceKmOpt,
-    distanceMode: distanceModeOpt
+    distanceMode: distanceModeOpt,
+    stayDays
   } = options || {};
 
   const legCount = countPickupLegs({ pickupIncludeOutbound, pickupIncludeReturn });
   if (!legCount) return empty;
 
   const mode = normalizePickupPricingMode(store.pickupPricingMode);
+  if (isPickupFreeByStayDays(store, stayDays)) {
+    return buildFreeStayQuote(store, legCount, mode);
+  }
+
   const legCountText = formatLegCountLabel(legCount);
 
   if (mode === PICKUP_PRICING_MODE.FLAT) {
@@ -131,6 +187,8 @@ function buildPickupFeeQuote(store, options) {
     return {
       ready: true,
       fee,
+      freeByStay: false,
+      freeMinDays: 0,
       mode,
       standardText: `¥${flat}/单程`,
       distanceKm: null,
@@ -178,6 +236,8 @@ function buildPickupFeeQuote(store, options) {
   return {
     ready: true,
     fee,
+    freeByStay: false,
+    freeMinDays: 0,
     mode,
     standardText: `¥${pricePerKm}/公里`,
     distanceKm: km,
@@ -205,15 +265,22 @@ function calcPickupShippingFee(options) {
 function formatPickupPricingSummary(store) {
   if (!hasPickupService(store)) return '';
   const mode = normalizePickupPricingMode(store.pickupPricingMode);
+  let base = '';
   if (mode === PICKUP_PRICING_MODE.FLAT) {
     const flat = parsePositiveMoney(store.pickupFlatPrice);
-    return flat ? `接送收费：¥${flat}/单程` : '';
+    base = flat ? `接送收费：¥${flat}/单程` : '';
+  } else {
+    const perKm = parsePositiveMoney(store.pickupPricePerKm);
+    base = perKm ? `接送收费：¥${perKm}/公里（按驾车导航距离计算）` : '';
   }
-  const perKm = parsePositiveMoney(store.pickupPricePerKm);
-  return perKm ? `接送收费：¥${perKm}/公里（按驾车导航距离计算）` : '';
+  const freeMin = parsePickupFreeMinDays(store.pickupFreeMinDays);
+  if (!freeMin) return base;
+  const freeText = `寄养满 ${freeMin} 天及以上免费接送`;
+  return base ? `${base}；${freeText}` : freeText;
 }
 
-function canCalcDistancePickupFee(store, pickupLatitude, pickupLongitude, distanceKm) {
+function canCalcDistancePickupFee(store, pickupLatitude, pickupLongitude, distanceKm, stayDays) {
+  if (isPickupFreeByStayDays(store, stayDays)) return true;
   if (!store || normalizePickupPricingMode(store.pickupPricingMode) !== PICKUP_PRICING_MODE.DISTANCE) {
     return true;
   }
@@ -225,6 +292,7 @@ function canCalcDistancePickupFee(store, pickupLatitude, pickupLongitude, distan
 function buildPickupFeeDetail(store, options) {
   const quote = buildPickupFeeQuote(store, options);
   if (!quote.ready) return '';
+  if (quote.freeByStay) return quote.calcText;
   if (quote.mode === PICKUP_PRICING_MODE.FLAT) {
     return quote.calcText;
   }
@@ -236,6 +304,9 @@ module.exports = {
   PICKUP_PRICING_MODE,
   normalizePickupPricing,
   normalizePickupPricingMode,
+  normalizePickupFreeMinDays,
+  parsePickupFreeMinDays,
+  isPickupFreeByStayDays,
   validatePickupPricing,
   countPickupLegs,
   calcDistanceKm,

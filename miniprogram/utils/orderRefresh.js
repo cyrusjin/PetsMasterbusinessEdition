@@ -1,6 +1,6 @@
 const merchantDemo = require('./merchantDemo');
 
-const MERCHANT_ORDERS_POLL_MS = 20 * 1000;
+const MERCHANT_ORDERS_POLL_MS = 60 * 1000;
 
 function refreshMerchantOrders(app, options = {}) {
   const force = !!(options && options.force);

@@ -1,7 +1,8 @@
 Component({
   data: {
     selected: 0,
-    isDemoMode: false
+    isDemoMode: false,
+    hidden: false
   },
 
   methods: {

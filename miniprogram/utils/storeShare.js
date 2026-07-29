@@ -1,9 +1,9 @@
 const { STORAGE_KEYS } = require('./constants');
 
 const DEFAULT_SHARE_IMAGE = '/images/default-avatar.png';
-/** 商家分享给客人：打开商家端中转页，再跳转宠主端 */
+/** 旧版商家端落地页（历史分享卡片仍可能打开） */
 const CUSTOMER_SHARE_LANDING = 'pages/share/store-landing/store-landing';
-/** 跳转宠主端小程序时的首页路径 */
+/** 跳转宠主端小程序时的首页路径（员工邀请等场景仍可用） */
 const USER_MINI_PROGRAM_HOME = 'pages/index/index';
 
 function resolveShareStoreId(shop) {

@@ -18,7 +18,7 @@ function validateApplyForm(payload) {
   if (isVagueAddress(address)) return '营业地址不够详细，请重新在地图中选择具体位置';
   const phoneError = validateMobilePhone(contactPhone, {
     emptyMsg: '请填写联系电话',
-    invalidMsg: '联系电话需为11位手机号'
+    invalidMsg: '联系电话需为标准的11位手机号'
   });
   if (phoneError) return phoneError;
   if (!legalName) return '请填写负责人姓名';

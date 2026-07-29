@@ -15,11 +15,28 @@
       </view>
       <view class="card apply-rejected-card" wx:if="{{applyStatus === 'rejected'}}">
         <view class="card-title">审核未通过</view>
-        <text class="apply-tip">{{applyRejectReason || '您的入驻申请未通过审核，请修改资料后重新提交。'}}</text>
+        <text class="apply-tip">您的入驻申请未通过审核，请按驳回理由修改资料后重新提交。</text>
+        <view class="apply-reject-reason" wx:if="{{applyRejectReason}}">
+          <text class="apply-reject-label">驳回理由</text>
+          <text class="apply-reject-text">{{applyRejectReason}}</text>
+        </view>
       </view>
       <view class="card">
         <view class="card-title">申请入驻</view>
         <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后可完善店铺详情。日常管理可先体验本地演示数据。</text>
+        <view class="form-group">
+          <text class="form-label">微信昵称</text>
+          <input
+            class="form-input"
+            type="nickname"
+            value="{{wxNickName}}"
+            placeholder="点击此处选择微信昵称"
+            disabled="{{applyStatus === 'pending'}}"
+            bindblur="onWxNickChange"
+            bindinput="onWxNickChange"
+          />
+          <text class="store-photos-tip" wx:if="{{!wxNickName}}">提交申请前请先获取微信昵称，便于平台审核识别</text>
+        </view>
         <view class="form-group">
           <text class="form-label">店铺名称</text>
           <input class="form-input" placeholder="请输入店铺名称" value="{{applyShop.name}}" bindinput="onApplyField" data-field="name" disabled="{{applyStatus === 'pending'}}" />
@@ -36,7 +53,16 @@
         </view>
         <view class="form-group">
           <text class="form-label">联系电话</text>
-          <input class="form-input" type="number" maxlength="11" placeholder="请输入联系电话" value="{{applyShop.contactPhone}}" bindinput="onApplyField" data-field="contactPhone" disabled="{{applyStatus === 'pending'}}" />
+          <input
+            class="form-input"
+            type="number"
+            maxlength="11"
+            placeholder="请输入11位手机号"
+            value="{{applyShop.contactPhone}}"
+            bindinput="onApplyPhoneInput"
+            bindblur="onApplyPhoneBlur"
+            disabled="{{applyStatus === 'pending'}}"
+          />
         </view>
         <view class="form-group">
           <text class="form-label">负责人姓名</text>
@@ -44,9 +70,21 @@
         </view>
         <view class="form-group">
           <text class="form-label">店铺照片</text>
-          <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张</text>
+          <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张，这些照片会展示给用户。长按可拖拽调整顺序</text>
           <view class="store-photos-grid">
-            <view class="store-photo-item" wx:for="{{applyStorePhotos}}" wx:key="*this">
+            <view
+              class="store-photo-item store-photo-item-apply {{photoDrag.active && photoDrag.listKey === 'apply' && photoDrag.fromIndex === index ? 'drag-source' : ''}} {{photoDrag.active && photoDrag.listKey === 'apply' && photoDrag.targetIndex === index ? 'drop-target' : ''}}"
+              id="store-photo-apply-{{index}}"
+              wx:for="{{applyStorePhotos}}"
+              wx:key="*this"
+              data-list="apply"
+              data-index="{{index}}"
+              bindtouchstart="onPhotoTouchStart"
+              bindlongpress="onPhotoLongPress"
+              catchtouchmove="onPhotoTouchMove"
+              bindtouchend="onPhotoTouchEnd"
+              bindtouchcancel="onPhotoTouchEnd"
+            >
               <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewApplyPhoto" data-url="{{item}}" />
               <view class="store-photo-delete" catchtap="onDeleteApplyPhoto" data-index="{{index}}" wx:if="{{applyStatus !== 'pending'}}">×</view>
             </view>
@@ -54,6 +92,21 @@
               <text class="store-photo-add-icon">+</text>
               <text class="store-photo-add-text">上传</text>
             </view>
+          </view>
+        </view>
+        <view class="form-group">
+          <text class="form-label">营业执照（选填）</text>
+          <text class="store-photos-tip">非必填，上传后便于平台审核核验</text>
+          <view class="store-photos-grid">
+            <view class="store-photo-item" wx:if="{{applyBusinessLicense}}">
+              <cached-image custom-class="store-photo" src="{{applyBusinessLicense}}" mode="aspectFill" bindtap="onPreviewApplyLicense" />
+              <view class="store-photo-delete" catchtap="onDeleteApplyLicense" wx:if="{{applyStatus !== 'pending'}}">×</view>
+            </view>
+            <view class="store-photo-add" wx:if="{{!applyBusinessLicense && applyStatus !== 'pending'}}" bindtap="onChooseApplyLicense">
+              <text class="store-photo-add-icon">+</text>
+              <text class="store-photo-add-text">上传</text>
+            </view>
+            <text class="store-photos-empty" wx:if="{{!applyBusinessLicense && applyStatus === 'pending'}}">未上传</text>
           </view>
         </view>
       </view>
@@ -111,9 +164,9 @@
       </view>
       <view class="form-group logo-group">
         <text class="form-label">店铺头像</text>
-        <view class="logo-picker" bindtap="onChooseLogo">
-          <cached-image custom-class="logo-preview" src="{{shop.logo}}" default-src="/images/default-avatar.png" mode="aspectFill" />
-          <text class="logo-tip">点击上传，用于分享卡片展示</text>
+        <view class="logo-picker">
+          <cached-image custom-class="logo-preview" src="{{shop.logo}}" default-src="/images/default-avatar.png" mode="aspectFill" catchtap="onChooseLogo" />
+          <text class="logo-tip" catchtap="onChooseLogo">点击上传，用于分享卡片展示</text>
         </view>
       </view>
       <view class="form-group" wx:if="{{shop.displayNo}}">
@@ -161,7 +214,40 @@
         </view>
         <text class="business-hours-summary">{{hoursSummary}}</text>
       </view>
-      <view class="form-group"><text class="form-label">店铺介绍</text><textarea class="form-textarea" placeholder="店铺介绍" value="{{shop.intro}}" bindinput="onField" data-field="intro" /></view>
+      <view class="form-group">
+        <text class="form-label">店铺介绍</text>
+        <textarea
+          class="form-textarea"
+          placeholder="店铺介绍"
+          maxlength="{{maxIntroText}}"
+          value="{{shop.intro}}"
+          bindinput="onField"
+          data-field="intro"
+        />
+        <text class="store-photos-tip">文字或图片至少填一项；最多 {{maxIntroText}} 字，可附带最多 {{maxIntroPhotos}} 张图片；长按可拖拽排序</text>
+        <view class="store-photos-grid">
+          <view
+            class="store-photo-item store-photo-item-intro {{photoDrag.active && photoDrag.listKey === 'intro' && photoDrag.fromIndex === index ? 'drag-source' : ''}} {{photoDrag.active && photoDrag.listKey === 'intro' && photoDrag.targetIndex === index ? 'drop-target' : ''}}"
+            id="store-photo-intro-{{index}}"
+            wx:for="{{introPhotos}}"
+            wx:key="*this"
+            data-list="intro"
+            data-index="{{index}}"
+            bindtouchstart="onPhotoTouchStart"
+            bindlongpress="onPhotoLongPress"
+            catchtouchmove="onPhotoTouchMove"
+            bindtouchend="onPhotoTouchEnd"
+            bindtouchcancel="onPhotoTouchEnd"
+          >
+            <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewIntroPhoto" data-url="{{item}}" />
+            <view class="store-photo-delete" catchtap="onDeleteIntroPhoto" data-index="{{index}}">×</view>
+          </view>
+          <view class="store-photo-add" wx:if="{{introPhotos.length < maxIntroPhotos}}" bindtap="onChooseIntroPhotos">
+            <text class="store-photo-add-icon">+</text>
+            <text class="store-photo-add-text">上传</text>
+          </view>
+        </view>
+      </view>
       <view class="form-group">
         <text class="form-label">接待范围</text>
         <checkbox-group class="reception-range-group" bindchange="onReceptionRangeChange">
@@ -178,9 +264,21 @@
       </view>
       <view class="form-group">
         <text class="form-label">店铺照片</text>
-        <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张，支持相册或拍照</text>
+        <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张，这些照片会展示给用户。长按可拖拽调整顺序</text>
         <view class="store-photos-grid">
-          <view class="store-photo-item" wx:for="{{storePhotos}}" wx:key="*this">
+          <view
+            class="store-photo-item store-photo-item-store {{photoDrag.active && photoDrag.listKey === 'store' && photoDrag.fromIndex === index ? 'drag-source' : ''}} {{photoDrag.active && photoDrag.listKey === 'store' && photoDrag.targetIndex === index ? 'drop-target' : ''}}"
+            id="store-photo-store-{{index}}"
+            wx:for="{{storePhotos}}"
+            wx:key="*this"
+            data-list="store"
+            data-index="{{index}}"
+            bindtouchstart="onPhotoTouchStart"
+            bindlongpress="onPhotoLongPress"
+            catchtouchmove="onPhotoTouchMove"
+            bindtouchend="onPhotoTouchEnd"
+            bindtouchcancel="onPhotoTouchEnd"
+          >
             <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewStorePhoto" data-url="{{item}}" />
             <view class="store-photo-delete" catchtap="onDeleteStorePhoto" data-index="{{index}}">×</view>
           </view>
@@ -360,6 +458,25 @@
           <text class="form-label">每公里价格（元） <text class="required-star">*</text></text>
           <input class="form-input" type="digit" placeholder="请输入每公里价格" value="{{shop.pickupPricePerKm}}" bindinput="onField" data-field="pickupPricePerKm" />
         </view>
+        <view class="form-group pickup-pricing-group">
+          <text class="form-label">满天免费接送</text>
+          <radio-group class="day-charge-group" bindchange="onPickupFreeModeChange">
+            <label class="day-charge-item {{pickupFreeMode !== 'minDays' ? 'mode-active' : ''}}">
+              <radio value="none" checked="{{pickupFreeMode !== 'minDays'}}" color="#E98657" />
+              <text>不免费</text>
+            </label>
+            <label class="day-charge-item {{pickupFreeMode === 'minDays' ? 'mode-active' : ''}}">
+              <radio value="minDays" checked="{{pickupFreeMode === 'minDays'}}" color="#E98657" />
+              <text>住满以上免费</text>
+            </label>
+          </radio-group>
+          <text class="charge-hint">默认不免费；开启后可设置寄养满几天及以上免费接送</text>
+        </view>
+        <view class="form-group" wx:if="{{pickupFreeMode === 'minDays'}}">
+          <text class="form-label">住几天及以上免费 <text class="required-star">*</text></text>
+          <input class="form-input" type="number" placeholder="例如 7" value="{{shop.pickupFreeMinDays}}" bindinput="onField" data-field="pickupFreeMinDays" />
+          <text class="charge-hint">寄养天数达到该天数及以上时，接送运费为 0</text>
+        </view>
         <view class="form-group pickup-notice-group">
           <text class="form-label">接送须知 <text class="required-star">*</text></text>
           <textarea class="form-textarea" placeholder="接送须知..." value="{{shop.pickupNotice}}" bindinput="onField" data-field="pickupNotice" />
@@ -368,7 +485,37 @@
     </view>
     <view class="card">
       <view class="card-title">寄养须知</view>
-      <textarea class="form-textarea" placeholder="寄养须知..." value="{{shop.notice}}" bindinput="onField" data-field="notice" />
+      <textarea
+        class="form-textarea"
+        placeholder="寄养须知..."
+        maxlength="{{maxNoticeText}}"
+        value="{{shop.notice}}"
+        bindinput="onField"
+        data-field="notice"
+      />
+      <text class="store-photos-tip">文字或图片至少填一项；最多 {{maxNoticeText}} 字，可附带最多 {{maxNoticePhotos}} 张图片；长按可拖拽排序</text>
+      <view class="store-photos-grid">
+        <view
+          class="store-photo-item store-photo-item-notice {{photoDrag.active && photoDrag.listKey === 'notice' && photoDrag.fromIndex === index ? 'drag-source' : ''}} {{photoDrag.active && photoDrag.listKey === 'notice' && photoDrag.targetIndex === index ? 'drop-target' : ''}}"
+          id="store-photo-notice-{{index}}"
+          wx:for="{{noticePhotos}}"
+          wx:key="*this"
+          data-list="notice"
+          data-index="{{index}}"
+          bindtouchstart="onPhotoTouchStart"
+          bindlongpress="onPhotoLongPress"
+          catchtouchmove="onPhotoTouchMove"
+          bindtouchend="onPhotoTouchEnd"
+          bindtouchcancel="onPhotoTouchEnd"
+        >
+          <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewNoticePhoto" data-url="{{item}}" />
+          <view class="store-photo-delete" catchtap="onDeleteNoticePhoto" data-index="{{index}}">×</view>
+        </view>
+        <view class="store-photo-add" wx:if="{{noticePhotos.length < maxNoticePhotos}}" bindtap="onChooseNoticePhotos">
+          <text class="store-photo-add-icon">+</text>
+          <text class="store-photo-add-text">上传</text>
+        </view>
+      </view>
     </view>
     <view class="card">
       <view class="card-title">寄养协议</view>
@@ -391,6 +538,54 @@
     </block>
   </view>
 
+  <view class="clause-modal" wx:if="{{showCoopContractModal && coopContractDoc}}">
+    <view class="clause-modal-mask" catchtouchmove="preventMove" bindtap="onCloseCoopContractModal"></view>
+    <view class="clause-modal-panel coop-contract-panel">
+      <view class="clause-modal-header" catchtouchmove="preventMove">
+        <text class="clause-modal-title">{{coopContractDoc.title}}</text>
+        <text class="clause-modal-close" bindtap="onCloseCoopContractModal">×</text>
+      </view>
+      <scroll-view scroll-y class="coop-contract-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="coop-contract-paper">
+          <view class="coop-contract-parties">
+            <view class="coop-party-block">
+              <text class="coop-party-label">{{coopContractDoc.partyA.label}}</text>
+              <text class="coop-party-line">负责人：{{coopContractDoc.partyA.name}}</text>
+              <text class="coop-party-line">店铺名称：{{coopContractDoc.partyA.shopName}}</text>
+              <text class="coop-party-line">联系电话：{{coopContractDoc.partyA.phone}}</text>
+              <text class="coop-party-line">营业地址：{{coopContractDoc.partyA.address}}</text>
+            </view>
+            <view class="coop-party-block">
+              <text class="coop-party-label">{{coopContractDoc.partyB.label}}</text>
+              <text class="coop-party-line">平台名称：{{coopContractDoc.partyB.name}}</text>
+              <text class="coop-party-line">主体身份：{{coopContractDoc.partyB.role}}</text>
+            </view>
+          </view>
+
+          <view class="coop-contract-section" wx:for="{{coopContractDoc.sections}}" wx:key="title" wx:for-item="section">
+            <text class="coop-section-title">{{section.title}}</text>
+            <text class="coop-section-item" wx:for="{{section.items}}" wx:key="*this" wx:for-index="idx">{{idx + 1}}. {{item}}</text>
+          </view>
+
+          <text class="coop-contract-footer">本协议以电子形式订立，甲方在本平台点击「确认签署」并完成入驻申请，即视为同意本协议全部条款；本协议对甲乙双方均具有法律约束力。</text>
+
+          <view class="coop-sign-stamp" wx:if="{{coopContractDoc.signed}}">
+            <text class="coop-sign-stamp-title">电子签署记录</text>
+            <text class="coop-sign-stamp-line">签署人：{{coopContractDoc.partyA.name}}</text>
+            <text class="coop-sign-stamp-line">签署时间：{{coopContractDoc.signTime}}</text>
+            <text class="coop-sign-stamp-line">签署方式：电子确认</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="clause-modal-footer coop-contract-footer-bar" wx:if="{{coopContractMode === 'sign'}}" catchtouchmove="preventMove">
+        <view class="coop-sign-tip-wrap">
+          <text class="coop-sign-tip">请仔细阅读全部条款后确认签署</text>
+        </view>
+        <button class="clause-btn clause-btn-primary coop-sign-btn" bindtap="onConfirmCoopSign">我已阅读并同意，确认签署</button>
+      </view>
+    </view>
+  </view>
+
   <view class="clause-modal" wx:if="{{showContractModal}}">
     <view class="clause-modal-mask" catchtouchmove="preventMove" bindtap="onCloseContractModal"></view>
     <view class="clause-modal-panel">
@@ -399,20 +594,9 @@
         <text class="clause-modal-close" bindtap="onCloseContractModal">×</text>
       </view>
       <view class="clause-modal-body">
-        <view class="form-group" catchtouchmove="preventMove">
-          <text class="form-label">意外赔付上限（元）</text>
-          <input
-            class="form-input"
-            type="digit"
-            placeholder="不填则默认按 0 元写入协议"
-            value="{{contractCompensationDraft}}"
-            bindinput="onContractCompensationInput"
-          />
-          <text class="clause-field-hint">将自动填入第二条赔付约定中的金额上限；不填默认 0 元</text>
-        </view>
         <view class="form-group clause-editor-group">
           <text class="form-label" catchtouchmove="preventMove">协议条款正文</text>
-          <text class="clause-field-hint" catchtouchmove="preventMove">请保留「一、」「二、」等章节标题，条款使用「1.」「2.」编号，便于客户阅读。</text>
+          <text class="clause-field-hint" catchtouchmove="preventMove">请保留「一、」「二、」等章节标题，条款使用「1.」「2.」编号，便于客户阅读。赔付金额请直接在正文中修改。</text>
           <textarea
             class="form-textarea clause-textarea"
             value="{{contractClauseDraft}}"
@@ -425,8 +609,23 @@
       </view>
       <view class="clause-modal-footer" catchtouchmove="preventMove">
         <button class="clause-btn clause-btn-ghost" bindtap="onResetContractClause">恢复默认</button>
-        <button class="clause-btn clause-btn-primary" bindtap="onConfirmContractClause">确定</button>
+        <button class="clause-btn clause-btn-primary" bindtap="onSaveContractClause" loading="{{savingContractClause}}" disabled="{{savingContractClause}}">保存</button>
       </view>
+    </view>
+  </view>
+
+  <view
+    class="photo-drag-layer"
+    wx:if="{{photoDrag.active}}"
+    catchtouchmove="onPhotoTouchMove"
+    bindtouchend="onPhotoTouchEnd"
+    bindtouchcancel="onPhotoTouchEnd"
+  >
+    <view
+      class="photo-drag-ghost"
+      style="width:{{photoDrag.ghostSize}}px;height:{{photoDrag.ghostSize}}px;transform:translate3d({{photoDrag.ghostX}}px, {{photoDrag.ghostY}}px, 0) scale(1.08);"
+    >
+      <image class="photo-drag-ghost-img" src="{{photoDrag.ghostUrl}}" mode="aspectFill" />
     </view>
   </view>
 

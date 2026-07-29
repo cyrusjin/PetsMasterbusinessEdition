@@ -28,6 +28,15 @@ const ORDERS_TTL = 15 * 1000;
 const DAILY_LOGS_TTL = 15 * 1000;
 const PETS_TTL = 30 * 1000;
 const MERCHANT_STORE_TTL = 30 * 1000;
+const STORAGE_PERSIST_MS = 3 * 1000;
+const ASYNC_STORAGE_KEYS = {
+  [STORAGE_KEYS.ORDERS]: true,
+  [STORAGE_KEYS.DAILY_LOGS]: true,
+  [STORAGE_KEYS.PETS]: true,
+  [STORAGE_KEYS.DEMO_ORDERS]: true,
+  [STORAGE_KEYS.DEMO_DAILY_LOGS]: true,
+  [STORAGE_KEYS.DEMO_PETS]: true
+};
 
 App({
   globalData: {
@@ -60,13 +69,19 @@ App({
       this._hydrateRoleFromUser(cachedUser);
     }
     this._userInfoFetchedAt = 0;
-    this._bootstrapSession(options);
+    // 标记冷启动：紧随其后的 onShow 不再重复 bootstrap
+    this._skipNextAppShowBootstrap = true;
+    this._bootstrapSession(options, { force: true });
   },
 
   onShow(options) {
     storeDebug.logEntryOptions('App onShow', options);
-    this._userInfoFetchedAt = 0;
-    this._bootstrapSession(options);
+    if (this._skipNextAppShowBootstrap) {
+      this._skipNextAppShowBootstrap = false;
+      return;
+    }
+    // 前后台切换走 TTL，避免每次强制登录打穿缓存
+    this._bootstrapSession(options, { force: false });
   },
 
   _hydrateRoleFromUser(user) {
@@ -80,8 +95,9 @@ App({
     this.globalData.role = 'user';
   },
 
-  _bootstrapSession(options) {
-    return this.ensureCloudAndLogin({ force: true })
+  _bootstrapSession(options, bootOptions = {}) {
+    const force = !!(bootOptions && bootOptions.force);
+    return this.ensureCloudAndLogin(force ? { force: true } : {})
       .then(() => {
         this._reconcileClientModeFromCloudUser();
         this._handleEntryOptions(options);
@@ -388,7 +404,13 @@ App({
   ensureMerchantStore(options = {}) {
     const force = !!(options && options.force);
 
-    if (this.isMerchantDemoMode() && !this.isMerchantPending()) {
+    // 体验模式才走本地 demo；待审/已拒绝/已关闭必须拉真实店铺
+    if (
+      this.isMerchantDemoMode()
+      && !this.isMerchantPending()
+      && !isMerchantRejected(this.globalData.userInfo)
+      && !this.isMerchantDisabled()
+    ) {
       merchantDemo.ensureDemoData();
       const shop = merchantDemo.getDemoShop();
       this.globalData.merchantStoreId = shop.store_id;
@@ -467,7 +489,12 @@ App({
   },
 
   syncShopToCloud(shop) {
-    if (this.isMerchantDemoMode() && !this.isMerchantPending()) {
+    if (
+      this.isMerchantDemoMode()
+      && !this.isMerchantPending()
+      && !isMerchantRejected(this.globalData.userInfo)
+      && !this.isMerchantDisabled()
+    ) {
       const saved = merchantDemo.saveDemoShop(shop);
       this.globalData.merchantStoreId = saved.store_id;
       this._merchantStoreFetchedAt = Date.now();
@@ -529,6 +556,7 @@ App({
       idCard: remoteUser.idCard || cached.idCard || '',
       address: remoteUser.address || cached.address || '',
       store_id: pickRemoteString('store_id'),
+      merchantStoreId: pickRemoteString('merchantStoreId'),
       pet_ids: Array.isArray(remoteUser.pet_ids) ? remoteUser.pet_ids : (cached.pet_ids || []),
       merchantStatus: pickRemoteString('merchantStatus'),
       merchantRole: pickRemoteString('merchantRole'),
@@ -556,14 +584,15 @@ App({
       isMerchant: user.isMerchant,
       role: user.role,
       store_id: user.store_id,
+      merchantStoreId: user.merchantStoreId,
+      merchantStatus: user.merchantStatus,
       meta
     });
     storeDebug.logStoreState('_applyRemoteUser', this);
 
-    if (user.isMerchant && user.store_id) {
-      this.globalData.merchantStoreId = user.store_id;
-    } else if (isMerchantPending(user) && user.store_id) {
-      this.globalData.merchantStoreId = user.store_id;
+    const linkedMerchantStoreId = getMerchantStoreId(user);
+    if (linkedMerchantStoreId) {
+      this.globalData.merchantStoreId = linkedMerchantStoreId;
     }
 
     if (user.isMerchant) {
@@ -572,7 +601,12 @@ App({
           this.globalData.merchantStoreId = shop.store_id;
         }
       });
-    } else if (!isMerchantPending(user)) {
+    } else if (
+      !isMerchantPending(user)
+      && !isMerchantRejected(user)
+      && !isMerchantDisabled(user)
+    ) {
+      // 待审/已拒绝/已关闭仍需保留店铺缓存（驳回理由、重新提交、关闭原因）
       this.clearMerchantLocalCache();
     }
 
@@ -862,7 +896,51 @@ App({
 
   setData(key, value) {
     this.globalData[key] = value;
+    // 大列表走异步节流落盘，避免主线程被 setStorageSync 卡住
+    if (ASYNC_STORAGE_KEYS[key]) {
+      this._schedulePersist(key, value);
+      return;
+    }
     wx.setStorageSync(key, value);
+  },
+
+  _schedulePersist(key, value) {
+    if (!this._pendingStorage) this._pendingStorage = {};
+    this._pendingStorage[key] = value;
+    if (this._persistTimer) return;
+    this._persistTimer = setTimeout(() => {
+      this._persistTimer = null;
+      const pending = this._pendingStorage || {};
+      this._pendingStorage = {};
+      Object.keys(pending).forEach((k) => {
+        try {
+          wx.setStorage({ key: k, data: pending[k] });
+        } catch (err) {
+          try {
+            wx.setStorageSync(k, pending[k]);
+          } catch (e) {
+            // ignore
+          }
+        }
+      });
+    }, STORAGE_PERSIST_MS);
+  },
+
+  /** 立即刷盘（退出登录 / 清缓存前调用） */
+  _flushPendingStorage() {
+    if (this._persistTimer) {
+      clearTimeout(this._persistTimer);
+      this._persistTimer = null;
+    }
+    const pending = this._pendingStorage || {};
+    this._pendingStorage = {};
+    Object.keys(pending).forEach((k) => {
+      try {
+        wx.setStorageSync(k, pending[k]);
+      } catch (err) {
+        // ignore
+      }
+    });
   },
 
   clearMerchantLocalCache() {
@@ -872,6 +950,7 @@ App({
   },
 
   clearLocalAppCache() {
+    this._flushPendingStorage();
     Object.values(STORAGE_KEYS).forEach((key) => {
       try {
         wx.removeStorageSync(key);
@@ -887,6 +966,7 @@ App({
     this.globalData.role = 'user';
     this.globalData.isMerchant = false;
     this.globalData.storeId = '';
+    this._ordersDisplayCache = null;
     this.globalData.currentStore = null;
     this.globalData.merchantStoreId = '';
     this.globalData.pendingEntryStoreId = '';
@@ -945,7 +1025,8 @@ App({
       merchantDemo.ensureDemoData();
       return merchantDemo.getDemoPets();
     }
-    return this.getData(STORAGE_KEYS.PETS) || [];
+    const raw = this.getData(STORAGE_KEYS.PETS);
+    return Array.isArray(raw) ? raw : [];
   },
 
   _cachePets(pets) {
@@ -1066,11 +1147,21 @@ App({
       merchantDemo.ensureDemoData();
       return merchantDemo.getDemoOrders();
     }
-    return (this.getData(STORAGE_KEYS.ORDERS) || []).map(attachOrderDisplayNo);
+    if (Array.isArray(this._ordersDisplayCache)) {
+      return this._ordersDisplayCache;
+    }
+    const raw = this.getData(STORAGE_KEYS.ORDERS);
+    const list = Array.isArray(raw) ? raw : [];
+    const orders = list.map(attachOrderDisplayNo);
+    this._ordersDisplayCache = orders;
+    return orders;
   },
 
   _cacheOrders(orders) {
-    this.setData(STORAGE_KEYS.ORDERS, (orders || []).map(attachOrderDisplayNo));
+    const list = Array.isArray(orders) ? orders : [];
+    const normalized = list.map(attachOrderDisplayNo);
+    this._ordersDisplayCache = normalized;
+    this.setData(STORAGE_KEYS.ORDERS, normalized);
   },
 
   _upsertLocalOrder(order) {
@@ -1298,10 +1389,104 @@ App({
     return dailyApi.saveDailyLog(log)
       .then((res) => {
         if (res.success && res.log) {
-          this._upsertLocalDailyLog(res.log);
-          return res;
+          const merged = { ...log, ...res.log };
+          if (log.isScheduled || log.status === 'scheduled' || log.scheduledAt) {
+            merged.isScheduled = true;
+            merged.status = merged.status === 'published' ? merged.status : 'scheduled';
+            merged.scheduledAt = Number(merged.scheduledAt) || Number(log.scheduledAt) || 0;
+          }
+          this._upsertLocalDailyLog(merged);
+          return { ...res, log: merged };
         }
         throw new Error(res.errMsg || '打卡失败');
+      });
+  },
+
+  updateDailyLog(log) {
+    const id = String((log && (log.id || log.log_id)) || '').trim();
+    if (!id) return Promise.reject(new Error('缺少打卡记录'));
+
+    if (this.isMerchantDemoMode()) {
+      const updated = merchantDemo.updateDemoDailyLog(log);
+      if (!updated) return Promise.reject(new Error('仅未发送的定时打卡可修改'));
+      return Promise.resolve({ success: true, log: updated, scheduled: true });
+    }
+    if (!this.globalData.env) {
+      const logs = this.getDailyLogs();
+      const idx = logs.findIndex((item) => getLogId(item) === id);
+      if (idx < 0) return Promise.reject(new Error('打卡记录不存在'));
+      const target = logs[idx];
+      if (!(target.status === 'scheduled' || target.isScheduled)) {
+        return Promise.reject(new Error('仅未发送的定时打卡可修改'));
+      }
+      const merged = {
+        ...target,
+        ...log,
+        id,
+        log_id: id,
+        status: 'scheduled',
+        isScheduled: true,
+        updateTime: Date.now()
+      };
+      const next = logs.slice();
+      next[idx] = merged;
+      this.setData(STORAGE_KEYS.DAILY_LOGS, dedupeDailyLogs(next));
+      this._dailyLogsFetchedAt = 0;
+      return Promise.resolve({ success: true, log: merged, scheduled: true });
+    }
+
+    return dailyApi.updateDailyLog(log)
+      .then((res) => {
+        if (res.success && res.log) {
+          const merged = {
+            ...log,
+            ...res.log,
+            isScheduled: true,
+            status: 'scheduled',
+            scheduledAt: Number(res.log.scheduledAt) || Number(log.scheduledAt) || 0
+          };
+          this._upsertLocalDailyLog(merged);
+          return { ...res, log: merged };
+        }
+        throw new Error((res && res.errMsg) || '修改失败');
+      });
+  },
+
+  deleteDailyLog(logId) {
+    const id = String(logId || '').trim();
+    if (!id) return Promise.reject(new Error('缺少打卡记录'));
+
+    if (this.isMerchantDemoMode()) {
+      const ok = merchantDemo.deleteDemoDailyLog(id);
+      if (!ok) return Promise.reject(new Error('仅未发送的定时打卡可删除'));
+      return Promise.resolve({ success: true, logId: id });
+    }
+    if (!this.globalData.env) {
+      const logs = this.getDailyLogs();
+      const target = logs.find((item) => getLogId(item) === id);
+      if (!target || !(target.status === 'scheduled' || target.isScheduled)) {
+        return Promise.reject(new Error('仅未发送的定时打卡可删除'));
+      }
+      this.setData(
+        STORAGE_KEYS.DAILY_LOGS,
+        dedupeDailyLogs(logs.filter((item) => getLogId(item) !== id))
+      );
+      this._dailyLogsFetchedAt = 0;
+      return Promise.resolve({ success: true, logId: id });
+    }
+
+    return dailyApi.deleteDailyLog(id)
+      .then((res) => {
+        if (!res || !res.success) {
+          throw new Error((res && res.errMsg) || '删除失败');
+        }
+        const logs = this.getDailyLogs();
+        this.setData(
+          STORAGE_KEYS.DAILY_LOGS,
+          dedupeDailyLogs(logs.filter((item) => getLogId(item) !== id))
+        );
+        this._dailyLogsFetchedAt = 0;
+        return res;
       });
   },
 
@@ -1400,7 +1585,12 @@ App({
   },
 
   getShop() {
-    if (this.isMerchantDemoMode() && !this.isMerchantPending()) {
+    if (
+      this.isMerchantDemoMode()
+      && !this.isMerchantPending()
+      && !isMerchantRejected(this.globalData.userInfo)
+      && !this.isMerchantDisabled()
+    ) {
       merchantDemo.ensureDemoData();
       return attachStoreDisplayNo(merchantDemo.getDemoShop());
     }
@@ -1409,7 +1599,12 @@ App({
 
   saveShop(shop) {
     const normalized = attachStoreDisplayNo(shop || {});
-    if (this.isMerchantDemoMode() && !this.isMerchantPending()) {
+    if (
+      this.isMerchantDemoMode()
+      && !this.isMerchantPending()
+      && !isMerchantRejected(this.globalData.userInfo)
+      && !this.isMerchantDisabled()
+    ) {
       const saved = merchantDemo.saveDemoShop(normalized);
       this.globalData.merchantStoreId = saved.store_id;
       this._merchantStoreFetchedAt = Date.now();

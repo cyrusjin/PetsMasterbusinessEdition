@@ -2,7 +2,8 @@
  * 商家入驻平台合作协议文案与构建
  */
 
-const PLATFORM_NAME = '宠物寄养服务平台';
+const PLATFORM_NAME = '熠森宠物管家';
+const PLATFORM_ENTITY = '西安熠森网络科技有限公司';
 
 function buildClauseSections() {
   return [
@@ -38,6 +39,7 @@ function buildClauseSections() {
       title: '四、信息授权与协议效力',
       items: [
         '商家同意本平台在入驻审核、店铺展示、订单履约及客服处理所必需的范围内，使用商家提交的店铺名称、地址、照片、联系方式等信息。',
+        '商家上传至本平台的所有视频、照片及其他内容素材（包括但不限于店铺照片、日常打卡动态等），均授权本平台用于平台宣传及推广。商家如事后不愿相关素材继续用于宣传推广，有权联系本平台申请删除或停止使用，本平台将在合理期限内予以处理。',
         '本协议以电子形式订立。商家在本平台点击「确认签署」并完成入驻申请提交，即视为已充分阅读、理解并同意本协议全部条款。',
         '本协议自商家电子签署之日起生效，对商家与本平台均具有法律约束力；商家入驻审核通过后，继续使平台服务即视为接受本协议及平台后续公布的规则。'
       ]
@@ -61,8 +63,7 @@ function buildPartyB() {
   return {
     label: '乙方（平台方）',
     name: PLATFORM_NAME,
-    role: '平台运营方',
-    contact: '以平台公示客服渠道为准'
+    role: PLATFORM_ENTITY
   };
 }
 
@@ -84,7 +85,6 @@ function buildMerchantCoopContract(input) {
     `${partyB.label}`,
     `平台名称：${partyB.name}`,
     `主体身份：${partyB.role}`,
-    `联系方式：${partyB.contact}`,
     '',
     ...sections.flatMap((sec) => [
       sec.title,
@@ -109,5 +109,6 @@ function buildMerchantCoopContract(input) {
 
 module.exports = {
   PLATFORM_NAME,
+  PLATFORM_ENTITY,
   buildMerchantCoopContract
 };

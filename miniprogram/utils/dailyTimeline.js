@@ -23,22 +23,38 @@ function formatDateLabel(dateKey) {
 }
 
 function formatTimeLabel(log) {
-  if (log.createTime) {
+  const scheduled = log && (log.status === 'scheduled' || log.isScheduled);
+  const scheduledAt = Number(log && log.scheduledAt) || 0;
+  if (scheduled && scheduledAt) {
+    const date = new Date(scheduledAt);
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+  if (log && log.createTime) {
     const date = new Date(log.createTime);
     return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
-  const text = log.time || '';
+  const text = (log && log.time) || '';
   const match = text.match(/(\d{1,2}:\d{2})/);
   return match ? match[1] : text;
+}
+
+function resolveLogDateKey(log) {
+  const scheduled = log && (log.status === 'scheduled' || log.isScheduled);
+  const scheduledAt = Number(log && log.scheduledAt) || 0;
+  if (scheduled && scheduledAt) return toDateKey(scheduledAt);
+  return toDateKey(log && log.createTime) || toDateKey(log && log.time) || '未知日期';
 }
 
 function groupLogsByDate(logs) {
   const map = {};
   (logs || []).forEach((log) => {
-    const dateKey = toDateKey(log.createTime) || toDateKey(log.time) || '未知日期';
+    const scheduled = log.status === 'scheduled' || !!log.isScheduled;
+    const dateKey = resolveLogDateKey(log);
     if (!map[dateKey]) map[dateKey] = [];
     map[dateKey].push({
       ...log,
+      isScheduled: scheduled,
+      canDeleteScheduled: scheduled,
       timeLabel: formatTimeLabel(log)
     });
   });
@@ -48,7 +64,11 @@ function groupLogsByDate(logs) {
     .map((dateKey) => ({
       dateKey,
       dateLabel: formatDateLabel(dateKey),
-      logs: map[dateKey].sort((a, b) => (b.createTime || 0) - (a.createTime || 0))
+      logs: map[dateKey].sort((a, b) => {
+        const aTs = Number(a.scheduledAt) || a.createTime || 0;
+        const bTs = Number(b.scheduledAt) || b.createTime || 0;
+        return bTs - aTs;
+      })
     }));
 }
 
@@ -56,5 +76,6 @@ module.exports = {
   groupLogsByDate,
   formatTimeLabel,
   formatDateLabel,
-  toDateKey
+  toDateKey,
+  resolveLogDateKey
 };

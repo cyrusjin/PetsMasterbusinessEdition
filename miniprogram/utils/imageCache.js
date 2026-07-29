@@ -1,8 +1,13 @@
 const { STORAGE_KEYS } = require('./constants');
 
-const CACHE_DIR = `${wx.env.USER_DATA_PATH}/pet_image_cache`;
+const CACHE_DIR = `${(typeof wx !== 'undefined' && wx.env && wx.env.USER_DATA_PATH) || ''}/pet_image_cache`;
 const MAX_CACHE_ENTRIES = 300;
+const INDEX_PERSIST_MS = 2000;
 const pendingMap = new Map();
+
+let memoryIndex = null;
+let indexDirty = false;
+let persistTimer = null;
 
 function isCloudFileId(url) {
   return typeof url === 'string' && url.startsWith('cloud://');
@@ -58,17 +63,53 @@ function expectedCachePath(source) {
   return `${CACHE_DIR}/${hashString(source)}.${guessExt(source)}`;
 }
 
-function readCacheIndex() {
+function getMemoryIndex() {
+  if (memoryIndex) return memoryIndex;
   try {
     const index = wx.getStorageSync(STORAGE_KEYS.IMAGE_CACHE) || {};
-    return typeof index === 'object' && index ? index : {};
+    memoryIndex = (typeof index === 'object' && index) ? index : {};
   } catch (err) {
-    return {};
+    memoryIndex = {};
   }
+  return memoryIndex;
 }
 
-function writeCacheIndex(index) {
-  wx.setStorageSync(STORAGE_KEYS.IMAGE_CACHE, index);
+function schedulePersistIndex() {
+  indexDirty = true;
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    flushCacheIndex();
+  }, INDEX_PERSIST_MS);
+}
+
+function flushCacheIndex() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  if (!indexDirty || !memoryIndex) return;
+  indexDirty = false;
+  const snapshot = memoryIndex;
+  try {
+    wx.setStorage({
+      key: STORAGE_KEYS.IMAGE_CACHE,
+      data: snapshot,
+      fail: () => {
+        try {
+          wx.setStorageSync(STORAGE_KEYS.IMAGE_CACHE, snapshot);
+        } catch (err) {
+          // ignore
+        }
+      }
+    });
+  } catch (err) {
+    try {
+      wx.setStorageSync(STORAGE_KEYS.IMAGE_CACHE, snapshot);
+    } catch (e) {
+      // ignore
+    }
+  }
 }
 
 function fileExists(filePath) {
@@ -82,7 +123,7 @@ function fileExists(filePath) {
 }
 
 function touchCacheEntry(source, filePath) {
-  const index = readCacheIndex();
+  const index = getMemoryIndex();
   index[source] = {
     path: filePath,
     updatedAt: Date.now()
@@ -106,12 +147,12 @@ function touchCacheEntry(source, filePath) {
       });
   }
 
-  writeCacheIndex(index);
+  schedulePersistIndex();
 }
 
 /**
  * 同步读取本地缓存路径（不触发下载）。
- * 优先查索引，索引丢失时按 URL 哈希恢复磁盘文件并回写索引。
+ * 优先查内存索引，索引丢失时按 URL 哈希恢复磁盘文件。
  */
 function peekCachedPath(source, options = {}) {
   const url = (source || '').trim();
@@ -119,25 +160,31 @@ function peekCachedPath(source, options = {}) {
   if (isLocalImagePath(url)) return url;
 
   const touch = !(options && options.skipTouch);
-  const index = readCacheIndex();
+  const index = getMemoryIndex();
   const item = index[url];
   if (item && item.path && fileExists(item.path)) {
     if (touch) {
       item.updatedAt = Date.now();
-      writeCacheIndex(index);
+      schedulePersistIndex();
     }
     return item.path;
   }
 
   const expected = expectedCachePath(url);
   if (fileExists(expected)) {
-    if (touch) touchCacheEntry(url, expected);
+    if (touch) {
+      touchCacheEntry(url, expected);
+    } else {
+      // 仅修复内存索引，不立刻落盘
+      index[url] = { path: expected, updatedAt: Date.now() };
+      schedulePersistIndex();
+    }
     return expected;
   }
 
   if (item) {
     delete index[url];
-    writeCacheIndex(index);
+    schedulePersistIndex();
   }
   return '';
 }
@@ -237,6 +284,12 @@ function resolveImageUrls(sources) {
 }
 
 function clearImageFileCache() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  indexDirty = false;
+  memoryIndex = {};
   try {
     wx.removeStorageSync(STORAGE_KEYS.IMAGE_CACHE);
   } catch (err) {
@@ -260,5 +313,6 @@ module.exports = {
   getCachedPath,
   resolveImageUrl,
   resolveImageUrls,
-  clearImageFileCache
+  clearImageFileCache,
+  flushCacheIndex
 };

@@ -9,6 +9,15 @@ function saveDailyLog(log) {
   return callDailyService('saveDailyLog', { log });
 }
 
+function updateDailyLog(log) {
+  const logId = log && (log.id || log.log_id);
+  return callDailyService('updateDailyLog', { logId, log });
+}
+
+function deleteDailyLog(logId) {
+  return callDailyService('deleteDailyLog', { logId });
+}
+
 function listDailyLogs(orderId) {
   return callDailyService('listDailyLogs', { orderId });
 }
@@ -88,6 +97,8 @@ function fetchMerchantBoardingLogs(storeId, orderIds = []) {
 
 module.exports = {
   saveDailyLog,
+  updateDailyLog,
+  deleteDailyLog,
   listDailyLogs,
   listDailyLogsByOrders,
   listMerchantDailyLogs,

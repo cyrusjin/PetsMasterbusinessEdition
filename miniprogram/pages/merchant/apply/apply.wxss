@@ -1,5 +1,5 @@
 @import '../../../styles/merchant-tab.wxss';
-@import '../settings/settings.wxss';
+@import '../../../styles/settings-form.wxss';
 @import '../tab-store/tab-store.wxss';
 
 .apply-pending-card {

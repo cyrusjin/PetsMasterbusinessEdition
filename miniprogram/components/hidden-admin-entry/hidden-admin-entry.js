@@ -35,7 +35,7 @@ Component({
         return;
       }
       this.setData({ showPasswordModal: false, passwordInput: '' });
-      wx.navigateTo({ url: '/pages/admin/merchant-auth/merchant-auth' });
+      wx.navigateTo({ url: '/packageExtra/merchant-auth/merchant-auth' });
     }
   }
 });

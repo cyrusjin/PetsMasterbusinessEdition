@@ -1,6 +1,7 @@
 const app = getApp();
 const storeApi = require('../../../utils/store');
-const { enableStoreShareMenu, buildMerchantShareConfig, buildMerchantTimelineShareConfig, buildStaffShareConfig } = require('../../../utils/storeShare');
+const { enableStoreShareMenu, buildMerchantTimelineShareConfig, buildStaffShareConfig } = require('../../../utils/storeShare');
+const { shareStoreInvitePoster } = require('../../../utils/storeSharePoster');
 const {
   buildBoardingListWithDailyStats,
   countUncheckedBoardingPets
@@ -11,9 +12,10 @@ const { countPendingPickupTasks } = require('../../../utils/pickupManage');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
 const { startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../../utils/orderRefresh');
+const { isMerchantRejected } = require('../../../utils/role');
 
 const STAFF_COUNT_TTL = 60 * 1000;
-const DAILY_POLL_MS = 45 * 1000;
+const DAILY_POLL_MS = 60 * 1000;
 
 function parseStaffInviteStoreId(options) {
   if (!options) return '';
@@ -27,6 +29,7 @@ Page({
   data: {
     isDemoMode: false,
     isPendingReview: false,
+    isApplyRejected: false,
     isAdminDisabled: false,
     adminDisableReason: '',
     isStoreOwner: false,
@@ -62,8 +65,13 @@ Page({
     hideHomeButton();
     this._syncTabBar();
 
-    // 审核中强制拉用户，避免本地 pending 缓存导致横幅不消失
-    const forceUser = !!(this.data.isPendingReview || app.isMerchantPending());
+    // 审核中/已拒绝强制拉用户，避免本地状态缓存导致横幅不消失
+    const forceUser = !!(
+      this.data.isPendingReview
+      || this.data.isApplyRejected
+      || app.isMerchantPending()
+      || isMerchantRejected(app.globalData.userInfo)
+    );
     app.ensureCloudAndLogin(forceUser ? { force: true } : {}).then(() => {
       this._syncTabBar();
       const inviteId = this._staffInviteStoreId
@@ -81,8 +89,17 @@ Page({
         app.globalData.pendingStaffInviteStoreId = '';
       }
 
+      // 未具备商家能力时仍渲染页面壳，禁止 reLaunch 到自身造成白屏死循环
       if (!app.canAccessMerchantBackend()) {
-        wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+        this._bootstrapped = true;
+        this.setData({
+          isDemoMode: true,
+          boardingList: [],
+          pendingOrderCount: 0,
+          pickupPendingCount: 0,
+          uncheckedPetCount: 0,
+          staffCount: 0
+        });
         return;
       }
 
@@ -92,10 +109,14 @@ Page({
       }
 
       return this._bootstrapPage();
+    }).catch((err) => {
+      console.error('[日常管理] onShow 初始化失败', err);
+      this._bootstrapped = true;
+      this._syncTabBar();
     });
     startMerchantOrdersPoll(this, () => {
       if (!app.canAccessMerchantBackend() || app.isMerchantDemoMode()) return Promise.resolve();
-      return app.loadOrders({ force: true }).then(() => {
+      return app.loadOrders({ force: false }).then(() => {
         const shop = app.getShop();
         if (!shop || !shop.store_id) return;
         return this._applyBoardingData(shop);
@@ -138,9 +159,13 @@ Page({
 
   onPullDownRefresh() {
     const wasPending = !!(this.data.isPendingReview || app.isMerchantPending());
+    const wasRejected = !!(
+      this.data.isApplyRejected
+      || isMerchantRejected(app.globalData.userInfo)
+    );
 
-    // 审核中/体验模式都先强制同步用户角色，再决定走演示数据还是正式店铺
-    if (this.data.isDemoMode || wasPending) {
+    // 审核中/已拒绝/体验模式都先强制同步用户角色，再决定走演示数据还是正式店铺
+    if (this.data.isDemoMode || wasPending || wasRejected) {
       const wasPendingReview = wasPending;
       app.ensureCloudAndLogin({ force: true })
         .then(() => this._bootstrapPage({ force: true }))
@@ -164,7 +189,14 @@ Page({
     app.refreshMerchantStore()
       .then((shop) => {
         if (!shop || !shop.store_id) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+          this.setData({
+            shop: shop || {},
+            boardingList: [],
+            pendingOrderCount: 0,
+            pickupPendingCount: 0,
+            uncheckedPetCount: 0,
+            staffCount: 0
+          });
           return null;
         }
         this.setData({ shop, isStoreOwner: app.isStoreOwner() });
@@ -189,11 +221,12 @@ Page({
   _softRefresh() {
     const isDemoMode = app.isMerchantDemoMode();
     const isPendingReview = app.isMerchantPending();
+    const isApplyRejected = isMerchantRejected(app.globalData.userInfo);
     const isAdminDisabled = app.isMerchantDisabled();
-    this.setData({ isDemoMode, isPendingReview, isAdminDisabled });
+    this.setData({ isDemoMode, isPendingReview, isApplyRejected, isAdminDisabled });
     this._syncTabBar();
 
-    if (isAdminDisabled || isDemoMode || isPendingReview) {
+    if (isAdminDisabled || isDemoMode || isPendingReview || isApplyRejected) {
       return this._bootstrapPage();
     }
 
@@ -216,8 +249,9 @@ Page({
     const force = !!(options && options.force);
     const isDemoMode = app.isMerchantDemoMode();
     const isPendingReview = app.isMerchantPending();
+    const isApplyRejected = isMerchantRejected(app.globalData.userInfo);
     const isAdminDisabled = app.isMerchantDisabled();
-    this.setData({ isDemoMode, isPendingReview, isAdminDisabled });
+    this.setData({ isDemoMode, isPendingReview, isApplyRejected, isAdminDisabled });
     this._syncTabBar();
 
     if (isAdminDisabled) {
@@ -245,7 +279,7 @@ Page({
     }
 
     const cachedShop = app.getShop();
-    if (cachedShop && cachedShop.store_id && !isPendingReview) {
+    if (cachedShop && cachedShop.store_id && !isPendingReview && !isApplyRejected) {
       this.setData({ shop: cachedShop, isStoreOwner: app.isStoreOwner() });
       this._applyBoardingData(cachedShop, { skipRemoteLogs: true });
     }
@@ -254,11 +288,21 @@ Page({
       .then((shop) => {
         const isStoreOwner = app.isStoreOwner();
         if (!shop || !shop.store_id) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+          // 无店铺时停留在本页空态，避免 reLaunch 自身导致白屏循环
+          this._bootstrapped = true;
+          this.setData({
+            shop: shop || {},
+            isStoreOwner,
+            boardingList: [],
+            pendingOrderCount: 0,
+            pickupPendingCount: 0,
+            uncheckedPetCount: 0,
+            staffCount: 0
+          });
           return null;
         }
         this.setData({ shop, isStoreOwner });
-        if (isPendingReview) {
+        if (isPendingReview || isApplyRejected) {
           this._bootstrapped = true;
           this.setData({
             boardingList: [],
@@ -276,6 +320,10 @@ Page({
         if (!shop || !shop.store_id) return;
         this._bootstrapped = true;
         return this._applyBoardingData(shop, force ? { forceLogs: true } : {});
+      })
+      .catch((err) => {
+        console.error('[日常管理] bootstrap 失败', err);
+        this._bootstrapped = true;
       });
   },
 
@@ -361,11 +409,60 @@ Page({
     if (shareType === 'staff') {
       if (!this.data.isStoreOwner) {
         wx.showToast({ title: '仅负责人可邀请员工', icon: 'none' });
-        return buildMerchantShareConfig(this);
+        return {
+          title: '萌宠寄养',
+          path: '/pages/merchant/tab-daily/tab-daily'
+        };
       }
       return buildStaffShareConfig(this);
     }
-    return buildMerchantShareConfig(this);
+    wx.showToast({ title: '请点「分享给客人」发海报', icon: 'none' });
+    return {
+      title: '萌宠寄养',
+      path: '/pages/merchant/tab-daily/tab-daily'
+    };
+  },
+
+  onShareToCustomer() {
+    if (this.data.isDemoMode) {
+      wx.showToast({ title: '体验模式不可分享', icon: 'none' });
+      return;
+    }
+    if (!this._guardMerchantFeature()) return;
+    const shop = this.data.shop || app.getShop() || {};
+    const storeId = (shop.store_id || app.globalData.merchantStoreId || '').trim();
+    if (!storeId) {
+      wx.showToast({ title: '请先申请入驻', icon: 'none' });
+      return;
+    }
+    if (this._sharingCustomer) return;
+    this._sharingCustomer = true;
+    wx.showLoading({ title: '生成邀请海报', mask: true });
+    storeApi.getStoreOaShareLink(storeId)
+      .then((res) => {
+        if (!res || !res.success) {
+          throw new Error((res && res.errMsg) || '生成失败');
+        }
+        return shareStoreInvitePoster({
+          posterUrl: (res.posterUrl || '').trim(),
+          qrcodeUrl: (res.qrcodeUrl || '').trim(),
+          storeLogo: (res.storeLogo || '').trim(),
+          storeName: res.storeName || '宠物寄养'
+        });
+      })
+      .then(() => {
+        wx.hideLoading();
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        const msg = (err && (err.errMsg || err.message)) || '分享失败';
+        // 用户主动取消分享不提示错误
+        if (/cancel|取消/i.test(msg)) return;
+        wx.showToast({ title: msg, icon: 'none' });
+      })
+      .finally(() => {
+        this._sharingCustomer = false;
+      });
   },
 
   onShareTimeline() {
@@ -380,7 +477,7 @@ Page({
       wx.showToast({ title: '仅负责人可管理员工', icon: 'none' });
       return;
     }
-    wx.navigateTo({ url: '/pages/merchant/staff-manage/staff-manage' });
+    wx.navigateTo({ url: '/packageExtra/staff-manage/staff-manage' });
   },
 
   _guardMerchantFeature() {
@@ -392,33 +489,37 @@ Page({
       wx.showToast({ title: '入驻审核中，请耐心等待', icon: 'none' });
       return false;
     }
+    if (this.data.isApplyRejected) {
+      wx.showToast({ title: '入驻未通过，请先修改资料后重新提交', icon: 'none' });
+      return false;
+    }
     return true;
   },
 
   onGoMerchantOrders() {
     if (!this._guardMerchantFeature()) return;
-    wx.navigateTo({ url: '/pages/merchant/orders/orders' });
+    wx.navigateTo({ url: '/packageBiz/orders/orders' });
   },
   onGoDailyCheck() {
     if (!this._guardMerchantFeature()) return;
-    wx.navigateTo({ url: '/pages/merchant/daily-check/daily-check' });
+    wx.navigateTo({ url: '/packageBiz/daily-check/daily-check' });
   },
   onGoDailyCheckForOrder(e) {
     if (!this._guardMerchantFeature()) return;
     const id = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: '/pages/merchant/daily-check/daily-check?orderId=' + id });
+    wx.navigateTo({ url: '/packageBiz/daily-check/daily-check?orderId=' + id });
   },
   onGoPickupManage() {
     if (!this._guardMerchantFeature()) return;
-    wx.navigateTo({ url: '/pages/merchant/pickup-manage/pickup-manage' });
+    wx.navigateTo({ url: '/packageBiz/pickup-manage/pickup-manage' });
   },
   onGoDailyLogs() {
     if (!this._guardMerchantFeature()) return;
-    wx.navigateTo({ url: '/pages/merchant/daily-logs/daily-logs' });
+    wx.navigateTo({ url: '/packageBiz/daily-logs/daily-logs' });
   },
   onGoDetail(e) {
     if (!this._guardMerchantFeature()) return;
-    wx.navigateTo({ url: '/pages/merchant/order-detail/order-detail?id=' + e.currentTarget.dataset.id });
+    wx.navigateTo({ url: '/packageBiz/order-detail/order-detail?id=' + e.currentTarget.dataset.id });
   },
   onAdminSecretTap() {
     handlePageSecretTap(this);

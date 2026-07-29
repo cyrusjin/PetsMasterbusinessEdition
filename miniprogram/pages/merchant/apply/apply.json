@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "商家入驻",
-  "usingComponents": {}
+  "usingComponents": {
+    "cached-image": "/components/cached-image/cached-image"
+  }
 }

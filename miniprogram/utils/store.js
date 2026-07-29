@@ -43,6 +43,10 @@ function acceptStaffInvite(storeId) {
   return callStoreService('acceptStaffInvite', { store_id: storeId });
 }
 
+function getStoreOaShareLink(storeId) {
+  return callStoreService('getStoreOaShareLink', { store_id: storeId || '' });
+}
+
 module.exports = {
   getStore,
   getMyStore,
@@ -52,5 +56,6 @@ module.exports = {
   reviewMerchantApplication,
   listStoreStaff,
   removeStoreStaff,
-  acceptStaffInvite
+  acceptStaffInvite,
+  getStoreOaShareLink
 };

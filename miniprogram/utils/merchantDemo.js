@@ -1,5 +1,5 @@
 const { STORAGE_KEYS } = require('./constants');
-const { isMerchantApproved, isMerchantPending, isMerchantDisabled } = require('./role');
+const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
 const { dedupeDailyLogs } = require('./dailyLogUtil');
 const { attachOrderDisplayNo, attachStoreDisplayNo } = require('./displayNo');
 
@@ -18,10 +18,11 @@ function formatDateTime(date) {
   return `${formatDate(date)} ${h}:${min}`;
 }
 
-/** 未入驻审核通过、且非待审核状态：纯本地体验模式 */
+/** 未入驻审核通过，且非待审/已拒绝/已关闭：纯本地体验模式 */
 function isMerchantDemoMode(user) {
   if (isMerchantApproved(user)) return false;
   if (isMerchantPending(user)) return false;
+  if (isMerchantRejected(user)) return false;
   if (isMerchantDisabled(user)) return false;
   return true;
 }
@@ -399,6 +400,44 @@ function saveDemoDailyLog(log) {
   return entry;
 }
 
+function updateDemoDailyLog(log) {
+  const id = String((log && (log.id || log.log_id)) || '').trim();
+  if (!id) return null;
+  const logs = getDemoDailyLogs();
+  const idx = logs.findIndex((item) => (item.id || item.log_id) === id);
+  if (idx < 0) return null;
+  const target = logs[idx];
+  const scheduled = target.status === 'scheduled' || !!target.isScheduled;
+  if (!scheduled || target.status === 'published') return null;
+  const entry = {
+    ...target,
+    ...log,
+    id,
+    log_id: id,
+    status: 'scheduled',
+    isScheduled: true,
+    updateTime: Date.now()
+  };
+  logs[idx] = entry;
+  _set(STORAGE_KEYS.DEMO_DAILY_LOGS, dedupeDailyLogs(logs));
+  return entry;
+}
+
+function deleteDemoDailyLog(logId) {
+  const id = String(logId || '').trim();
+  if (!id) return false;
+  const logs = getDemoDailyLogs();
+  const next = logs.filter((item) => {
+    const itemId = item.id || item.log_id;
+    if (itemId !== id) return true;
+    const scheduled = item.status === 'scheduled' || !!item.isScheduled;
+    return !scheduled;
+  });
+  if (next.length === logs.length) return false;
+  _set(STORAGE_KEYS.DEMO_DAILY_LOGS, dedupeDailyLogs(next));
+  return true;
+}
+
 function saveDemoContract(contract) {
   const contracts = getDemoContracts();
   const entry = {
@@ -450,6 +489,8 @@ module.exports = {
   saveDemoShop,
   updateDemoOrder,
   saveDemoDailyLog,
+  updateDemoDailyLog,
+  deleteDemoDailyLog,
   saveDemoContract,
   getDemoApplyDraft,
   saveDemoApplyDraft,

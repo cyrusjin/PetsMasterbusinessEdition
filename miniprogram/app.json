@@ -4,23 +4,49 @@
     "pages/merchant/tab-statistics/tab-statistics",
     "pages/merchant/tab-store/tab-store",
     "pages/share/store-landing/store-landing",
-    "pages/merchant/apply/apply",
-    "pages/merchant/coop-contract/coop-contract",
-    "pages/merchant/boarding-contract/boarding-contract",
-    "pages/admin/merchant-auth/merchant-auth",
-    "pages/merchant/orders/orders",
-    "pages/merchant/order-detail/order-detail",
-    "pages/merchant/order-price/order-price",
-    "pages/merchant/contract/contract",
-    "pages/merchant/contract-edit/contract-edit",
-    "pages/merchant/daily-check/daily-check",
-    "pages/merchant/daily-logs/daily-logs",
-    "pages/merchant/chat/chat",
-    "pages/merchant/pickup-manage/pickup-manage",
-    "pages/merchant/statistics/statistics",
-    "pages/merchant/staff-manage/staff-manage",
-    "pages/merchant/settings/settings"
+    "pages/merchant/apply/apply"
   ],
+  "subPackages": [
+    {
+      "root": "packageBiz",
+      "name": "packageBiz",
+      "pages": [
+        "orders/orders",
+        "order-detail/order-detail",
+        "order-price/order-price",
+        "daily-check/daily-check",
+        "daily-logs/daily-logs",
+        "pickup-manage/pickup-manage"
+      ]
+    },
+    {
+      "root": "packageContract",
+      "name": "packageContract",
+      "pages": [
+        "boarding-contract/boarding-contract",
+        "coop-contract/coop-contract",
+        "contract/contract",
+        "contract-edit/contract-edit"
+      ]
+    },
+    {
+      "root": "packageExtra",
+      "name": "packageExtra",
+      "pages": [
+        "chat/chat",
+        "settings/settings",
+        "staff-manage/staff-manage",
+        "statistics/statistics",
+        "merchant-auth/merchant-auth"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/merchant/tab-daily/tab-daily": {
+      "network": "all",
+      "packages": ["packageBiz"]
+    }
+  },
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#FFF4E7",
@@ -58,8 +84,6 @@
     ]
   },
   "usingComponents": {
-    "calendar": "/components/calendar/calendar",
-    "sign-pad": "/components/sign-pad/sign-pad",
     "cached-image": "/components/cached-image/cached-image",
     "hidden-admin-entry": "/components/hidden-admin-entry/hidden-admin-entry"
   },

@@ -41,13 +41,13 @@ Page({
   },
 
   onGoOrders() {
-    wx.navigateTo({ url: '/pages/merchant/orders/orders' });
+    wx.navigateTo({ url: '/packageBiz/orders/orders' });
   },
 
   onGoOrderDetail(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/merchant/order-detail/order-detail?id=${id}` });
+    wx.navigateTo({ url: `/packageBiz/order-detail/order-detail?id=${id}` });
   },
 
   onAdminSecretTap() {

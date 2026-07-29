@@ -36,12 +36,17 @@ function isMerchantStaff(user) {
   return (user.merchantRole || '').toLowerCase() === 'staff';
 }
 
-/** 商家端绑定的店铺 ID（owner / staff） */
+/** 商家端绑定的店铺 ID（owner / staff / 待审 / 已拒绝） */
 function getMerchantStoreId(user) {
   if (!user) return '';
   const explicit = (user.merchantStoreId || '').trim();
   if (explicit) return explicit;
-  if (isMerchantApproved(user) || isMerchantPending(user) || isMerchantDisabled(user)) {
+  if (
+    isMerchantApproved(user)
+    || isMerchantPending(user)
+    || isMerchantRejected(user)
+    || isMerchantDisabled(user)
+  ) {
     return (user.store_id || '').trim();
   }
   return '';

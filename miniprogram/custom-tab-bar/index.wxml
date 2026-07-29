@@ -1,4 +1,4 @@
-<view class="merchant-tab-bar">
+<view class="merchant-tab-bar" wx:if="{{!hidden}}">
   <view
     class="tab-item {{selected === 0 ? 'active' : ''}}"
     data-path="/pages/merchant/tab-daily/tab-daily"

@@ -1,6 +1,11 @@
 const { uploadFileToServer } = require('./upload');
 
-const MAX_STORE_PHOTOS = 6;
+const MAX_STORE_PHOTOS = 5;
+const MAX_INTRO_PHOTOS = 5;
+const MAX_NOTICE_PHOTOS = 5;
+/** 微信 textarea 默认 140，提高一倍 */
+const MAX_INTRO_TEXT = 280;
+const MAX_NOTICE_TEXT = 280;
 
 function isCloudFileId(url) {
   return typeof url === 'string' && (
@@ -27,26 +32,57 @@ function isRemotePhoto(url) {
   return url.startsWith('cloud://') || url.startsWith('https://') || url.startsWith('http://');
 }
 
-function normalizeStorePhotos(photos) {
+function normalizePhotoList(photos, maxCount) {
+  const max = Number.isInteger(maxCount) && maxCount > 0 ? maxCount : MAX_STORE_PHOTOS;
   if (!Array.isArray(photos)) return [];
   return photos
     .filter((item) => typeof item === 'string' && item)
     .filter((item) => isCloudFileId(item) || isLocalTempPath(item) || isRemotePhoto(item))
-    .slice(0, MAX_STORE_PHOTOS);
+    .slice(0, max);
 }
 
-function uploadStorePhotos(photos, fallbackPhotos) {
-  const list = normalizeStorePhotos(photos);
+function normalizeStorePhotos(photos) {
+  return normalizePhotoList(photos, MAX_STORE_PHOTOS);
+}
+
+function normalizeIntroPhotos(photos) {
+  return normalizePhotoList(photos, MAX_INTRO_PHOTOS);
+}
+
+function normalizeNoticePhotos(photos) {
+  return normalizePhotoList(photos, MAX_NOTICE_PHOTOS);
+}
+
+function reorderPhotoList(photos, fromIndex, toIndex, maxCount) {
+  const list = normalizePhotoList(photos, maxCount);
+  const from = Number(fromIndex);
+  const to = Number(toIndex);
+  if (!Number.isInteger(from) || !Number.isInteger(to)) return list;
+  if (from < 0 || to < 0 || from >= list.length || to >= list.length || from === to) {
+    return list;
+  }
+  const next = list.slice();
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function reorderStorePhotos(photos, fromIndex, toIndex) {
+  return reorderPhotoList(photos, fromIndex, toIndex, MAX_STORE_PHOTOS);
+}
+
+function uploadPhotoList(photos, fallbackPhotos, folder, maxCount) {
+  const list = normalizePhotoList(photos, maxCount);
   if (!list.length) return Promise.resolve([]);
 
-  const fallback = normalizeStorePhotos(fallbackPhotos || []);
+  const fallback = normalizePhotoList(fallbackPhotos || [], maxCount);
 
   const tasks = list.map((photo, index) => {
     if (isRemotePhoto(photo) && !isLocalTempPath(photo)) return Promise.resolve(photo);
 
     if (isLocalTempPath(photo)) {
       const ext = (photo.split('.').pop() || 'jpg').split('?')[0];
-      return uploadFileToServer(photo, 'store-photos', ext).then((url) => {
+      return uploadFileToServer(photo, folder, ext).then((url) => {
         if (!isRemotePhoto(url)) {
           return Promise.reject(new Error('图片上传失败'));
         }
@@ -68,6 +104,18 @@ function uploadStorePhotos(photos, fallbackPhotos) {
   });
 }
 
+function uploadStorePhotos(photos, fallbackPhotos) {
+  return uploadPhotoList(photos, fallbackPhotos, 'store-photos', MAX_STORE_PHOTOS);
+}
+
+function uploadIntroPhotos(photos, fallbackPhotos) {
+  return uploadPhotoList(photos, fallbackPhotos, 'intro-photos', MAX_INTRO_PHOTOS);
+}
+
+function uploadNoticePhotos(photos, fallbackPhotos) {
+  return uploadPhotoList(photos, fallbackPhotos, 'notice-photos', MAX_NOTICE_PHOTOS);
+}
+
 function uploadStoreLogo(logo, fallbackLogo) {
   if (!logo) return Promise.resolve(logo || '');
   if (isRemotePhoto(logo) && !isLocalTempPath(logo)) return Promise.resolve(logo);
@@ -84,12 +132,51 @@ function uploadStoreLogo(logo, fallbackLogo) {
   return Promise.resolve(logo);
 }
 
+function normalizeBusinessLicense(url) {
+  if (!url || typeof url !== 'string') return '';
+  const text = url.trim();
+  if (!text) return '';
+  if (isCloudFileId(text) || isLocalTempPath(text) || isRemotePhoto(text)) return text;
+  return '';
+}
+
+function uploadBusinessLicense(license, fallbackLicense) {
+  const next = normalizeBusinessLicense(license);
+  if (!next) return Promise.resolve('');
+  if (isRemotePhoto(next) && !isLocalTempPath(next)) return Promise.resolve(next);
+  if (isLocalTempPath(next)) {
+    const ext = (next.split('.').pop() || 'jpg').split('?')[0];
+    return uploadFileToServer(next, 'store-licenses', ext).then((url) => {
+      if (!isRemotePhoto(url)) {
+        return Promise.reject(new Error('营业执照上传失败，请重试'));
+      }
+      return url;
+    });
+  }
+  const fallback = normalizeBusinessLicense(fallbackLicense);
+  if (isRemotePhoto(fallback)) return Promise.resolve(fallback);
+  return Promise.resolve('');
+}
+
 module.exports = {
   MAX_STORE_PHOTOS,
+  MAX_INTRO_PHOTOS,
+  MAX_NOTICE_PHOTOS,
+  MAX_INTRO_TEXT,
+  MAX_NOTICE_TEXT,
   isCloudFileId,
   isLocalTempPath,
   isRemotePhoto,
+  normalizePhotoList,
   normalizeStorePhotos,
+  normalizeIntroPhotos,
+  normalizeNoticePhotos,
+  reorderPhotoList,
+  reorderStorePhotos,
   uploadStorePhotos,
-  uploadStoreLogo
+  uploadIntroPhotos,
+  uploadNoticePhotos,
+  uploadStoreLogo,
+  normalizeBusinessLicense,
+  uploadBusinessLicense
 };

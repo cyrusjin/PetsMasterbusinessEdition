@@ -94,7 +94,7 @@ Page({
     const current = normalizeStorePhotos(this.data.storePhotos);
     const remain = MAX_STORE_PHOTOS - current.length;
     if (remain <= 0) {
-      wx.showToast({ title: '最多上传6张', icon: 'none' });
+      wx.showToast({ title: `最多上传${MAX_STORE_PHOTOS}张`, icon: 'none' });
       return;
     }
     wx.chooseMedia({

@@ -1,7 +1,7 @@
 const app = getApp();
+const auth = require('../../../utils/auth');
 const { resolveImageUrl } = require('../../../utils/imageCache');
-
-const WELCOME_HOLD_MS = 500;
+const { OA_USERNAME, DEFAULT_OA_QRCODE } = require('../../../utils/officialAccount');
 
 Page({
   data: {
@@ -11,9 +11,10 @@ Page({
     storeAddress: '',
     welcomeText: '',
     phase: 'loading',
-    jumping: false,
-    jumpFailed: false,
     loadError: '',
+    oaQrcodeUrl: DEFAULT_OA_QRCODE,
+    intentRegistered: false,
+    intentError: '',
     perks: [
       {
         icon: '/images/card/card-pets.png',
@@ -43,32 +44,42 @@ Page({
       });
       return;
     }
-    // 跳转与拉店并行：不必等店铺接口返回再开始计时
-    this._scheduleJump(storeId);
-    this._loadStore(storeId);
+    this._bootstrap(storeId);
   },
 
-  onUnload() {
-    if (this._jumpTimer) {
-      clearTimeout(this._jumpTimer);
-      this._jumpTimer = null;
-    }
-  },
-
-  _loadStore(storeId) {
+  _bootstrap(storeId) {
     app.ensureCloudAndLogin({ silent: true })
+      .then(() => this._applyOaQrcode())
       .then(() => app.bindStore(storeId, { syncUser: false, force: true }))
       .then((store) => this._applyStoreView(store))
-      .then(() => {
-        this.setData({ phase: 'ready' });
+      .then(() => auth.registerVisitStoreIntent(storeId))
+      .then((res) => {
+        this.setData({
+          intentRegistered: !!(res && res.success),
+          intentError: (res && !res.success && res.errMsg) || ''
+        });
       })
       .catch(() => {
-        this.setData({
-          phase: 'ready',
-          storeName: '宠物寄养店',
-          welcomeText: '欢迎加入我们的宠物大家庭，一起守护毛孩子的每一天'
-        });
+        this.setData({ intentError: '登记邀请失败，请稍后重试' });
+      })
+      .finally(() => {
+        this.setData({ phase: 'ready' });
       });
+  },
+
+  _applyOaQrcode() {
+    const user = (app.globalData && app.globalData.userInfo) || {};
+    const url = (user.oaQrcodeUrl || '').trim();
+    if (!url) {
+      return Promise.resolve();
+    }
+    return resolveImageUrl(url)
+      .then((resolved) => {
+        if (resolved) {
+          this.setData({ oaQrcodeUrl: resolved });
+        }
+      })
+      .catch(() => {});
   },
 
   _applyStoreView(store) {
@@ -108,33 +119,19 @@ Page({
       });
   },
 
-  _scheduleJump(storeId) {
-    if (this._jumpTimer) clearTimeout(this._jumpTimer);
-    this._jumpTimer = setTimeout(() => {
-      this._jumpTimer = null;
-      this._jumpToUserApp(storeId);
-    }, WELCOME_HOLD_MS);
-  },
-
-  _jumpToUserApp(storeId) {
-    if (!storeId) return;
-    this.setData({ jumping: true, jumpFailed: false });
-    app.enterUserStore(storeId).then((result) => {
-      if (result && result.errMsg) {
-        this.setData({ jumping: false, jumpFailed: true });
-        return;
-      }
-      this.setData({ jumping: false });
+  onOpenOfficialAccount() {
+    if (!wx.openOfficialAccountProfile) {
+      wx.showToast({ title: '请长按识别二维码关注', icon: 'none' });
+      return;
+    }
+    wx.openOfficialAccountProfile({
+      username: OA_USERNAME,
+      fail: () => wx.showToast({ title: '请长按识别二维码关注', icon: 'none' })
     });
   },
 
-  onContinue() {
-    const { storeId, jumping } = this.data;
-    if (!storeId || jumping) return;
-    if (this._jumpTimer) {
-      clearTimeout(this._jumpTimer);
-      this._jumpTimer = null;
-    }
-    this._jumpToUserApp(storeId);
+  onPreviewOaQrcode() {
+    const url = this.data.oaQrcodeUrl || DEFAULT_OA_QRCODE;
+    wx.previewImage({ urls: [url], current: url });
   }
 });

@@ -1,0 +1,119 @@
+<view class="container">
+  <view class="card">
+    <view class="card-title-row">
+      <text class="card-title">{{editMode ? '打卡宠物' : '选择宠物（可多选）'}}</text>
+      <text wx:if="{{!editMode}}" class="select-all-btn" bindtap="onSelectAll">{{selectedCount === orderOptions.length && orderOptions.length ? '取消全选' : '全选'}}</text>
+    </view>
+    <view wx:if="{{orderOptions.length > 0}}" class="pet-select-list">
+      <view
+        class="pet-select-item {{item.selected ? 'selected' : ''}}"
+        wx:for="{{orderOptions}}"
+        wx:key="id"
+        bindtap="onToggleOrder"
+        data-id="{{item.id}}"
+      >
+        <view class="pet-select-check">{{item.selected ? '✓' : ''}}</view>
+        <view class="pet-select-info">
+          <view class="pet-select-name-row">
+            <text class="pet-select-name">{{item.petName}}</text>
+            <text class="pet-select-meta">{{item.petGender}} · {{item.petBreed}}</text>
+          </view>
+          <text class="text-gray pet-select-date">{{item.startDate}} ~ {{item.endDate}} · 今日打卡 {{item.todayCheckCount}} 次</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-hint">暂无寄养中的宠物</view>
+  </view>
+
+  <view wx:if="{{selectedCount > 0}}">
+    <view class="card">
+      <view class="card-title">打卡项目</view>
+      <view class="check-grid">
+        <view class="check-item {{item.checked ? 'checked' : ''}}" wx:for="{{checkItems}}" wx:key="key" bindtap="onToggleCheck" data-key="{{item.key}}">
+          <text class="check-icon">{{item.icon}}</text>
+          <text>{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="card">
+      <view class="card-title">状态描述<text class="optional-tag">选填</text></view>
+      <view class="quick-phrase-row">
+        <view
+          class="quick-phrase-chip {{item.selected ? 'selected' : ''}} {{item.custom ? 'custom' : ''}}"
+          wx:for="{{quickPhrases}}"
+          wx:key="text"
+          bindtap="onQuickPhrase"
+          data-phrase="{{item.text}}"
+        >
+          <text class="quick-phrase-text">{{item.text}}</text>
+          <text
+            class="quick-phrase-remove"
+            catchtap="onRemoveQuickPhrase"
+            data-phrase="{{item.text}}"
+          >×</text>
+        </view>
+        <view class="quick-phrase-chip add-chip" bindtap="onAddQuickPhrase">+ 自定义</view>
+      </view>
+      <textarea class="form-textarea" placeholder="可点选快捷用语，也可自行补充描述" value="{{desc}}" bindinput="onDesc" />
+    </view>
+    <view class="card">
+      <view class="card-title">上传照片/视频</view>
+      <view class="upload-grid">
+        <view class="upload-preview-wrap" wx:for="{{mediaList}}" wx:key="id">
+          <image
+            wx:if="{{item.type === 'image'}}"
+            src="{{item.thumb || item.path}}"
+            class="upload-preview"
+            mode="aspectFill"
+          />
+          <view wx:else class="upload-preview video-thumb-wrap {{item.thumb ? 'has-cover' : ''}}">
+            <image wx:if="{{item.thumb}}" src="{{item.thumb}}" class="upload-preview" mode="aspectFill" />
+            <view class="video-play-badge">▶</view>
+          </view>
+          <view class="upload-remove" catchtap="onRemoveMedia" data-id="{{item.id}}">×</view>
+        </view>
+        <view class="upload-btn" wx:if="{{canAddMedia}}" bindtap="onChooseMedia"><text>+</text></view>
+      </view>
+    </view>
+    <view class="submit-actions">
+      <button
+        wx:if="{{!editMode}}"
+        class="btn-outline schedule-btn"
+        bindtap="onScheduleTap"
+        disabled="{{submitting}}"
+      >定时打卡</button>
+      <button
+        class="btn-primary submit-btn"
+        bindtap="onSubmit"
+        loading="{{submitting}}"
+        disabled="{{submitting}}"
+      >
+        {{editMode ? '保存修改' : ('提交打卡' + (selectedCount > 1 ? '（' + selectedCount + '只）' : ''))}}
+      </button>
+    </view>
+  </view>
+  <view style="height:40rpx;"></view>
+</view>
+
+<view class="schedule-mask" wx:if="{{showSchedulePicker}}" catchtap="onCloseSchedulePicker">
+  <view class="schedule-panel" catchtap="onSchedulePanelTap">
+    <view class="schedule-panel-title">选择发送时间</view>
+    <text class="schedule-panel-hint">到点后将由服务器自动向宠主发送本次打卡</text>
+    <view class="schedule-field">
+      <text class="schedule-label">日期</text>
+      <picker mode="date" start="{{minScheduleDate}}" value="{{scheduleDate}}" bindchange="onScheduleDateChange">
+        <view class="schedule-picker-value">{{scheduleDate || '请选择日期'}}</view>
+      </picker>
+    </view>
+    <view class="schedule-field">
+      <text class="schedule-label">时间</text>
+      <picker mode="time" value="{{scheduleTime}}" bindchange="onScheduleTimeChange">
+        <view class="schedule-picker-value">{{scheduleTime || '请选择时间'}}</view>
+      </picker>
+    </view>
+    <view class="schedule-panel-actions">
+      <button class="btn-outline schedule-cancel-btn" bindtap="onCloseSchedulePicker">取消</button>
+      <button class="btn-primary schedule-confirm-btn" bindtap="onConfirmSchedule" loading="{{submitting}}" disabled="{{submitting}}">{{editMode ? '确认保存' : '确认定时'}}</button>
+    </view>
+  </view>
+</view>

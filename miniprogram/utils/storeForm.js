@@ -1,6 +1,12 @@
 const { normalizeBusinessHours } = require('./businessHours');
 const { normalizeReceptionRange } = require('./receptionRange');
-const { normalizeStorePhotos, isRemotePhoto } = require('./storePhotos');
+const {
+  normalizeStorePhotos,
+  normalizeIntroPhotos,
+  normalizeNoticePhotos,
+  MAX_INTRO_TEXT,
+  MAX_NOTICE_TEXT
+} = require('./storePhotos');
 const { normalizeDepartureCharge } = require('./billing');
 const { isVagueAddress } = require('./location');
 const { validateWeightPricing } = require('./weightPricing');
@@ -46,6 +52,8 @@ function validateStoreForm(payload) {
   const businessHours = normalizeBusinessHours(payload.businessHours || shop.businessHours, shop.hours);
   const receptionRange = normalizeReceptionRange(payload.receptionRange || shop.receptionRange || shop.range);
   const storePhotos = normalizeStorePhotos(payload.storePhotos || shop.storePhotos);
+  const introPhotos = normalizeIntroPhotos(payload.introPhotos || shop.introPhotos);
+  const noticePhotos = normalizeNoticePhotos(payload.noticePhotos || shop.noticePhotos);
   const billingRules = {
     ...payload.billingRules,
     departureCharge: normalizeDepartureCharge(
@@ -69,7 +77,9 @@ function validateStoreForm(payload) {
   if (!businessHours.weekdays || !businessHours.weekdays.length) return '请选择营业时间（周几）';
   if (!businessHours.openTime || !businessHours.closeTime) return '请设置营业起止时间';
 
-  if (!(shop.intro || '').trim()) return '请填写店铺介绍';
+  const intro = (shop.intro || '').trim();
+  if (intro.length > MAX_INTRO_TEXT) return `店铺介绍不超过${MAX_INTRO_TEXT}字`;
+  if (!intro && !introPhotos.length) return '请填写店铺介绍或上传介绍图片';
   if (!receptionRange.length) return '请选择接待范围';
   if (!storePhotos.length) return '请至少上传1张店铺照片';
 
@@ -84,7 +94,9 @@ function validateStoreForm(payload) {
     if (pickupPricingError) return pickupPricingError;
   }
 
-  if (!(shop.notice || '').trim()) return '请填写寄养须知';
+  const notice = (shop.notice || '').trim();
+  if (notice.length > MAX_NOTICE_TEXT) return `寄养须知不超过${MAX_NOTICE_TEXT}字`;
+  if (!notice && !noticePhotos.length) return '请填写寄养须知或上传须知图片';
 
   return '';
 }
@@ -94,5 +106,7 @@ module.exports = {
   normalizeDeposit,
   hasValidLogo,
   validateStoreForm,
-  validateBillingRules
+  validateBillingRules,
+  MAX_INTRO_TEXT,
+  MAX_NOTICE_TEXT
 };

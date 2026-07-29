@@ -16,6 +16,12 @@ const MERGE_TEXT_FIELDS = [
   'boardingContractClauseText'
 ];
 
+const MERGE_PHOTO_LIST_FIELDS = [
+  'storePhotos',
+  'introPhotos',
+  'noticePhotos'
+];
+
 function hasOwn(shop, key) {
   return shop && Object.prototype.hasOwnProperty.call(shop, key);
 }
@@ -24,8 +30,23 @@ function hasReceptionRange(shop) {
   return normalizeReceptionRange(shop && (shop.receptionRange || shop.range)).length > 0;
 }
 
-function hasStorePhotos(shop) {
-  return Array.isArray(shop && shop.storePhotos) && shop.storePhotos.length > 0;
+function hasPhotoList(shop, key) {
+  return Array.isArray(shop && shop[key]) && shop[key].length > 0;
+}
+
+function mergePhotoListField(merged, local, remote, key) {
+  if (!hasPhotoList(remote, key) && hasPhotoList(local, key)) {
+    merged[key] = local[key];
+    return;
+  }
+  if (Array.isArray(remote[key]) && Array.isArray(local[key])) {
+    merged[key] = remote[key].map((url, index) => {
+      if (isCloudFileId(local[key][index]) && !isCloudFileId(url)) {
+        return local[key][index];
+      }
+      return url;
+    });
+  }
 }
 
 function hasBillingRules(shop) {
@@ -66,16 +87,9 @@ function mergeMerchantShop(local, remote) {
     merged.range = formatReceptionRangeText(merged.receptionRange);
   }
 
-  if (!hasStorePhotos(remote) && hasStorePhotos(local)) {
-    merged.storePhotos = local.storePhotos;
-  } else if (Array.isArray(remote.storePhotos) && Array.isArray(local.storePhotos)) {
-    merged.storePhotos = remote.storePhotos.map((url, index) => {
-      if (isCloudFileId(local.storePhotos[index]) && !isCloudFileId(url)) {
-        return local.storePhotos[index];
-      }
-      return url;
-    });
-  }
+  MERGE_PHOTO_LIST_FIELDS.forEach((key) => {
+    mergePhotoListField(merged, local, remote, key);
+  });
 
   if (isCloudFileId(local.logo) && remote.logo && !isCloudFileId(remote.logo)) {
     merged.logo = local.logo;

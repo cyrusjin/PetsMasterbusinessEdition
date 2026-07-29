@@ -24,6 +24,13 @@
 .disabled-banner .demo-banner-text {
   color: #616161;
 }
+.rejected-banner {
+  background: #FFF5F5;
+  border-color: #FFCDD2;
+}
+.rejected-banner .demo-banner-text {
+  color: #E53935;
+}
 
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; width: 100%; box-sizing: border-box; }
 .share-actions-grid {

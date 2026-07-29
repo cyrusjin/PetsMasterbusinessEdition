@@ -31,7 +31,7 @@
       </view>
       <view class="form-group">
         <text class="form-label">店铺照片</text>
-        <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张</text>
+        <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张，这些照片会展示给用户。长按可拖拽调整顺序</text>
         <view class="store-photos-grid">
           <view class="store-photo-item" wx:for="{{storePhotos}}" wx:key="*this">
             <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewStorePhoto" data-url="{{item}}" />

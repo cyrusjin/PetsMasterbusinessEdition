@@ -44,6 +44,8 @@ function buildUserStoreView(store) {
 
   const receptionRange = normalizeReceptionRange(normalized.receptionRange || normalized.range);
   const storePhotos = Array.isArray(normalized.storePhotos) ? normalized.storePhotos.filter(Boolean) : [];
+  const introPhotos = Array.isArray(normalized.introPhotos) ? normalized.introPhotos.filter(Boolean) : [];
+  const noticePhotos = Array.isArray(normalized.noticePhotos) ? normalized.noticePhotos.filter(Boolean) : [];
   const address = formatLocationAddress({
     name: normalized.locationName,
     address: normalized.addressRegion || normalized.address
@@ -59,11 +61,17 @@ function buildUserStoreView(store) {
     receptionRange,
     receptionRangeText: formatReceptionRangeText(receptionRange) || normalized.range || '',
     storePhotos,
+    introPhotos,
+    notice: (normalized.notice || '').trim(),
+    noticePhotos,
     hasPickup: normalized.pickupService === 'yes',
     pickupNotice: (normalized.pickupNotice || '').trim(),
     pickupPricingMode: normalized.pickupPricingMode === 'distance' ? 'distance' : 'flat',
     pickupFlatPrice: normalized.pickupFlatPrice != null ? normalized.pickupFlatPrice : '',
     pickupPricePerKm: normalized.pickupPricePerKm != null ? normalized.pickupPricePerKm : '',
+    pickupFreeMinDays: normalized.pickupFreeMinDays != null && normalized.pickupFreeMinDays !== ''
+      ? normalized.pickupFreeMinDays
+      : '',
     isOpen: isStoreOpenForUsers(normalized.status),
     deposit: normalized.deposit != null ? normalized.deposit : 0,
     depositText: `${normalized.deposit != null ? normalized.deposit : 0}元`
@@ -92,7 +100,10 @@ function prepareUserStoreView(store) {
   const view = buildUserStoreView(store);
   if (!view) return Promise.resolve(null);
   const hasHttpsMedia = (url) => typeof url === 'string' && url.startsWith('https://');
-  const photosOk = !(view.storePhotos || []).some((url) => isCloudFileId(url));
+  const listHasCloud = (list) => (list || []).some((url) => isCloudFileId(url));
+  const photosOk = !listHasCloud(view.storePhotos)
+    && !listHasCloud(view.introPhotos)
+    && !listHasCloud(view.noticePhotos);
   const logoOk = !view.logo || hasHttpsMedia(view.logo);
   if (photosOk && logoOk) {
     return Promise.resolve(view);
