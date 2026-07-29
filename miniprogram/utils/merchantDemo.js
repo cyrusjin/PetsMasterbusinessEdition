@@ -18,13 +18,22 @@ function formatDateTime(date) {
   return `${formatDate(date)} ${h}:${min}`;
 }
 
-/** 未入驻审核通过，且非待审/已拒绝/已关闭：纯本地体验模式 */
+/** 未入驻审核通过，且非待审/已拒绝/已关闭：商家壳下的本地体验模式 */
 function isMerchantDemoMode(user) {
   if (isMerchantApproved(user)) return false;
   if (isMerchantPending(user)) return false;
   if (isMerchantRejected(user)) return false;
   if (isMerchantDisabled(user)) return false;
-  return true;
+  try {
+    const app = getApp();
+    if (!app) return false;
+    // 用户版壳：永不注入演示数据
+    if (app.isUserClientMode && app.isUserClientMode()) return false;
+    // 统一小程序默认用户端：只有进入商家工作区（role=merchant）才启用演示
+    return !!(app.globalData && app.globalData.role === 'merchant');
+  } catch (err) {
+    return false;
+  }
 }
 
 function isDemoEntityId(id) {
@@ -467,12 +476,19 @@ function onMerchantApproved(app) {
     app.globalData.merchantStoreId = '';
   }
   app._ordersFetchedAt = 0;
+  app._userOrdersFetchedAt = 0;
+  app._merchantOrdersFetchedAt = 0;
   app._petsFetchedAt = 0;
   app._merchantStoreFetchedAt = 0;
   app._loadOrdersPromise = null;
+  app._userLoadOrdersPromise = null;
+  app._merchantLoadOrdersPromise = null;
   app._loadPetsPromise = null;
   app._merchantStorePromise = null;
   app._loadDailyLogsPromise = null;
+  if (typeof app._resetOrdersFetchState === 'function') {
+    app._resetOrdersFetchState();
+  }
 }
 
 module.exports = {

@@ -28,12 +28,20 @@ function bindUserStore(storeId) {
   return callUserAuth('bindUserStore', { store_id: storeId });
 }
 
+function unbindUserStore() {
+  return callUserAuth('unbindUserStore');
+}
+
 function registerVisitStoreIntent(storeId) {
   return callUserAuth('registerVisitStoreIntent', { store_id: storeId });
 }
 
 function setMerchantProfile(storeId) {
   return callUserAuth('setMerchantProfile', { store_id: storeId || '' });
+}
+
+function createOaBindQr() {
+  return callUserAuth('createOaBindQr');
 }
 
 function ping() {
@@ -47,7 +55,9 @@ module.exports = {
   bindPhone,
   dedupeMyUser,
   bindUserStore,
+  unbindUserStore,
   registerVisitStoreIntent,
   setMerchantProfile,
+  createOaBindQr,
   ping
 };

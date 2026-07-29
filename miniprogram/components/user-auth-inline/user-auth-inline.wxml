@@ -1,0 +1,24 @@
+<view class="auth-inline card">
+  <view class="auth-inline-title">完善联系信息</view>
+  <text class="auth-inline-tip">预约与签署协议需使用微信昵称和手机号，请通过下方微信原生组件完成授权。</text>
+  <view class="form-group">
+    <text class="form-label">微信昵称</text>
+    <input
+      class="form-input auth-nickname-input"
+      type="nickname"
+      placeholder="点击选择微信昵称"
+      value="{{nickName}}"
+      bindinput="onNickNameInput"
+      bindblur="onNickNameInput"
+    />
+  </view>
+  <view class="form-group auth-phone-group">
+    <text class="form-label">手机号</text>
+    <button
+      class="auth-phone-btn"
+      open-type="getPhoneNumber"
+      bindgetphonenumber="onGetPhoneNumber"
+    >{{phone ? '已授权：' + phone : '微信授权手机号'}}</button>
+  </view>
+  <button class="btn-primary auth-save-btn" bindtap="onSave" loading="{{saving}}" disabled="{{saving}}">保存</button>
+</view>

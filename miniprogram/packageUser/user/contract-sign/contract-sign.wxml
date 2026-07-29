@@ -1,0 +1,12 @@
+<view class="container">
+  <view class="card">
+    <view class="card-title">协议条款</view>
+    <scroll-view scroll-y style="max-height:400rpx;background:#f8f8f8;border-radius:12rpx;padding:20rpx;font-size:26rpx;line-height:1.8;">
+      <text>宠物寄养电子协议\n\n甲方（宠主）：{{userName}}\n联系电话：{{userPhone}}\n身份证号：{{userIdCard}}\n乙方（商家）：宠物寄养服务中心\n\n一、寄养宠物信息\n宠物名称：{{contract.petName}}\n宠物类型：{{contract.petType}}\n\n二、寄养服务\n服务类型：{{contract.serviceType}}\n寄养时间：{{contract.startDate}} 至 {{contract.endDate}}\n费用合计：¥{{contract.totalFee}}\n\n三、双方权责\n1. 甲方须提供真实宠物信息及健康证明\n2. 乙方须提供安全、卫生的寄养环境\n3. 乙方每日向甲方同步宠物状态\n\n四、免责条款\n1. 因不可抗力导致宠物受伤或死亡，双方协商解决\n2. 宠物自身疾病导致的后果由甲方承担\n\n五、退改规则\n1. 提前24小时可免费取消\n2. 寄养期间提前接回按实际天数结算\n\n六、违约条款\n任何一方违约需赔偿对方实际损失\n\n本协议一式两份，双方各执一份，具有同等法律效力。</text>
+    </scroll-view>
+  </view>
+  <view class="card">
+    <view class="card-title">手写签名</view>
+    <sign-pad bind:confirm="onSignConfirm" />
+  </view>
+</view>

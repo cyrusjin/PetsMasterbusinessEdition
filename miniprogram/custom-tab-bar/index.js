@@ -1,23 +1,35 @@
 Component({
   data: {
     selected: 0,
-    isDemoMode: false,
-    hidden: false
+    list: [
+      {
+        pagePath: '/pages/index/index',
+        text: '首页',
+        iconPath: '/images/tab/tab-home.png',
+        selectedIconPath: '/images/tab/tab-home-active.png'
+      },
+      {
+        pagePath: '/pages/orders/orders',
+        text: '订单',
+        iconPath: '/images/tab/tab-order.png',
+        selectedIconPath: '/images/tab/tab-order-active.png'
+      },
+      {
+        pagePath: '/pages/daily/daily',
+        text: '动态',
+        iconPath: '/images/tab/tab-daily.png',
+        selectedIconPath: '/images/tab/tab-daily-active.png'
+      }
+    ]
   },
 
   methods: {
-    onSwitchTab(e) {
-      const { path, index } = e.currentTarget.dataset;
-      if (typeof index === 'number' && index === this.data.selected) return;
-      wx.switchTab({ url: path });
-    },
-
-    onAdminSecretTap() {
-      const pages = getCurrentPages();
-      const page = pages[pages.length - 1];
-      if (page && typeof page.onAdminSecretTap === 'function') {
-        page.onAdminSecretTap();
-      }
+    switchTab(e) {
+      const index = Number(e.currentTarget.dataset.index);
+      const item = this.data.list[index];
+      if (!item) return;
+      wx.switchTab({ url: item.pagePath });
+      this.setData({ selected: index });
     }
   }
 });

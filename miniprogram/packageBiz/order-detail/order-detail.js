@@ -1,14 +1,14 @@
 const app = getApp();
 const { normalizeOrderFees } = require('../../utils/orderFees');
 const { buildPetDetailView } = require('../../utils/petSnapshot');
-const { formatOrderStatus } = require('../../utils/orderDetailView');
-const { formatPickupLegs } = require('../../utils/pickupInfo');
+const { formatOrderStatus } = require('../utils/orderDetailView');
+const { formatPickupLegs } = require('../utils/pickupInfo');
 const { formatPickupProgress } = require('../../utils/pickupManage');
-const { loadOrderFeeDetail, buildOrderFeeDetail } = require('../../utils/orderFeeDetail');
-const { exportAndShareOrderDetail } = require('../../utils/orderDetailExport');
+const { loadOrderFeeDetail, buildOrderFeeDetail } = require('../utils/orderFeeDetail');
+const { exportAndShareOrderDetail } = require('../utils/orderDetailExport');
 const { resolveImageUrl } = require('../../utils/imageCache');
 const { refreshSingleOrder } = require('../../utils/orderRefresh');
-const { canMerchantModifyOrder } = require('../../utils/orderActions');
+const { canMerchantModifyOrder } = require('../utils/orderActions');
 const { attachOrderDisplayNo } = require('../../utils/displayNo');
 const { formatOrderCreateTime } = require('../../utils/util');
 

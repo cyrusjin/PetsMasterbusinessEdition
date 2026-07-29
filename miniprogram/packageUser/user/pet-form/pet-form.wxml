@@ -1,0 +1,125 @@
+<view class="page-root">
+<view class="container">
+  <view class="card">
+    <view class="card-title">基础信息</view>
+    <view class="form-group">
+      <text class="form-label">宠物照片</text>
+      <view class="upload-row">
+        <cached-image wx:if="{{photo}}" src="{{photo}}" mode="aspectFill" custom-class="upload-preview" bindtap="onChoosePhoto" />
+        <view wx:else class="upload-btn" bindtap="onChoosePhoto"><text>+</text><text style="font-size:22rpx;">上传照片</text></view>
+      </view>
+    </view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>宠物名称</text><input class="form-input" placeholder="请输入宠物名称" value="{{name}}" bindinput="onField" data-field="name" /></view>
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>宠物类型</text>
+      <view class="pet-type-group">
+        <view
+          class="pet-type-item {{petType === item ? 'active' : ''}}"
+          wx:for="{{petTypes}}"
+          wx:key="*this"
+          bindtap="onSelectPetType"
+          data-value="{{item}}"
+        >{{item}}</view>
+      </view>
+    </view>
+    <view class="form-group breed-form-group">
+      <text class="form-label"><text class="required-star">*</text>品种</text>
+      <view class="breed-combobox">
+        <input
+          class="form-input"
+          placeholder="{{petType ? '输入搜索或自填品种' : '建议先选类型，再搜索品种'}}"
+          value="{{breed}}"
+          bindinput="onBreedInput"
+          bindfocus="onBreedFocus"
+          bindblur="onBreedBlur"
+          confirm-type="done"
+        />
+        <view class="breed-panel" wx:if="{{showBreedPanel}}">
+          <view
+            class="breed-option breed-option-custom"
+            wx:if="{{breedCustomHint}}"
+            catchtap="onUseCustomBreed"
+          >
+            使用自定义「{{breedCustomHint}}」
+          </view>
+          <view
+            class="breed-option"
+            wx:for="{{breedSuggestions}}"
+            wx:key="*this"
+            data-value="{{item}}"
+            catchtap="onSelectBreed"
+          >{{item}}</view>
+          <view class="breed-empty" wx:if="{{!breedSuggestions.length && !breedCustomHint && !breedExactMatch}}">
+            暂无匹配，可直接输入品种名
+          </view>
+        </view>
+      </view>
+      <text class="breed-hint">支持下拉选择与模糊搜索；没有合适项可直接填写</text>
+    </view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>性别</text><radio-group class="flex-row gap-20" bindchange="onRadio" data-field="gender"><label class="flex-row gap-16"><radio value="公" checked="{{gender==='公'}}" color="#4CAF50"/>公</label><label class="flex-row gap-16"><radio value="母" checked="{{gender==='母'}}" color="#4CAF50"/>母</label></radio-group></view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>年龄</text><view class="flex-row gap-16"><input class="form-input" type="digit" placeholder="如 1.5" value="{{age}}" bindinput="onDecimalField" data-field="age" /><text>岁</text></view></view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>体重</text><view class="flex-row gap-16"><input class="form-input" type="digit" placeholder="如 3.2" value="{{weight}}" bindinput="onDecimalField" data-field="weight" /><text>kg</text></view></view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>毛色</text><input class="form-input" placeholder="毛色" value="{{color}}" bindinput="onField" data-field="color" /></view>
+  </view>
+  <view class="card">
+    <view class="card-title">健康信息</view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>疫苗接种</text><radio-group class="flex-row gap-20" bindchange="onRadio" data-field="vaccination"><label class="flex-row gap-16"><radio value="已接种" checked="{{vaccination==='已接种'}}" color="#4CAF50"/>已接种</label><label class="flex-row gap-16"><radio value="未接种" checked="{{vaccination==='未接种'}}" color="#4CAF50"/>未接种</label></radio-group></view>
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>驱虫时间</text>
+      <view class="form-input date-picker-trigger {{dewormDate ? '' : 'is-placeholder'}}" bindtap="onOpenDewormDatePicker">
+        {{dewormDate || '请选择日期'}}
+      </view>
+    </view>
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>过敏史</text>
+      <radio-group class="flex-row gap-20" bindchange="onRadio" data-field="allergyStatus">
+        <label class="flex-row gap-16"><radio value="否" checked="{{allergyStatus==='否'}}" color="#4CAF50"/>否</label>
+        <label class="flex-row gap-16"><radio value="是" checked="{{allergyStatus==='是'}}" color="#4CAF50"/>是</label>
+      </radio-group>
+      <input wx:if="{{allergyStatus==='是'}}" class="form-input mt-16" placeholder="请填写过敏史详情" value="{{allergy}}" bindinput="onField" data-field="allergy" />
+    </view>
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>既往病史</text>
+      <radio-group class="flex-row gap-20" bindchange="onRadio" data-field="medicalHistoryStatus">
+        <label class="flex-row gap-16"><radio value="否" checked="{{medicalHistoryStatus==='否'}}" color="#4CAF50"/>否</label>
+        <label class="flex-row gap-16"><radio value="是" checked="{{medicalHistoryStatus==='是'}}" color="#4CAF50"/>是</label>
+      </radio-group>
+      <input wx:if="{{medicalHistoryStatus==='是'}}" class="form-input mt-16" placeholder="请填写既往病史详情" value="{{medicalHistory}}" bindinput="onField" data-field="medicalHistory" />
+    </view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>是否怀孕</text><radio-group class="flex-row gap-20" bindchange="onRadio" data-field="isPregnant"><label class="flex-row gap-16"><radio value="否" checked="{{isPregnant==='否'}}" color="#4CAF50"/>否</label><label class="flex-row gap-16"><radio value="是" checked="{{isPregnant==='是'}}" color="#4CAF50"/>是</label></radio-group></view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>是否发情</text><radio-group class="flex-row gap-20" bindchange="onRadio" data-field="inHeat"><label class="flex-row gap-16"><radio value="否" checked="{{inHeat==='否'}}" color="#4CAF50"/>否</label><label class="flex-row gap-16"><radio value="是" checked="{{inHeat==='是'}}" color="#4CAF50"/>是</label></radio-group></view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>是否绝育</text><radio-group class="flex-row gap-20" bindchange="onRadio" data-field="isNeutered"><label class="flex-row gap-16"><radio value="否" checked="{{isNeutered==='否'}}" color="#4CAF50"/>否</label><label class="flex-row gap-16"><radio value="是" checked="{{isNeutered==='是'}}" color="#4CAF50"/>是</label></radio-group></view>
+    <view class="form-group"><text class="form-label"><text class="required-star">*</text>是否办理犬证</text><radio-group class="flex-row gap-20" bindchange="onRadio" data-field="hasDogLicense"><label class="flex-row gap-16"><radio value="否" checked="{{hasDogLicense==='否'}}" color="#4CAF50"/>否</label><label class="flex-row gap-16"><radio value="是" checked="{{hasDogLicense==='是'}}" color="#4CAF50"/>是</label></radio-group></view>
+  </view>
+  <view class="card">
+    <view class="card-title">生活习性</view>
+    <view class="form-group"><text class="form-label">性格特点</text><input class="form-input" placeholder="性格特点" value="{{character}}" bindinput="onField" data-field="character" /></view>
+    <view class="form-group"><text class="form-label">饮食禁忌</text><input class="form-input" placeholder="饮食禁忌" value="{{dietTaboo}}" bindinput="onField" data-field="dietTaboo" /></view>
+    <view class="form-group"><text class="form-label">特殊照料需求</text><textarea class="form-textarea" placeholder="特殊照料需求" value="{{specialCare}}" bindinput="onField" data-field="specialCare" /></view>
+    <view class="form-group"><text class="form-label">备注</text><textarea class="form-textarea" placeholder="其他备注" value="{{remark}}" bindinput="onField" data-field="remark" /></view>
+  </view>
+  <button class="btn-primary" bindtap="onSave" loading="{{saving}}" disabled="{{saving}}">保存档案</button>
+  <view style="height:40rpx;"></view>
+</view>
+
+<view wx:if="{{showDewormDatePicker}}" class="date-picker-mask" bindtap="onCancelDewormDate">
+  <view class="date-picker-panel" catchtap="onDatePanelTap">
+    <view class="date-picker-header">
+      <text class="date-picker-action" bindtap="onCancelDewormDate">取消</text>
+      <text class="date-picker-title">选择驱虫时间</text>
+      <text class="date-picker-action date-picker-confirm" bindtap="onConfirmDewormDate">确定</text>
+    </view>
+    <picker-view class="date-picker-wheel" value="{{datePickerValue}}" bindchange="onDatePickerChange">
+      <picker-view-column>
+        <view class="date-picker-item" wx:for="{{dateYears}}" wx:key="*this">{{item}}年</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view class="date-picker-item" wx:for="{{dateMonths}}" wx:key="*this">{{item}}月</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view class="date-picker-item" wx:for="{{dateDays}}" wx:key="*this">{{item}}日</view>
+      </picker-view-column>
+    </picker-view>
+  </view>
+</view>
+</view>

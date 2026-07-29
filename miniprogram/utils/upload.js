@@ -1,5 +1,5 @@
 const { requestUploadSign, getToken } = require('./api');
-const { isRemotePhoto } = require('./storePhotos');
+const { isRemotePhoto } = require('./photoPath');
 
 function uploadLocalImage(localPath, folder) {
   if (!localPath || isRemotePhoto(localPath)) {

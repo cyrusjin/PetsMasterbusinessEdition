@@ -1,0 +1,32 @@
+<view class="container">
+  <view wx:if="{{pets.length > 0}}">
+    <view class="card" wx:for="{{pets}}" wx:key="id">
+      <view class="flex-between">
+        <view class="flex-row gap-20">
+          <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-photo" />
+          <view wx:else class="pet-avatar-small">{{item.name[0]}}</view>
+          <view>
+            <text class="boarding-name">{{item.name}}</text>
+            <view class="flex-row gap-16 mt-16">
+              <text class="tag tag-blue">{{item.type}}</text>
+              <text class="tag tag-green">{{item.gender}}</text>
+              <text class="tag tag-orange">{{item.age}}岁</text>
+            </view>
+          </view>
+        </view>
+        <view class="flex-row gap-16">
+          <text class="btn-sm btn-blue" bindtap="onEdit" data-id="{{item.id}}">编辑</text>
+          <text class="btn-sm btn-red" bindtap="onDelete" data-id="{{item.id}}">删除</text>
+        </view>
+      </view>
+      <view class="pet-detail-row" wx:if="{{item.vaccination}}">
+        <text class="text-gray">疫苗：</text><text class="{{item.vaccination==='已接种'?'text-green':'text-red'}}">{{item.vaccination}}</text>
+      </view>
+    </view>
+  </view>
+  <view wx:else class="empty-state">
+    <text class="empty-icon">🐾</text>
+    <text class="empty-text">暂无宠物档案</text>
+  </view>
+  <button class="btn-primary" bindtap="onAdd">添加宠物</button>
+</view>

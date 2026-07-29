@@ -26,6 +26,15 @@ Page({
   onShow() {
     hideHomeButton();
     this._syncTabBar();
+    if (app.isUserClientMode && app.isUserClientMode()) {
+      wx.switchTab({ url: '/pages/index/index' });
+      return;
+    }
+    // 未入驻通过：不展示营收 Tab，统一回入驻页
+    if (!app.isMerchantApproved()) {
+      wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
+      return;
+    }
     this._loadStats();
   },
 
@@ -54,14 +63,14 @@ Page({
     handlePageSecretTap(this);
   },
 
-  _syncTabBar() {
-    if (typeof this.getTabBar !== 'function') return;
-    const tabBar = this.getTabBar();
-    if (!tabBar) return;
-    tabBar.setData({
-      selected: 1,
-      isDemoMode: app.isMerchantDemoMode()
-    });
+  _syncTabBar() {},
+
+  onSwitchToUser() {
+    if (app.enterUserMode) {
+      app.enterUserMode();
+      return;
+    }
+    wx.switchTab({ url: '/pages/index/index' });
   },
 
   _loadStats(options = {}) {

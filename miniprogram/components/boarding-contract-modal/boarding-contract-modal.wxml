@@ -1,0 +1,72 @@
+<view class="contract-modal" wx:if="{{visible}}" catchtouchmove="preventMove">
+  <view class="contract-modal-mask" bindtap="onClose"></view>
+  <view class="contract-modal-panel">
+    <view class="contract-modal-header">
+      <text class="contract-modal-title">{{doc.title || '宠物寄养服务电子协议'}}</text>
+      <text class="contract-modal-close" bindtap="onClose">×</text>
+    </view>
+
+    <scroll-view scroll-y class="contract-modal-scroll" show-scrollbar="{{true}}">
+      <view class="contract-paper">
+        <text class="contract-doc-title">{{doc.title}}</text>
+
+        <view class="contract-parties">
+          <view class="party-block">
+          <text class="party-label">{{doc.partyA.label}}</text>
+          <text class="party-line">联系人：{{doc.partyA.nickName || doc.partyA.name}}</text>
+          <text class="party-line">联系电话：{{doc.partyA.phone}}</text>
+          </view>
+          <view class="party-block">
+            <text class="party-label">{{doc.partyB.label}}</text>
+            <text class="party-line">店铺名称：{{doc.partyB.name}}</text>
+            <text class="party-line">营业地址：{{doc.partyB.address}}</text>
+            <text class="party-line">联系电话：{{doc.partyB.phone}}</text>
+            <text class="party-line">负责人：{{doc.partyB.legalName}}</text>
+          </view>
+        </view>
+
+        <view class="contract-info-box">
+          <text class="info-box-title">寄养宠物信息</text>
+          <block wx:if="{{doc.petInfoLines && doc.petInfoLines.length}}">
+            <text class="info-line" wx:for="{{doc.petInfoLines}}" wx:key="label">{{item.label}}：{{item.value}}</text>
+          </block>
+          <block wx:else>
+            <text class="info-line">宠物名称：{{doc.petName}}</text>
+            <text class="info-line">宠物类型：{{doc.petType}}</text>
+            <text class="info-line">宠物体重：{{doc.petWeight}}</text>
+          </block>
+        </view>
+
+        <view class="contract-info-box">
+          <text class="info-box-title">寄养服务信息</text>
+          <text class="info-line">寄养时间：{{doc.startDate}} {{doc.startTime}} 至 {{doc.endDate}} {{doc.endTime}}</text>
+          <text class="info-line">寄养天数：{{doc.days}}天</text>
+          <text class="info-line" wx:if="{{doc.roomName}}">房间类型：{{doc.roomName}}</text>
+          <text class="info-line">费用合计：¥{{doc.totalFee}}</text>
+          <text class="info-line">押金：¥{{doc.deposit}}</text>
+          <text class="info-line" wx:if="{{doc.needPickup}}">接送服务：需要</text>
+          <text class="info-line" wx:if="{{doc.specialNeeds}}">特殊需求：{{doc.specialNeeds}}</text>
+        </view>
+
+        <view class="contract-section" wx:for="{{doc.sections}}" wx:key="title" wx:for-item="section">
+          <text class="section-title">{{section.title}}</text>
+          <text class="section-item" wx:for="{{section.items}}" wx:key="*this" wx:for-index="idx">{{idx + 1}}. {{item}}</text>
+        </view>
+
+        <text class="contract-footer">本协议以电子形式订立，甲方点击「我同意并提交预约」即视为同意本协议全部条款；本协议对甲乙双方均具有法律约束力。</text>
+
+        <view class="sign-stamp" wx:if="{{doc.signed}}">
+          <text class="sign-stamp-title">电子签署记录</text>
+          <text class="sign-stamp-line">签署人：{{doc.partyA.nickName || doc.partyA.name}}</text>
+          <text class="sign-stamp-line">签署时间：{{doc.signTime}}</text>
+          <text class="sign-stamp-line">签署方式：电子确认</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="contract-modal-footer" wx:if="{{signable}}">
+      <text class="sign-tip">{{submitMode ? '请仔细阅读全部条款后提交预约' : '请仔细阅读全部条款后确认签署'}}</text>
+      <button class="btn-sign" bindtap="onSign">{{submitMode ? '我同意并提交预约' : '我已阅读并同意，确认签署'}}</button>
+    </view>
+  </view>
+</view>

@@ -108,6 +108,11 @@ function mergeMerchantShop(local, remote) {
     merged.pickupService = local.pickupService;
   }
 
+  if ((remote.pickupFreeMinDays == null || remote.pickupFreeMinDays === '')
+    && local.pickupFreeMinDays != null && local.pickupFreeMinDays !== '') {
+    merged.pickupFreeMinDays = local.pickupFreeMinDays;
+  }
+
   if (remote.deposit == null && local.deposit != null) {
     merged.deposit = local.deposit;
   }

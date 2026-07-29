@@ -68,10 +68,12 @@ const {
 const { normalizeDeposit, validateStoreForm } = require('../../../utils/storeForm');
 const { normalizePickupPricing, PICKUP_PRICING_MODE, parsePickupFreeMinDays } = require('../../../utils/pickupPricing');
 const {
+  MAX_ROOM_DESCRIPTION,
   normalizeRoomPricing,
   addRoom,
   removeRoom,
-  updateRoomField
+  updateRoomField,
+  uploadRoomPricingPhotos
 } = require('../../../utils/roomPricing');
 const {
   getDefaultClauseEditText,
@@ -161,6 +163,7 @@ Page({
     maxNoticePhotos: MAX_NOTICE_PHOTOS,
     maxIntroText: MAX_INTRO_TEXT,
     maxNoticeText: MAX_NOTICE_TEXT,
+    maxRoomDescription: MAX_ROOM_DESCRIPTION,
     photoDrag: {
       active: false,
       listKey: '',
@@ -171,6 +174,7 @@ Page({
       ghostY: 0,
       ghostSize: 100
     },
+    hideMerchantTabBar: false,
     pickupFreeMode: 'none',
     showContractModal: false,
     showCoopContractModal: false,
@@ -195,6 +199,20 @@ Page({
     return isPureDemo || pending || rejected;
   },
 
+  /** 入驻 / 关闭态：隐藏商家底部 Tab，只留本页 */
+  _syncApplyShellChrome() {
+    const hideTabs = !!(
+      this.data.isDemoMode
+      || this.data.isAdminDisabled
+      || this._shouldShowApplyFlow()
+      || app.isMerchantDisabled()
+    );
+    this.setData({ hideMerchantTabBar: hideTabs });
+    if (hideTabs) {
+      wx.hideTabBar({ animation: false }).catch(() => {});
+    }
+  },
+
   _syncDisabledState(shop) {
     const isAdminDisabled = app.isMerchantDisabled();
     this.setData({
@@ -207,7 +225,7 @@ Page({
 
   _hydrateFromCache() {
     if (app.isMerchantDisabled()) {
-      this.setData({ isDemoMode: false, isAdminDisabled: true });
+      this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: true });
       const cachedShop = app.getShop();
       if (cachedShop && cachedShop.store_id) {
         app.globalData.merchantStoreId = cachedShop.store_id;
@@ -218,12 +236,18 @@ Page({
 
     const showApplyFlow = this._shouldShowApplyFlow();
     if (showApplyFlow) {
-      this.setData({ isDemoMode: true, isAdminDisabled: false });
+      this.setData({ isDemoMode: true, isAdminDisabled: false, hideMerchantTabBar: true });
       this._hydrateApplyFormFromCache();
       return;
     }
 
-    this.setData({ isDemoMode: false, isAdminDisabled: false, applyStatus: '', applyRejectReason: '' });
+    this.setData({
+      isDemoMode: false,
+      isAdminDisabled: false,
+      applyStatus: '',
+      applyRejectReason: '',
+      hideMerchantTabBar: false
+    });
     const cachedShop = app.getShop();
     if (cachedShop && cachedShop.store_id && !merchantDemo.isDemoEntityId(cachedShop.store_id)) {
       app.globalData.merchantStoreId = cachedShop.store_id;
@@ -292,7 +316,8 @@ Page({
       }
 
       if (app.isMerchantDisabled()) {
-        this.setData({ isDemoMode: false, isAdminDisabled: true });
+        this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: true });
+        this._syncApplyShellChrome();
         return app.ensureMerchantStore({ force: true }).then((shop) => {
           if (shop && shop.store_id) {
             this._syncDisabledState(shop);
@@ -305,8 +330,10 @@ Page({
       this.setData({
         isDemoMode: showApplyFlow,
         isAdminDisabled: false,
-        ...(showApplyFlow ? {} : { applyStatus: '', applyRejectReason: '' })
+        hideMerchantTabBar: showApplyFlow,
+        ...(showApplyFlow ? {} : { applyStatus: '', applyRejectReason: '', hideMerchantTabBar: false })
       });
+      this._syncApplyShellChrome();
 
       if (showApplyFlow) {
         this._loadApplyForm();
@@ -332,20 +359,34 @@ Page({
   onShow() {
     hideHomeButton();
     this._syncTabBar();
+    if (app.isUserClientMode && app.isUserClientMode()) {
+      wx.switchTab({ url: '/pages/index/index' });
+      return;
+    }
     // 审核中/已拒绝时强制拉用户，避免本地 pending 缓存导致界面不更新
     this._reloadStorePage({ forceUser: this._needsForceUserRefresh() })
-      .then(() => this._syncTabBar());
+      .then(() => {
+        this._syncApplyShellChrome();
+        this._syncTabBar();
+      });
   },
 
-  _syncTabBar() {
-    if (typeof this.getTabBar !== 'function') return;
-    const tabBar = this.getTabBar();
-    if (!tabBar) return;
-    tabBar.setData({
-      selected: 2,
-      isDemoMode: !!(this.data.isDemoMode || app.isMerchantDemoMode()),
-      hidden: !!(this.data.showContractModal || this.data.showCoopContractModal)
-    });
+  _syncTabBar() {},
+
+  onSwitchToUser() {
+    if (app.enterUserMode) {
+      app.enterUserMode();
+      return;
+    }
+    wx.switchTab({ url: '/pages/index/index' });
+  },
+
+  _setMerchantTabHidden(hidden) {
+    if (hidden) {
+      this.setData({ hideMerchantTabBar: true });
+      return;
+    }
+    this._syncApplyShellChrome();
   },
 
   onPullDownRefresh() {
@@ -932,7 +973,7 @@ Page({
       coopContractMode: 'preview',
       coopContractDoc: doc
     });
-    this._syncTabBar();
+    this._setTabBarVisible(false);
   },
 
   onGoSignCoopContract() {
@@ -946,7 +987,7 @@ Page({
       coopContractMode: 'sign',
       coopContractDoc: this._buildCoopContractDraft()
     });
-    this._syncTabBar();
+    this._setTabBarVisible(false);
   },
 
   onCloseCoopContractModal() {
@@ -955,7 +996,7 @@ Page({
       coopContractMode: 'preview',
       coopContractDoc: null
     });
-    this._syncTabBar();
+    this._setTabBarVisible(true);
   },
 
   onConfirmCoopSign() {
@@ -974,7 +1015,7 @@ Page({
       coopContractMode: 'preview',
       coopContractDoc: null
     });
-    this._syncTabBar();
+    this._setTabBarVisible(true);
     wx.showToast({ title: '签署成功', icon: 'success' });
   },
 
@@ -1483,6 +1524,55 @@ Page({
     this.setData({ roomPricing });
   },
 
+  onChooseRoomPhoto(e) {
+    if (this._choosingRoomPhoto) return;
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || index < 0) return;
+    this._choosingRoomPhoto = true;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res && res.tempFiles && res.tempFiles[0];
+        const path = file && file.tempFilePath;
+        if (!path) {
+          wx.showToast({ title: '未选择到图片', icon: 'none' });
+          return;
+        }
+        this._markDirty();
+        const roomPricing = updateRoomField(this.data.roomPricing, index, 'photo', path);
+        this.setData({ roomPricing });
+      },
+      fail: (err) => {
+        const msg = (err && err.errMsg) || '';
+        if (/cancel/i.test(msg)) return;
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
+      },
+      complete: () => {
+        this._choosingRoomPhoto = false;
+      }
+    });
+  },
+
+  onDeleteRoomPhoto(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const roomPricing = updateRoomField(this.data.roomPricing, index, 'photo', '');
+    this.setData({ roomPricing });
+  },
+
+  onPreviewRoomPhoto(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const room = (this.data.roomPricing || [])[index];
+    const url = room && room.photo;
+    if (!url) return;
+    resolveImageUrls([url]).then((urls) => {
+      const current = (urls && urls[0]) || url;
+      wx.previewImage({ current, urls: [current] });
+    });
+  },
+
   onAddRoom() {
     this._markDirty();
     this.setData({ roomPricing: addRoom(this.data.roomPricing) });
@@ -1495,10 +1585,12 @@ Page({
   },
 
   _setTabBarVisible(visible) {
-    if (typeof this.getTabBar !== 'function') return;
-    const tabBar = this.getTabBar();
-    if (!tabBar || typeof tabBar.setData !== 'function') return;
-    tabBar.setData({ hidden: !visible });
+    if (!visible) {
+      this.setData({ hideMerchantTabBar: true });
+      return;
+    }
+    // 入驻 / 关闭态关闭弹窗后仍保持无 Tab
+    this._syncApplyShellChrome();
   },
 
   onOpenContractModal() {
@@ -1649,6 +1741,12 @@ Page({
       })
       .then((noticePhotos) => {
         shop.noticePhotos = noticePhotos;
+        const fallbackRooms = ((cachedShop.billingRules || {}).roomPricing) || [];
+        return uploadRoomPricingPhotos(billingRules.roomPricing, fallbackRooms);
+      })
+      .then((roomPricing) => {
+        billingRules.roomPricing = roomPricing;
+        shop.billingRules = { ...shop.billingRules, roomPricing };
         return app.syncShopToCloud(shop);
       })
       .then((saved) => {

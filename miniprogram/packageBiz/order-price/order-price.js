@@ -1,7 +1,7 @@
 const app = getApp();
 const { parseFee, buildFeePayload, normalizeOrderFees } = require('../../utils/orderFees');
-const { formatPickupLegs, formatPickupTripType } = require('../../utils/pickupInfo');
-const { canMerchantModifyOrder } = require('../../utils/orderActions');
+const { formatPickupLegs, formatPickupTripType } = require('../utils/pickupInfo');
+const { canMerchantModifyOrder } = require('../utils/orderActions');
 const { formatOrderCreateTime } = require('../../utils/util');
 
 Page({

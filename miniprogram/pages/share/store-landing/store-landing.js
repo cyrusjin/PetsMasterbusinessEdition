@@ -1,7 +1,7 @@
 const app = getApp();
 const auth = require('../../../utils/auth');
 const { resolveImageUrl } = require('../../../utils/imageCache');
-const { OA_USERNAME, DEFAULT_OA_QRCODE } = require('../../../utils/officialAccount');
+const { OA_DISPLAY_NAME, DEFAULT_OA_QRCODE, openOfficialAccountProfile } = require('../../../utils/officialAccount');
 
 Page({
   data: {
@@ -13,6 +13,7 @@ Page({
     phase: 'loading',
     loadError: '',
     oaQrcodeUrl: DEFAULT_OA_QRCODE,
+    oaDisplayName: OA_DISPLAY_NAME,
     intentRegistered: false,
     intentError: '',
     perks: [
@@ -44,7 +45,22 @@ Page({
       });
       return;
     }
-    this._bootstrap(storeId);
+    // 兼容历史分享卡片：进用户版并绑定店铺
+    app.ensureCloudAndLogin({ silent: true })
+      .then(() => {
+        if (app.enterUserStore) {
+          return app.enterUserStore(storeId, { forceData: true });
+        }
+        if (app._enterUserClientMode) {
+          app._enterUserClientMode(storeId);
+        }
+        return app.bindStore(storeId, { syncUser: true, force: true });
+      })
+      .finally(() => {
+        wx.reLaunch({
+          url: `/pages/index/index?store_id=${encodeURIComponent(storeId)}`
+        });
+      });
   },
 
   _bootstrap(storeId) {
@@ -120,14 +136,7 @@ Page({
   },
 
   onOpenOfficialAccount() {
-    if (!wx.openOfficialAccountProfile) {
-      wx.showToast({ title: '请长按识别二维码关注', icon: 'none' });
-      return;
-    }
-    wx.openOfficialAccountProfile({
-      username: OA_USERNAME,
-      fail: () => wx.showToast({ title: '请长按识别二维码关注', icon: 'none' })
-    });
+    openOfficialAccountProfile();
   },
 
   onPreviewOaQrcode() {

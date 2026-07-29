@@ -1,5 +1,5 @@
 {
-  "description": "宠大师商家端",
+  "description": "宠大师（用户端+商家端）",
   "miniprogramRoot": "miniprogram/",
   "compileType": "miniprogram",
   "setting": {

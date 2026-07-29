@@ -1,0 +1,123 @@
+.oa-sheet-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 20000;
+}
+
+.oa-sheet-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(40, 28, 20, 0.45);
+}
+
+.oa-sheet-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 72vh;
+  padding: 18rpx 40rpx calc(36rpx + env(safe-area-inset-bottom));
+  border-radius: 32rpx 32rpx 0 0;
+  background: #FFFDF9;
+  box-shadow: 0 -12rpx 40rpx rgba(132, 90, 58, 0.16);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.oa-sheet-handle {
+  width: 64rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: #E8D5C4;
+  margin-bottom: 8rpx;
+}
+
+.oa-sheet-close {
+  position: absolute;
+  top: 18rpx;
+  right: 22rpx;
+  width: 44rpx;
+  height: 44rpx;
+  line-height: 40rpx;
+  text-align: center;
+  font-size: 34rpx;
+  color: #B9A89B;
+  font-weight: 400;
+}
+
+.oa-sheet-title {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #E98657;
+  line-height: 1.3;
+}
+
+.oa-sheet-headline {
+  margin-top: 12rpx;
+  font-size: 34rpx;
+  font-weight: 900;
+  color: #5B4535;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.oa-sheet-desc {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #A98972;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.oa-sheet-qr-wrap {
+  margin-top: 28rpx;
+  padding: 18rpx;
+  border-radius: 24rpx;
+  background: #FFFFFF;
+  box-shadow: 0 8rpx 24rpx rgba(132, 90, 58, 0.1);
+}
+
+.oa-sheet-qr {
+  width: 280rpx;
+  height: 280rpx;
+  display: block;
+}
+
+.oa-sheet-hint {
+  margin-top: 18rpx;
+  font-size: 22rpx;
+  color: #B4937B;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.oa-sheet-btn {
+  margin-top: 28rpx;
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #F7AA78, #E98657);
+  color: #FFFFFF;
+  font-size: 30rpx;
+  font-weight: 800;
+  border: none;
+  padding: 0;
+}
+
+.oa-sheet-btn::after {
+  border: none;
+}
+
+.oa-sheet-btn-hover {
+  opacity: 0.92;
+}

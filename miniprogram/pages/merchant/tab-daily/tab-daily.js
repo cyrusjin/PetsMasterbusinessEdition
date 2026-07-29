@@ -1,7 +1,6 @@
 const app = getApp();
 const storeApi = require('../../../utils/store');
-const { enableStoreShareMenu, buildMerchantTimelineShareConfig, buildStaffShareConfig } = require('../../../utils/storeShare');
-const { shareStoreInvitePoster } = require('../../../utils/storeSharePoster');
+const { enableStoreShareMenu, buildMerchantTimelineShareConfig, buildStaffShareConfig, buildMerchantShareConfig } = require('../../../utils/storeShare');
 const {
   buildBoardingListWithDailyStats,
   countUncheckedBoardingPets
@@ -65,6 +64,11 @@ Page({
     hideHomeButton();
     this._syncTabBar();
 
+    if (app.isUserClientMode && app.isUserClientMode()) {
+      wx.switchTab({ url: '/pages/index/index' });
+      return;
+    }
+
     // 审核中/已拒绝强制拉用户，避免本地状态缓存导致横幅不消失
     const forceUser = !!(
       this.data.isPendingReview
@@ -87,6 +91,12 @@ Page({
       if (inviteId && app.shouldIgnoreShareEntry()) {
         this._staffInviteStoreId = '';
         app.globalData.pendingStaffInviteStoreId = '';
+      }
+
+      // 未入驻通过：不展示商家 Tab 日常页，只保留入驻页
+      if (!app.isMerchantApproved()) {
+        wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
+        return;
       }
 
       // 未具备商家能力时仍渲染页面壳，禁止 reLaunch 到自身造成白屏死循环
@@ -132,14 +142,14 @@ Page({
     stopMerchantOrdersPoll(this);
   },
 
-  _syncTabBar() {
-    if (typeof this.getTabBar !== 'function') return;
-    const tabBar = this.getTabBar();
-    if (!tabBar) return;
-    tabBar.setData({
-      selected: 0,
-      isDemoMode: !!(this.data.isDemoMode || app.isMerchantDemoMode())
-    });
+  _syncTabBar() {},
+
+  onSwitchToUser() {
+    if (app.enterUserMode) {
+      app.enterUserMode();
+      return;
+    }
+    wx.switchTab({ url: '/pages/index/index' });
   },
 
   _getPageEntryQuery() {
@@ -416,53 +426,17 @@ Page({
       }
       return buildStaffShareConfig(this);
     }
-    wx.showToast({ title: '请点「分享给客人」发海报', icon: 'none' });
-    return {
-      title: '萌宠寄养',
-      path: '/pages/merchant/tab-daily/tab-daily'
-    };
-  },
-
-  onShareToCustomer() {
-    if (this.data.isDemoMode) {
-      wx.showToast({ title: '体验模式不可分享', icon: 'none' });
-      return;
+    if (shareType === 'customer') {
+      if (!this._guardMerchantFeature()) {
+        return {
+          title: '萌宠寄养',
+          path: '/pages/merchant/tab-daily/tab-daily'
+        };
+      }
+      return buildMerchantShareConfig(this);
     }
-    if (!this._guardMerchantFeature()) return;
-    const shop = this.data.shop || app.getShop() || {};
-    const storeId = (shop.store_id || app.globalData.merchantStoreId || '').trim();
-    if (!storeId) {
-      wx.showToast({ title: '请先申请入驻', icon: 'none' });
-      return;
-    }
-    if (this._sharingCustomer) return;
-    this._sharingCustomer = true;
-    wx.showLoading({ title: '生成邀请海报', mask: true });
-    storeApi.getStoreOaShareLink(storeId)
-      .then((res) => {
-        if (!res || !res.success) {
-          throw new Error((res && res.errMsg) || '生成失败');
-        }
-        return shareStoreInvitePoster({
-          posterUrl: (res.posterUrl || '').trim(),
-          qrcodeUrl: (res.qrcodeUrl || '').trim(),
-          storeLogo: (res.storeLogo || '').trim(),
-          storeName: res.storeName || '宠物寄养'
-        });
-      })
-      .then(() => {
-        wx.hideLoading();
-      })
-      .catch((err) => {
-        wx.hideLoading();
-        const msg = (err && (err.errMsg || err.message)) || '分享失败';
-        // 用户主动取消分享不提示错误
-        if (/cancel|取消/i.test(msg)) return;
-        wx.showToast({ title: msg, icon: 'none' });
-      })
-      .finally(() => {
-        this._sharingCustomer = false;
-      });
+    // 右上角菜单转发：默认按分享给客人
+    return buildMerchantShareConfig(this);
   },
 
   onShareTimeline() {

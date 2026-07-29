@@ -1,0 +1,304 @@
+<view class="container">
+  <view class="card" wx:if="{{!store}}">
+    <text class="empty-store-tip">请通过商家分享的店铺链接进入后再预约</text>
+  </view>
+
+  <view class="card" wx:if="{{store && store.isOpen}}">
+    <view class="card-title">选择宠物</view>
+    <view wx:if="{{pets.length > 0}}">
+      <view class="pet-select-item {{selectedPet && selectedPet.id === item.id ? 'selected' : ''}}" wx:for="{{pets}}" wx:key="id" bindtap="onSelectPet" data-id="{{item.id}}">
+        <view class="flex-row gap-20">
+          <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-avatar-small" />
+          <view wx:else class="pet-avatar-small">{{item.name[0]}}</view>
+          <view><text>{{item.name}}</text><text class="text-gray pet-meta" style="display:block;font-size:22rpx;">{{item.type}} · {{item.age}}岁 · {{item.weight}}kg</text></view>
+        </view>
+        <view wx:if="{{selectedPet && selectedPet.id === item.id}}" class="tag tag-green">已选</view>
+      </view>
+    </view>
+    <view wx:else class="text-gray pet-empty-tip">暂无宠物档案</view>
+    <button class="btn-add-pet" bindtap="onGoPets">+ 新增宠物档案</button>
+  </view>
+
+  <view class="card" wx:if="{{store && store.isOpen && billingMode === 'room'}}">
+    <view class="card-title">选择房间</view>
+    <view class="room-select-row">
+      <view
+        class="room-item {{roomType === item.id ? 'room-selected' : ''}} {{item.disabled ? 'room-disabled' : ''}}"
+        wx:for="{{roomOptions}}"
+        wx:key="id"
+        bindtap="onRoomTypeSelect"
+        data-type="{{item.id}}"
+      >
+        <view
+          class="room-photo-wrap"
+          wx:if="{{item.photo}}"
+          catchtap="onPreviewRoomPhoto"
+          data-url="{{item.photo}}"
+        >
+          <cached-image custom-class="room-photo-img" src="{{item.photo}}" mode="aspectFill" />
+        </view>
+        <view class="room-photo-wrap room-photo-empty" wx:else>
+          <text class="room-icon">🐾</text>
+        </view>
+        <text class="room-name">{{item.name}}</text>
+        <text class="room-desc" wx:if="{{item.description}}">{{item.description}}</text>
+        <text class="room-limit">{{item.weightLimitText}}</text>
+        <text class="room-price">¥{{item.price}}/天</text>
+        <text class="room-disabled-tip" wx:if="{{item.disabled}}">体重超限</text>
+      </view>
+    </view>
+  </view>
+
+  <block wx:if="{{store && store.isOpen}}">
+    <view class="card">
+      <view class="card-title">选择寄养时间</view>
+      <calendar startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
+      <view wx:if="{{startDate && endDate}}" class="time-pickers mt-20">
+        <view class="time-row">
+          <text class="time-label">入住时间</text>
+          <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
+        </view>
+        <view class="time-row">
+          <text class="time-label">离店时间</text>
+          <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
+        </view>
+      </view>
+      <view wx:if="{{startDate && endDate}}" class="date-summary mt-20">
+        <view class="flex-between"><text>开始：{{startDate}} {{startTime || '待选择'}}</text><text>结束：{{endDate}} {{endTime || '待选择'}}</text></view>
+
+        <view class="pickup-inline" wx:if="{{store.hasPickup}}">
+          <view class="pickup-inline-head">
+            <text class="pickup-inline-title">接送服务</text>
+            <switch checked="{{needPickup}}" bindchange="onPickupChange" color="#E98657" />
+          </view>
+          <view class="pickup-notice-box pickup-notice-inline" wx:if="{{needPickup && (store.pickupNotice || pickupPricingSummary)}}">
+            <text class="pickup-notice-title" wx:if="{{store.pickupNotice}}">接送须知</text>
+            <text class="pickup-notice-text" wx:if="{{store.pickupNotice}}">{{store.pickupNotice}}</text>
+            <text class="pickup-pricing-summary" wx:if="{{pickupPricingSummary}}">{{pickupPricingSummary}}</text>
+          </view>
+          <view class="pickup-form pickup-form-inline" wx:if="{{needPickup}}">
+            <view class="form-group">
+              <text class="form-label">接送范围 <text class="required-star">*</text></text>
+              <radio-group class="pickup-leg-group" bindchange="onPickupLegChange">
+                <label class="pickup-leg-item">
+                  <radio value="both" checked="{{pickupLeg === 'both'}}" color="#E98657" />去程+返程
+                </label>
+                <label class="pickup-leg-item">
+                  <radio value="outbound" checked="{{pickupLeg === 'outbound'}}" color="#E98657" />仅去程
+                </label>
+                <label class="pickup-leg-item">
+                  <radio value="return" checked="{{pickupLeg === 'return'}}" color="#E98657" />仅返程
+                </label>
+              </radio-group>
+            </view>
+            <view class="form-group">
+              <text class="form-label">接送地址 <text class="required-star">*</text></text>
+              <view class="pickup-address-box" bindtap="onChoosePickupAddress">
+                <view class="pickup-address-main">
+                  <text class="pickup-address-text {{pickupAddress ? '' : 'pickup-address-placeholder'}}">{{pickupAddress || '点击从地图选择接送地址'}}</text>
+                  <text class="pickup-address-sub" wx:if="{{pickupLocationName && pickupLocationName !== pickupAddress}}">{{pickupLocationName}}</text>
+                </view>
+                <text class="pickup-address-action">地图选点</text>
+              </view>
+            </view>
+            <view class="form-group">
+              <text class="form-label">联系电话 <text class="required-star">*</text></text>
+              <input
+                class="form-input"
+                type="number"
+                maxlength="11"
+                placeholder="请输入11位手机号"
+                value="{{pickupContactPhone}}"
+                bindinput="onPickupPhoneInput"
+              />
+            </view>
+            <view class="form-group">
+              <text class="form-label">接送时间 <text class="required-star">*</text></text>
+              <view class="time-picker-box pickup-time-box {{startTime ? '' : 'pickup-time-disabled'}}" bindtap="onOpenPickupTimePicker">{{pickupTimeDisplay}}</view>
+              <text class="pickup-time-tip">默认与入住开始时间一致，可点击修改</text>
+            </view>
+          </view>
+        </view>
+
+        <block wx:if="{{feeReady}}">
+          <view class="fee-breakdown">
+            <view class="fee-breakdown-title">费用明细（¥{{basePriceText}}/天）</view>
+            <view class="fee-day-row" wx:for="{{dailyBreakdown}}" wx:key="date">
+              <text class="fee-day-date">{{item.dateDisplay}}</text>
+              <text class="fee-day-label">{{item.dayLabel}}</text>
+              <text class="fee-day-factor">{{item.factorText}}</text>
+              <text class="fee-day-amount">¥{{item.feeText}}</text>
+            </view>
+            <view class="fee-pickup-block" wx:if="{{needPickup && pickupFeeReady}}">
+              <view class="fee-day-row fee-pickup-row">
+                <text class="fee-day-date">接送</text>
+                <text class="fee-day-label">接送服务费</text>
+                <text class="fee-day-factor"></text>
+                <text class="fee-day-amount">¥{{pickupFeeText}}</text>
+              </view>
+              <view class="pickup-fee-meta" wx:if="{{pickupFeeStandard}}">
+                <text class="pickup-fee-meta-line">{{pickupFeeStandard}}</text>
+              </view>
+              <view class="pickup-fee-meta" wx:if="{{pickupDistanceText}}">
+                <text class="pickup-fee-meta-line">{{pickupDistanceText}}</text>
+              </view>
+              <view class="pickup-fee-meta" wx:if="{{pickupFeeCalcText}}">
+                <text class="pickup-fee-meta-line pickup-fee-meta-calc">{{pickupFeeCalcText}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="fee-pending-tip fee-pickup-pending" wx:if="{{needPickup && pickupFeePending}}">
+            <text wx:if="{{pickupFeeStandard}}">{{pickupFeeStandard}}</text>
+            <text>{{pickupFeePendingText || '请在地图选择接送地址后查看总费用'}}</text>
+          </view>
+          <view class="flex-between mt-16 fee-total-row" wx:if="{{totalDisplayReady}}">
+            <text>共计 {{daysText}} 天 · 总费用</text>
+            <text class="fee-highlight">¥{{grandTotalFeeText}}</text>
+          </view>
+          <text class="charge-summary-tip" wx:if="{{totalDisplayReady}}">{{chargeSummary}}</text>
+        </block>
+        <view wx:else class="fee-pending-tip">
+          <text wx:if="{{!startTime || !endTime}}">请选择入住时间和离店时间后查看费用</text>
+          <text wx:elif="{{billingMode === 'room' && !roomType}}">请选择房间后查看费用</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{false}}">
+      <view class="card-title">增值服务</view>
+      <view class="extra-item" wx:for="{{extraList}}" wx:key="key">
+        <view class="flex-between"><text>{{item.label}}</text><text class="text-gray">¥{{item.price}}/天</text></view>
+        <switch checked="{{item.checked}}" bindchange="onExtraChange" data-key="{{item.key}}" color="#4CAF50" />
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{store.notice || (store.noticePhotos && store.noticePhotos.length)}}">
+      <view class="card-title">寄养须知</view>
+      <text class="boarding-notice-text" wx:if="{{store.notice}}">{{store.notice}}</text>
+      <view class="boarding-notice-photos" wx:if="{{store.noticePhotos && store.noticePhotos.length}}">
+        <view
+          class="boarding-notice-photo-item"
+          wx:for="{{store.noticePhotos}}"
+          wx:key="*this"
+          bindtap="onPreviewNoticePhoto"
+          data-url="{{item}}"
+        >
+          <cached-image custom-class="boarding-notice-photo" src="{{item}}" mode="aspectFill" />
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">联系信息</view>
+      <view class="form-group">
+        <text class="form-label">联系人 <text class="required-star">*</text></text>
+        <input
+          class="form-input"
+          placeholder="请输入联系人姓名"
+          value="{{contactName}}"
+          bindinput="onContactNameInput"
+          bindblur="onContactBlur"
+        />
+      </view>
+      <view class="form-group">
+        <text class="form-label">联系电话 <text class="required-star">*</text></text>
+        <input
+          class="form-input"
+          type="number"
+          maxlength="11"
+          placeholder="请输入11位手机号"
+          value="{{contactPhone}}"
+          bindinput="onContactPhoneInput"
+          bindblur="onContactBlur"
+        />
+      </view>
+      <view class="form-group">
+        <text class="form-label">紧急联系电话</text>
+        <input
+          class="form-input"
+          type="number"
+          maxlength="11"
+          placeholder="选填，不写入寄养协议"
+          value="{{emergencyPhone}}"
+          bindinput="onEmergencyPhoneInput"
+        />
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">特殊需求</view>
+      <textarea class="form-textarea" style="min-height:120rpx;" placeholder="请填写特殊照料需求..." value="{{specialNeeds}}" bindinput="onSpecialInput" />
+    </view>
+
+    <view class="card">
+      <view class="card-title">寄养协议</view>
+      <view class="contract-preview" bindtap="onOpenContractPreview">
+        <image class="contract-preview-icon" src="/images/card/card-settings.png" mode="aspectFit" />
+        <view class="contract-info">
+          <text class="contract-title">宠物寄养服务电子协议</text>
+          <text class="contract-desc">含甲乙双方信息、寄养条款、赔付与免责约定</text>
+        </view>
+        <text class="contract-link">查看全文</text>
+      </view>
+      <view class="contract-agree-row" bindtap="onTapAgreeRow">
+        <view class="agree-check {{agreedToContract ? 'checked' : ''}}">
+          <text wx:if="{{agreedToContract}}" class="agree-check-icon">✓</text>
+        </view>
+        <view class="contract-agree-text-wrap">
+          <text class="contract-agree-text">我已阅读并同意</text>
+          <text class="contract-link-inline" catchtap="onOpenContractPreview">《宠物寄养服务电子协议》</text>
+        </view>
+      </view>
+      <view class="contract-signed-row" wx:if="{{agreedToContract && signedContractDraft}}">
+        <text class="contract-signed-icon">✓</text>
+        <view class="contract-signed-info">
+          <text class="contract-signed-title">协议已确认</text>
+          <text class="contract-signed-time">{{signedContractDraft.signTime}}</text>
+        </view>
+        <text class="contract-resign" catchtap="onOpenContractSign">重新确认</text>
+      </view>
+    </view>
+
+    <button class="btn-primary {{agreedToContract ? '' : 'btn-disabled'}}" bindtap="onSubmit" disabled="{{!agreedToContract}}">提交预约</button>
+  </block>
+
+  <view class="card closed-tip" wx:if="{{store && !store.isOpen}}">
+    <text wx:if="{{store.status === '未营业'}}">店铺尚未开始营业，暂不接受预约</text>
+    <text wx:else>店铺当前已闭店，暂不接受新预约</text>
+  </view>
+
+  <view style="height:40rpx;"></view>
+</view>
+
+<view wx:if="{{showTimePicker}}" class="time-picker-mask" bindtap="onCancelTimePicker">
+  <view class="time-picker-panel" catchtap="onTimePanelTap">
+    <view class="time-picker-header">
+      <text class="time-picker-action" bindtap="onCancelTimePicker">取消</text>
+      <text class="time-picker-panel-title">{{timePickerTitle}}</text>
+      <text class="time-picker-action time-picker-confirm" bindtap="onConfirmTimePicker">确定</text>
+    </view>
+    <picker-view class="time-picker-wheel" value="{{timePickerValue}}" bindchange="onTimePickerChange">
+      <picker-view-column>
+        <view class="time-picker-item" wx:for="{{timeHours}}" wx:key="*this">{{item}}时</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view class="time-picker-item" wx:for="{{timeMinutes}}" wx:key="*this">{{item}}分</view>
+      </picker-view-column>
+    </picker-view>
+  </view>
+</view>
+
+<boarding-contract-modal
+  visible="{{contractModalVisible}}"
+  doc="{{contractDoc}}"
+  signable="{{contractModalSignable}}"
+  bind:close="onCloseContractModal"
+  bind:sign="onConfirmContractSign"
+/>
+
+<oa-follow-sheet
+  show="{{oaFollowSheetVisible}}"
+  title="预约成功"
+  bind:close="onCloseOaFollowSheet"
+  bind:followed="onOaFollowSheetFollowed"
+/>

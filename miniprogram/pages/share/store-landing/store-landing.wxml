@@ -45,7 +45,7 @@
 
     <view class="oa-section" wx:if="{{!loadError}}">
       <text class="oa-step-label">第一步</text>
-      <text class="oa-section-title">关注「猫森宠物」服务号</text>
+      <text class="oa-section-title">关注「{{oaDisplayName}}」服务号</text>
       <view class="oa-qrcode-wrap" bindtap="onPreviewOaQrcode">
         <image class="oa-qrcode" src="{{oaQrcodeUrl}}" mode="aspectFit" show-menu-by-longpress="{{true}}" />
       </view>
@@ -56,7 +56,7 @@
     <view class="oa-steps-card" wx:if="{{!loadError}}">
       <text class="oa-step-label">第二步</text>
       <text class="oa-steps-title">从公众号菜单进入预约小程序</text>
-      <text class="oa-steps-desc">关注后，在微信中打开「猫森宠物」服务号，点击底部菜单进入小程序，即可浏览 {{storeName}}、预约寄养。</text>
+      <text class="oa-steps-desc">关注后，在微信中打开「{{oaDisplayName}}」服务号，点击底部菜单进入小程序，即可浏览 {{storeName}}、预约寄养。</text>
       <text class="oa-steps-note" wx:if="{{intentRegistered}}">已为您登记店铺邀请，进入小程序后将自动关联本店。</text>
       <text class="oa-steps-warn" wx:if="{{intentError}}">{{intentError}}</text>
     </view>

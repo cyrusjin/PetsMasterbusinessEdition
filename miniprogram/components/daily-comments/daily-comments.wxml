@@ -1,0 +1,49 @@
+<view class="daily-comments" wx:if="{{!hidden}}">
+  <view class="comments-head" wx:if="{{comments.length}}">
+    <text class="comments-title">回复 · {{comments.length}}</text>
+  </view>
+
+  <view class="comment-list" wx:if="{{comments.length}}">
+    <view class="comment-item" wx:for="{{comments}}" wx:key="id">
+      <view class="comment-meta">
+        <text class="comment-author {{item.authorRole === 'merchant' ? 'is-merchant' : ''}}">{{item.authorName}}</text>
+        <text wx:if="{{item.replyToAuthorName}}" class="comment-reply-to">回复 {{item.replyToAuthorName}}</text>
+        <text class="comment-time">{{item.time}}</text>
+      </view>
+      <text class="comment-content">{{item.content}}</text>
+      <view
+        wx:if="{{!disabled}}"
+        class="comment-reply-btn"
+        catchtap="onReplyTo"
+        data-id="{{item.id}}"
+        data-name="{{item.authorName}}"
+      >回复</view>
+    </view>
+  </view>
+
+  <view class="comment-composer" wx:if="{{!disabled}}">
+    <view wx:if="{{replyToName}}" class="reply-hint">
+      <text>回复 {{replyToName}}</text>
+      <text class="reply-cancel" catchtap="onCancelReply">取消</text>
+    </view>
+    <view class="composer-row">
+      <input
+        class="composer-input"
+        value="{{draft}}"
+        maxlength="{{maxLen}}"
+        placeholder="{{replyToName ? '回复 ' + replyToName + '…' : placeholder}}"
+        confirm-type="send"
+        bindinput="onInput"
+        bindconfirm="onSubmit"
+        disabled="{{submitting}}"
+      />
+      <button
+        class="btn-sm btn-blue composer-send"
+        size="mini"
+        loading="{{submitting}}"
+        disabled="{{submitting || !draft}}"
+        catchtap="onSubmit"
+      >发送</button>
+    </view>
+  </view>
+</view>

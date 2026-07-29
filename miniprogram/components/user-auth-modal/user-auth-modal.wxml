@@ -1,0 +1,35 @@
+<view class="auth-modal" wx:if="{{visible}}" catchtouchmove="preventMove">
+  <view class="auth-modal-mask" bindtap="onClose"></view>
+  <view class="auth-modal-panel">
+    <view class="auth-modal-header">
+      <text class="auth-modal-title">授权联系信息</text>
+      <text class="auth-modal-close" bindtap="onClose">×</text>
+    </view>
+    <view class="auth-modal-body">
+      <text class="auth-modal-tip">{{firstOpen ? '欢迎使用！预约与签署协议需使用微信昵称和手机号，请通过下方完成授权。' : '预约与签署协议需使用微信昵称和手机号，请通过下方按钮完成授权。'}}</text>
+      <view class="form-group">
+        <text class="form-label">微信昵称</text>
+        <input
+          class="form-input auth-nickname-input"
+          type="nickname"
+          placeholder="点击此处选择微信昵称"
+          value="{{nickName}}"
+          bindinput="onNickNameInput"
+          bindblur="onNickNameInput"
+        />
+      </view>
+      <view class="form-group">
+        <text class="form-label">手机号</text>
+        <button
+          class="auth-phone-btn"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="onGetPhoneNumber"
+        >{{phone ? '已授权：' + phone : '微信授权手机号'}}</button>
+      </view>
+    </view>
+    <view class="auth-modal-footer">
+      <button class="auth-btn auth-btn-ghost" bindtap="onClose">稍后再说</button>
+      <button class="auth-btn auth-btn-primary" bindtap="onConfirm" loading="{{saving}}" disabled="{{saving}}">完成授权</button>
+    </view>
+  </view>
+</view>

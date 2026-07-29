@@ -5,6 +5,7 @@ const { previewImages, previewVideo } = require('../../utils/dailyPreview');
 const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const { deriveVideoCoverUrl } = require('../../utils/mediaUrl');
+const dailyApi = require('../../utils/daily');
 
 function enrichLogs(logs, orders, pets) {
   const orderMap = {};
@@ -42,20 +43,29 @@ function enrichLogs(logs, orders, pets) {
       status: isScheduled ? 'scheduled' : (status || 'published'),
       isScheduled,
       canDeleteScheduled: isScheduled,
-      scheduledAt
+      scheduledAt,
+      comments: Array.isArray(log.comments) ? log.comments : []
     };
   });
 }
 
 function buildPetOptions(orders, pets) {
-  const boardingOrders = (orders || []).filter((o) => o.status === 'boarding');
+  // 打卡记录覆盖寄养中 + 已完成等全部相关订单，便于回看历史
+  const scopedOrders = (orders || []).filter((o) => {
+    const status = o && o.status;
+    return status === 'boarding'
+      || status === 'completed'
+      || status === 'awaiting_arrival'
+      || status === 'confirmed'
+      || status === 'cancelled';
+  });
   const petMap = {};
   (pets || []).forEach((item) => {
     if (item && item.id) petMap[item.id] = item;
   });
   const seen = {};
   const options = [];
-  boardingOrders.forEach((order) => {
+  scopedOrders.forEach((order) => {
     const petId = order.petId || '';
     const key = petId || ('order:' + (order.id || order.order_id));
     if (seen[key]) return;
@@ -71,17 +81,18 @@ function buildPetOptions(orders, pets) {
   return options;
 }
 
-function getBoardingOrderIds(orders) {
+function getScopedOrderIds(orders) {
   return (orders || [])
-    .filter((o) => o.status === 'boarding')
+    .filter((o) => {
+      const status = o && o.status;
+      return status === 'boarding'
+        || status === 'completed'
+        || status === 'awaiting_arrival'
+        || status === 'confirmed'
+        || status === 'cancelled';
+    })
     .map((item) => item.id || item.order_id)
     .filter(Boolean);
-}
-
-function sameIdSet(a, b) {
-  if (a.length !== b.length) return false;
-  const set = new Set(a);
-  return b.every((id) => set.has(id));
 }
 
 function filterLogsByPet(logs, selectedPetId) {
@@ -260,6 +271,7 @@ Page({
 
   _getLocalScopedLogs(orderIds) {
     const all = app.getDailyLogs() || [];
+    // 无明确订单范围时展示本地全部打卡（含已完成订单）
     if (!(orderIds || []).length) return dedupeDailyLogs(all);
     const idSet = new Set(orderIds);
     return dedupeDailyLogs(all.filter((item) => idSet.has(item.orderId || item.order_id)));
@@ -272,10 +284,16 @@ Page({
       return;
     }
     const orders = app.getOrders();
-    const orderIds = getBoardingOrderIds(orders);
+    const orderIds = getScopedOrderIds(orders);
     const logs = this._getLocalScopedLogs(orderIds);
-    if (!logs.length && !orderIds.length) return;
-    this._renderFromCache(logs, { fromLocal: true });
+    if (!logs.length && !orderIds.length) {
+      // 仍尝试展示本地缓存中的店铺打卡
+      const cached = dedupeDailyLogs(app.getDailyLogs() || []);
+      if (!cached.length) return;
+      this._renderFromCache(cached, { fromLocal: true });
+      return;
+    }
+    this._renderFromCache(logs.length ? logs : dedupeDailyLogs(app.getDailyLogs() || []), { fromLocal: true });
   },
 
   _resolveSelectedPetId(petOptions) {
@@ -373,34 +391,27 @@ Page({
       this.setData({ loading: true });
     }
 
-    const cachedOrderIds = getBoardingOrderIds(app.getOrders());
-    const logsTask = cachedOrderIds.length
-      ? app.loadDailyLogsForOrders(cachedOrderIds, { force })
-      : Promise.resolve(null);
-    const ordersTask = refreshMerchantOrders(app, { force });
+    const shop = app.getShop();
+    const storeId = (shop && shop.store_id) || app.globalData.merchantStoreId || '';
+    const scopedIds = getScopedOrderIds(app.getOrders());
 
-    return Promise.all([logsTask, ordersTask])
-      .then(([cachedLogs]) => {
-        const freshOrderIds = getBoardingOrderIds(app.getOrders());
-        if (!freshOrderIds.length) {
-          this._renderFromCache([]);
-          return;
-        }
-        // 在住订单集合变化，或进入时本地没有订单 ID：补一次按最新范围拉取
-        if (!sameIdSet(cachedOrderIds, freshOrderIds)) {
-          return app.loadDailyLogsForOrders(freshOrderIds, { force: true })
-            .then((logs) => this._renderFromCache(logs || []));
-        }
-        if (cachedLogs) {
-          this._renderFromCache(cachedLogs);
-          return;
-        }
-        return app.loadDailyLogsForOrders(freshOrderIds, { force })
-          .then((logs) => this._renderFromCache(logs || []));
+    return refreshMerchantOrders(app, { force })
+      .then(() => {
+        const freshShop = app.getShop();
+        const sid = (freshShop && freshShop.store_id) || storeId;
+        const orderIds = getScopedOrderIds(app.getOrders());
+        // 店铺全量打卡（含已完成订单）+ 相关订单补拉，合并去重
+        return dailyApi.fetchMerchantBoardingLogs(sid, orderIds);
+      })
+      .then((logs) => {
+        const list = logs || [];
+        const merged = dedupeDailyLogs([].concat(app.getDailyLogs() || [], list));
+        app.patchDailyLogs(merged);
+        this._renderFromCache(list.length ? list : this._getLocalScopedLogs(scopedIds));
       })
       .catch(() => {
         if (!hasContent) {
-          this._renderFromCache(this._getLocalScopedLogs(getBoardingOrderIds(app.getOrders())));
+          this._renderFromCache(this._getLocalScopedLogs(getScopedOrderIds(app.getOrders())));
         } else if (!this._hasLoadedOnce) {
           this.setData({ loading: false });
         }
@@ -430,6 +441,50 @@ Page({
     previewVideo(log.videoUrl || log.video).then((opened) => {
       if (opened) this._skipNextShowRefresh = true;
     });
+  },
+
+  onCommentsChange(e) {
+    const groupIndex = Number(e.currentTarget.dataset.groupIndex);
+    const logIndex = Number(e.currentTarget.dataset.logIndex);
+    const comments = (e.detail && e.detail.comments) || [];
+    const logId = (e.detail && e.detail.logId) || '';
+    const group = this.data.timeline[groupIndex];
+    const log = group && group.logs && group.logs[logIndex];
+    if (!log) return;
+
+    const nextTimeline = (this.data.timeline || []).map((g, gi) => {
+      if (gi !== groupIndex) return g;
+      return {
+        ...g,
+        logs: (g.logs || []).map((item, li) => (
+          li === logIndex ? { ...item, comments } : item
+        ))
+      };
+    });
+    this.setData({ timeline: nextTimeline });
+
+    const matchId = logId || log.id || log.log_id;
+    if (this._allEnrichedLogs) {
+      this._allEnrichedLogs = this._allEnrichedLogs.map((item) => {
+        const id = item.id || item.log_id;
+        return id === matchId ? { ...item, comments } : item;
+      });
+    }
+    if (this._rawLogs) {
+      this._rawLogs = this._rawLogs.map((item) => {
+        const id = item.id || item.log_id;
+        return id === matchId ? { ...item, comments } : item;
+      });
+    }
+    if (this._fullTimeline) {
+      this._fullTimeline = (this._fullTimeline || []).map((g) => ({
+        ...g,
+        logs: (g.logs || []).map((item) => {
+          const id = item.id || item.log_id;
+          return id === matchId ? { ...item, comments } : item;
+        })
+      }));
+    }
   },
 
   onEditScheduled(e) {

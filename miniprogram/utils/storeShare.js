@@ -1,9 +1,9 @@
 const { STORAGE_KEYS } = require('./constants');
 
 const DEFAULT_SHARE_IMAGE = '/images/default-avatar.png';
-/** 旧版商家端落地页（历史分享卡片仍可能打开） */
+/** 旧版落地页（历史分享卡片兼容） */
 const CUSTOMER_SHARE_LANDING = 'pages/share/store-landing/store-landing';
-/** 跳转宠主端小程序时的首页路径（员工邀请等场景仍可用） */
+/** 本小程序用户端首页（分享给客人） */
 const USER_MINI_PROGRAM_HOME = 'pages/index/index';
 
 function resolveShareStoreId(shop) {
@@ -35,8 +35,8 @@ function resolveShareStoreId(shop) {
 
 function buildSharePath(storeId) {
   const id = (storeId || '').trim();
-  if (!id) return CUSTOMER_SHARE_LANDING;
-  return `${CUSTOMER_SHARE_LANDING}?store_id=${encodeURIComponent(id)}`;
+  if (!id) return USER_MINI_PROGRAM_HOME;
+  return `${USER_MINI_PROGRAM_HOME}?store_id=${encodeURIComponent(id)}`;
 }
 
 function buildStaffSharePath(storeId) {

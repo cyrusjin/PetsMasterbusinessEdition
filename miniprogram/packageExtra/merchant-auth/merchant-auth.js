@@ -22,7 +22,7 @@ Page({
     if (this.data.clearing) return;
     wx.showModal({
       title: '清除本地缓存',
-      content: '将清空本机所有本地数据（用户、订单、店铺、体验模式、图片缓存等），并重新登录。云端数据不受影响。确定继续？',
+      content: '将清空本机数据，并解除云端「访问店铺」绑定（不影响商家入驻身份）。之后需重新通过分享链接绑定店铺。确定继续？',
       confirmColor: '#E53935',
       confirmText: '清除',
       success: (res) => {

@@ -1,0 +1,115 @@
+.time-pickers { display: flex; gap: 16rpx; margin-top: 20rpx; }
+.time-row { flex: 1; }
+.time-label { font-size: 24rpx; color: #999999; display: block; margin-bottom: 8rpx; }
+.time-picker-box {
+  background: #F7F8FA;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+  color: #333333;
+  text-align: center;
+  height: 80rpx;
+  min-height: 80rpx;
+  line-height: 80rpx;
+  box-sizing: border-box;
+}
+.date-summary {
+  background: #F7F8FA;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-top: 20rpx;
+}
+.fee-total-row {
+  padding-top: 12rpx;
+  border-top: 1rpx solid #F2DEC9;
+  font-size: 28rpx;
+}
+.fee-highlight { color: #E98657; font-size: 32rpx; font-weight: 700; }
+.form-group { margin-bottom: 24rpx; }
+.form-label { display: block; font-size: 26rpx; color: #333333; margin-bottom: 12rpx; }
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  min-height: 80rpx;
+  box-sizing: border-box;
+  padding: 0 20rpx;
+  line-height: 80rpx;
+  background: #F7F8FA;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+.form-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20rpx;
+  background: #F7F8FA;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  min-height: 120rpx;
+}
+.required-star { color: #E53935; }
+.pickup-row { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; }
+.pickup-address-box {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx;
+  background: #F7F8FA;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 12rpx;
+}
+.pickup-address-main { flex: 1; min-width: 0; }
+.pickup-address-text { font-size: 28rpx; color: #333333; word-break: break-all; }
+.pickup-address-placeholder { color: #999999; }
+.pickup-address-action {
+  flex-shrink: 0;
+  padding: 10rpx 20rpx;
+  font-size: 24rpx;
+  color: #E98657;
+  background: #FFF1E7;
+  border-radius: 24rpx;
+}
+.pickup-leg-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx 16rpx;
+  margin-top: 8rpx;
+}
+.pickup-leg-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex: 1;
+  min-width: 180rpx;
+  font-size: 26rpx;
+}
+.tip-text { display: block; margin-bottom: 16rpx; font-size: 22rpx; color: #999999; line-height: 1.6; }
+.submit-btn { margin-top: 24rpx; }
+.detail-row { display: flex; justify-content: space-between; padding: 14rpx 0; font-size: 26rpx; border-bottom: 1rpx solid #FFF1E7; }
+.detail-row:last-child { border-bottom: none; }
+
+.time-picker-mask {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+.time-picker-panel { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; }
+.time-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  border-bottom: 1rpx solid #F2DEC9;
+}
+.time-picker-panel-title { font-size: 30rpx; font-weight: 600; }
+.time-picker-action { font-size: 28rpx; color: #666666; padding: 8rpx 12rpx; }
+.time-picker-confirm { color: #E98657; font-weight: 600; }
+.time-picker-wheel { height: 420rpx; }
+.time-picker-item { line-height: 68rpx; text-align: center; font-size: 30rpx; }

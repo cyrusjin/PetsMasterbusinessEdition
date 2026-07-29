@@ -1,12 +1,12 @@
 const app = getApp();
 const util = require('../../utils/util');
-const dailyMedia = require('../../utils/dailyMedia');
+const dailyMedia = require('../utils/dailyMedia');
 const dailyApi = require('../../utils/daily');
 const merchantDemo = require('../../utils/merchantDemo');
 const { buildDailyCheckOrderOptions } = require('../../utils/dailyStats');
 const { showValidationAlert } = require('../../utils/formAlert');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
-const dailyQuickPhrases = require('../../utils/dailyQuickPhrases');
+const dailyQuickPhrases = require('../utils/dailyQuickPhrases');
 
 function getDefaultCheckItems() {
   return [
@@ -704,7 +704,7 @@ Page({
           });
         }
         setTimeout(() => {
-          wx.switchTab({ url: '/pages/merchant/tab-daily/tab-daily' });
+          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
         }, isScheduled ? 900 : 600);
       })
       .catch((err) => {

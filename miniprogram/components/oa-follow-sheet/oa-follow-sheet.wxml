@@ -1,0 +1,25 @@
+<view class="oa-sheet-root" wx:if="{{show}}" catchtouchmove="onPanelTap">
+  <view class="oa-sheet-mask" bindtap="onMaskTap"></view>
+  <view class="oa-sheet-panel" catchtap="onPanelTap">
+    <view class="oa-sheet-handle"></view>
+    <view class="oa-sheet-close" catchtap="onClose">×</view>
+
+    <text class="oa-sheet-title">{{title}}</text>
+    <text class="oa-sheet-headline">关注服务号，接收寄养动态</text>
+    <text class="oa-sheet-desc">商家打卡后第一时间通知你</text>
+
+    <view class="oa-sheet-qr-wrap" bindtap="onPreviewQrcode">
+      <image
+        class="oa-sheet-qr"
+        src="{{oaQrcodeUrl}}"
+        mode="aspectFit"
+        show-menu-by-longpress="{{true}}"
+      />
+    </view>
+    <text class="oa-sheet-hint">长按识别二维码，或点击下方按钮关注「{{oaDisplayName}}」</text>
+
+    <button class="oa-sheet-btn" hover-class="oa-sheet-btn-hover" bindtap="onFollowTap">
+      去关注服务号
+    </button>
+  </view>
+</view>

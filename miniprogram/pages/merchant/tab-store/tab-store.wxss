@@ -6,6 +6,11 @@
   box-sizing: border-box;
 }
 
+.merchant-page.apply-only {
+  padding-bottom: 48rpx !important;
+  box-sizing: border-box;
+}
+
 .incomplete-tip {
   margin-bottom: 20rpx;
   padding: 20rpx 24rpx;

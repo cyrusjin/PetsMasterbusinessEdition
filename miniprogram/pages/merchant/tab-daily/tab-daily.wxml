@@ -1,5 +1,8 @@
 <view class="merchant-page has-tab-bar" style="padding-bottom: 160rpx;">
   <view class="container">
+    <view class="mode-switch-row">
+      <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
+    </view>
     <view class="demo-banner" wx:if="{{isDemoMode}}">
       <text class="demo-banner-text">体验模式 · 数据仅保存在本地，提交入驻申请后可使用完整功能</text>
     </view>
@@ -47,11 +50,12 @@
             <text>分享给客人</text>
             <button
               class="share-hit-btn"
-              bindtap="onShareToCustomer"
+              open-type="share"
+              data-share-type="customer"
               hover-class="none"
             ></button>
           </view>
-          <text class="share-action-hint">发送邀请海报给好友，扫码关注即可绑定本店</text>
+          <text class="share-action-hint">发送本小程序给好友，打开后自动绑定本店</text>
         </view>
         <view class="share-action-col" wx:if="{{isStoreOwner && !isDemoMode}}">
           <view class="quick-item share-item-wrap">
@@ -112,4 +116,5 @@
   </view>
 
 </view>
+<merchant-tab-bar active="daily" isDemoMode="{{isDemoMode}}" />
 <hidden-admin-entry id="hiddenAdminEntry" />

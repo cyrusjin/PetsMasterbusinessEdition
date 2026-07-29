@@ -40,7 +40,7 @@ Page({
         wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
         return;
       }
-      wx.switchTab({ url: '/pages/merchant/tab-store/tab-store' });
+      wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
     });
   },
 

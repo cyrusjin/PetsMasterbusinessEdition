@@ -1,0 +1,4 @@
+<view class="oa-follow-banner" wx:if="{{visible}}" bindtap="onFollowTap">
+  <text class="oa-follow-title">关注服务号接受毛孩子的寄养动态</text>
+  <view class="oa-follow-btn" catchtap="onFollowTap">关注</view>
+</view>

@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "预约寄养",
+  "usingComponents": {
+    "calendar": "/components/calendar/calendar",
+    "boarding-contract-modal": "/components/boarding-contract-modal/boarding-contract-modal",
+    "oa-follow-sheet": "/components/oa-follow-sheet/oa-follow-sheet",
+    "cached-image": "/components/cached-image/cached-image"
+  }
+}

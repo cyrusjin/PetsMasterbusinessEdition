@@ -2,6 +2,13 @@ const merchantDemo = require('./merchantDemo');
 
 const MERCHANT_ORDERS_POLL_MS = 60 * 1000;
 
+function refreshUserOrders(app, options = {}) {
+  const force = !!(options && options.force);
+  const skipDailyLogs = !!(options && options.skipDailyLogs);
+  return app.ensureCloudAndLogin({ silent: !force })
+    .then(() => app.syncUserFeed({ force, skipDailyLogs }));
+}
+
 function refreshMerchantOrders(app, options = {}) {
   const force = !!(options && options.force);
   if (app.isMerchantDemoMode()) {
@@ -21,7 +28,10 @@ function refreshMerchantOrders(app, options = {}) {
 function refreshSingleOrder(app, orderId, options = {}) {
   const force = !!(options && options.force);
   if (!orderId) return Promise.resolve(null);
-  return refreshMerchantOrders(app, { force }).then(() => (
+  const loader = (app.isUserClientMode && app.isUserClientMode())
+    ? refreshUserOrders(app, { force })
+    : refreshMerchantOrders(app, { force });
+  return loader.then(() => (
     app.getOrders().find((o) => o.id === orderId) || null
   ));
 }
@@ -56,6 +66,7 @@ function stopMerchantOrdersPoll(page) {
 
 module.exports = {
   MERCHANT_ORDERS_POLL_MS,
+  refreshUserOrders,
   refreshMerchantOrders,
   refreshSingleOrder,
   startMerchantOrdersPoll,

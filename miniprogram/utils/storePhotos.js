@@ -1,4 +1,5 @@
 const { uploadFileToServer } = require('./upload');
+const { isCloudFileId, isLocalTempPath, isRemotePhoto } = require('./photoPath');
 
 const MAX_STORE_PHOTOS = 5;
 const MAX_INTRO_PHOTOS = 5;
@@ -6,31 +7,6 @@ const MAX_NOTICE_PHOTOS = 5;
 /** 微信 textarea 默认 140，提高一倍 */
 const MAX_INTRO_TEXT = 280;
 const MAX_NOTICE_TEXT = 280;
-
-function isCloudFileId(url) {
-  return typeof url === 'string' && (
-    url.startsWith('cloud://')
-    || url.startsWith('https://')
-    || url.startsWith('http://')
-  ) && !isLocalTempPath(url);
-}
-
-function isLocalTempPath(url) {
-  if (!url || typeof url !== 'string') return false;
-  const text = url.trim();
-  return text.startsWith('wxfile://')
-    || text.startsWith('http://tmp/')
-    || text.startsWith('https://tmp/')
-    || text.startsWith('http://usr/')
-    || text.startsWith('https://usr/')
-    || (text.startsWith('/') && !text.startsWith('//'));
-}
-
-function isRemotePhoto(url) {
-  if (!url || typeof url !== 'string') return false;
-  if (isLocalTempPath(url)) return false;
-  return url.startsWith('cloud://') || url.startsWith('https://') || url.startsWith('http://');
-}
 
 function normalizePhotoList(photos, maxCount) {
   const max = Number.isInteger(maxCount) && maxCount > 0 ? maxCount : MAX_STORE_PHOTOS;

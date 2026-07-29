@@ -1,0 +1,4 @@
+{ "navigationBarTitleText": "宠物动态", "enablePullDownRefresh": true, "usingComponents": {
+  "daily-comments": "/components/daily-comments/daily-comments",
+  "cached-image": "/components/cached-image/cached-image"
+} }

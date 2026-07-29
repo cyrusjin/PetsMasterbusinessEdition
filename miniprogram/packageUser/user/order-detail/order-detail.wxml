@@ -1,0 +1,44 @@
+<view class="container">
+  <view class="card">
+    <view class="flex-between mb-20">
+      <text class="card-title" style="border:none;padding:0;margin:0;">订单详情</text>
+      <view class="status-badge status-{{order.status}}"><text>{{statusLabel}}</text></view>
+    </view>
+    <text class="copy-hint">点击内容可复制</text>
+    <copyable-detail-row wx:if="{{order.storeName}}" label="寄养店铺" value="{{order.storeName}}" />
+    <copyable-detail-row label="订单编号" value="{{order.displayNo}}" />
+    <copyable-detail-row wx:if="{{order.createTimeText}}" label="下单时间" value="{{order.createTimeText}}" />
+    <copyable-detail-row label="服务类型" value="{{order.serviceType}}" />
+    <copyable-detail-row label="宠物名称" value="{{order.petName}}" />
+    <copyable-detail-row label="宠物类型" value="{{order.petType}}" />
+    <copyable-detail-row label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
+    <copyable-detail-row label="寄养天数" value="{{order.days}}天" />
+    <copyable-detail-row wx:if="{{order.needPickup}}" label="接送服务" value="需要" />
+    <copyable-detail-row wx:if="{{order.specialNeeds}}" label="特殊需求" value="{{order.specialNeeds}}" stack="{{true}}" />
+  </view>
+
+  <view class="card" wx:if="{{order.pricePendingConfirm}}">
+    <view class="card-title">商家改价待确认</view>
+    <text class="text-gray" style="display:block;margin-bottom:16rpx;">商家已调整订单金额，请确认后继续</text>
+    <button class="btn-primary" bindtap="onConfirmPrice">确认新价格 ¥{{feeSummary.totalFee}}</button>
+  </view>
+
+  <view class="card">
+    <view class="card-title">费用明细</view>
+    <order-fee-detail detail="{{feeDetail}}" />
+  </view>
+
+  <view class="card">
+    <view class="card-title">协议信息</view>
+    <copyable-detail-row wx:if="{{order.contractSigned}}" label="协议状态" value="已签署" />
+    <copyable-detail-row wx:if="{{order.contractSignTime}}" label="签署时间" value="{{order.contractSignTime}}" />
+    <button class="btn-outline" bindtap="onViewContract">查看寄养协议</button>
+  </view>
+
+  <view class="card" wx:if="{{showActions}}">
+    <view class="order-action-row">
+      <button wx:if="{{canCancel}}" class="order-action-btn order-action-cancel" bindtap="onCancel">取消订单</button>
+      <button wx:if="{{canEdit}}" class="order-action-btn order-action-edit" bindtap="onEditOrder">修改订单</button>
+    </view>
+  </view>
+</view>

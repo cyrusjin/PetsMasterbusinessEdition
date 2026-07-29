@@ -1,0 +1,116 @@
+<view class="container">
+  <view class="card" wx:if="{{order.id}}">
+    <view class="card-title">宠物信息</view>
+    <view class="detail-row"><text class="text-gray">宠物</text><text>{{order.petName}} · {{order.petType}}</text></view>
+    <view class="detail-row" wx:if="{{timeOnly}}"><text class="text-gray">入住时间</text><text>{{order.startDate}} {{order.startTime}}</text></view>
+  </view>
+
+  <view class="card" wx:if="{{order.id}}">
+    <view class="card-title">{{timeOnly ? '修改离店时间' : '寄养时间与信息'}}</view>
+    <text class="tip-text" wx:if="{{timeOnly}}">寄养中仅可修改离店日期与时间，其他信息请联系商家。</text>
+
+    <block wx:if="{{!timeOnly}}">
+      <calendar startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
+    </block>
+    <block wx:else>
+      <calendar startDate="{{order.startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
+    </block>
+
+    <view class="time-pickers" wx:if="{{!timeOnly && startDate && endDate}}">
+      <view class="time-row">
+        <text class="time-label">入住时间</text>
+        <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
+      </view>
+      <view class="time-row">
+        <text class="time-label">离店时间</text>
+        <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
+      </view>
+    </view>
+    <view class="time-pickers" wx:elif="{{timeOnly && endDate}}">
+      <view class="time-row" style="flex:1;">
+        <text class="time-label">离店时间</text>
+        <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
+      </view>
+    </view>
+
+    <view class="date-summary" wx:if="{{feeReady}}">
+      <view class="flex-between fee-total-row">
+        <text>预计总费用</text>
+        <text class="fee-highlight">¥{{totalFeeText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <block wx:if="{{!timeOnly && order.id}}">
+    <view class="card">
+      <view class="card-title">联系信息</view>
+      <view class="form-group">
+        <text class="form-label">联系人 <text class="required-star">*</text></text>
+        <input class="form-input" value="{{contactName}}" bindinput="onContactNameInput" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">联系电话 <text class="required-star">*</text></text>
+        <input class="form-input" type="number" maxlength="11" value="{{contactPhone}}" bindinput="onContactPhoneInput" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">紧急联系电话</text>
+        <input class="form-input" type="number" maxlength="11" value="{{emergencyPhone}}" bindinput="onEmergencyPhoneInput" />
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{store.hasPickup}}">
+      <view class="pickup-row">
+        <text class="form-label" style="margin:0;">接送服务</text>
+        <switch checked="{{needPickup}}" bindchange="onPickupChange" color="#E98657" />
+      </view>
+      <block wx:if="{{needPickup}}">
+        <view class="form-group">
+          <text class="form-label">接送地址 <text class="required-star">*</text></text>
+          <view class="pickup-address-box" bindtap="onChoosePickupAddress">
+            <view class="pickup-address-main">
+              <text class="pickup-address-text {{pickupAddress ? '' : 'pickup-address-placeholder'}}">{{pickupAddress || '地图选点'}}</text>
+            </view>
+            <text class="pickup-address-action">选点</text>
+          </view>
+        </view>
+        <view class="form-group">
+          <text class="form-label">接送电话</text>
+          <input class="form-input" type="number" maxlength="11" value="{{pickupContactPhone}}" bindinput="onPickupPhoneInput" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">接送范围</text>
+          <radio-group class="pickup-leg-group" bindchange="onPickupLegChange">
+            <label class="pickup-leg-item"><radio value="both" checked="{{pickupLeg === 'both'}}" color="#E98657" />去程+返程</label>
+            <label class="pickup-leg-item"><radio value="outbound" checked="{{pickupLeg === 'outbound'}}" color="#E98657" />仅去程</label>
+            <label class="pickup-leg-item"><radio value="return" checked="{{pickupLeg === 'return'}}" color="#E98657" />仅返程</label>
+          </radio-group>
+        </view>
+      </block>
+    </view>
+
+    <view class="card">
+      <view class="card-title">特殊需求</view>
+      <textarea class="form-textarea" value="{{specialNeeds}}" bindinput="onSpecialInput" placeholder="选填" />
+    </view>
+  </block>
+
+  <button class="btn-primary submit-btn" bindtap="onSubmit" wx:if="{{order.id}}">保存修改</button>
+</view>
+
+<view wx:if="{{showTimePicker}}" class="time-picker-mask" bindtap="onCancelTimePicker">
+  <view class="time-picker-panel" catchtap="onTimePanelTap">
+    <view class="time-picker-header">
+      <text class="time-picker-action" bindtap="onCancelTimePicker">取消</text>
+      <text class="time-picker-panel-title">{{timePickerTitle}}</text>
+      <text class="time-picker-action time-picker-confirm" bindtap="onConfirmTimePicker">确定</text>
+    </view>
+    <picker-view class="time-picker-wheel" value="{{timePickerValue}}" bindchange="onTimePickerChange">
+      <picker-view-column>
+        <view class="time-picker-item" wx:for="{{timeHours}}" wx:key="*this">{{item}}时</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view class="time-picker-item" wx:for="{{timeMinutes}}" wx:key="*this">{{item}}分</view>
+      </picker-view-column>
+    </picker-view>
+  </view>
+</view>

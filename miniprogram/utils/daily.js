@@ -95,6 +95,18 @@ function fetchMerchantBoardingLogs(storeId, orderIds = []) {
     });
 }
 
+function addDailyLogComment({ logId, content, replyToCommentId } = {}) {
+  return callDailyService('addDailyLogComment', {
+    logId,
+    content,
+    replyToCommentId: replyToCommentId || ''
+  });
+}
+
+function listDailyLogComments(logId) {
+  return callDailyService('listDailyLogComments', { logId });
+}
+
 module.exports = {
   saveDailyLog,
   updateDailyLog,
@@ -106,5 +118,7 @@ module.exports = {
   fetchDailyLogs,
   fetchDailyLogsForOrders,
   fetchMerchantDailyLogs,
-  fetchMerchantBoardingLogs
+  fetchMerchantBoardingLogs,
+  addDailyLogComment,
+  listDailyLogComments
 };

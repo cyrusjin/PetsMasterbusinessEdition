@@ -123,6 +123,16 @@
                 disabled="{{deleting}}"
               >删除定时</button>
             </view>
+
+            <daily-comments
+              wx:if="{{!log.isScheduled}}"
+              log-id="{{log.id}}"
+              comments="{{log.comments}}"
+              disabled="{{log.isScheduled}}"
+              bind:change="onCommentsChange"
+              data-group-index="{{groupIdx}}"
+              data-log-index="{{logIdx}}"
+            />
           </view>
         </view>
       </view>

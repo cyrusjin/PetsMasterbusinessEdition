@@ -3,6 +3,7 @@
   "enablePullDownRefresh": true,
   "onReachBottomDistance": 120,
   "usingComponents": {
-    "cached-image": "/components/cached-image/cached-image"
+    "cached-image": "/components/cached-image/cached-image",
+    "daily-comments": "/components/daily-comments/daily-comments"
   }
 }

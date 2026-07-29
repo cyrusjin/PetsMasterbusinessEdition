@@ -1,0 +1,54 @@
+<view class="container has-tab-bar">
+  <oa-follow-banner />
+  <view class="order-tabs">
+    <view class="order-tab {{activeTab === 'all' ? 'active' : ''}}" bindtap="onTab" data-tab="all">全部</view>
+    <view class="order-tab {{activeTab === 'pending' ? 'active' : ''}}" bindtap="onTab" data-tab="pending">待确认</view>
+    <view class="order-tab {{activeTab === 'awaiting_arrival' ? 'active' : ''}}" bindtap="onTab" data-tab="awaiting_arrival">待到店</view>
+    <view class="order-tab {{activeTab === 'boarding' ? 'active' : ''}}" bindtap="onTab" data-tab="boarding">寄养中</view>
+    <view class="order-tab {{activeTab === 'completed' ? 'active' : ''}}" bindtap="onTab" data-tab="completed">已完成</view>
+  </view>
+  <view wx:if="{{filteredOrders.length > 0}}">
+    <view class="card" wx:for="{{filteredOrders}}" wx:key="id" bindtap="onDetail" data-id="{{item.id}}">
+      <view class="flex-between mb-16">
+        <view class="flex-row gap-16">
+          <cached-image wx:if="{{item.petPhoto}}" src="{{item.petPhoto}}" mode="aspectFill" custom-class="pet-avatar-small" />
+          <view wx:else class="pet-avatar-small">{{item.petName[0]}}</view>
+          <view>
+            <text class="boarding-name">{{item.petName}}</text>
+            <text class="text-gray" style="display:block;font-size:22rpx;" wx:if="{{item.storeName}}">{{item.storeName}}</text>
+            <text class="text-gray" style="display:block;font-size:22rpx;" wx:else>{{item.serviceType}}</text>
+          </view>
+        </view>
+        <view class="status-badge status-{{item.status}}">
+          <text class="unread-dot" wx:if="{{item.hasUnread}}">●</text>
+          <text wx:if="{{item.status==='pending'}}">待确认</text>
+          <text wx:elif="{{item.status==='awaiting_arrival'}}">待到店</text>
+          <text wx:elif="{{item.status==='confirmed'}}">待签协议</text>
+          <text wx:elif="{{item.status==='boarding'}}">寄养中</text>
+          <text wx:elif="{{item.status==='toPay'}}">待支付</text>
+          <text wx:elif="{{item.status==='completed'}}">已完成</text>
+          <text wx:else>已取消</text>
+        </view>
+      </view>
+      <view class="order-info">
+        <view class="order-info-texts">
+          <view class="order-no-row">
+            <text class="text-gray">订单号：</text>
+            <text class="copyable-order-no" catchtap="onCopyOrderNo" data-no="{{item.displayNo}}">{{item.displayNo}}</text>
+          </view>
+          <text class="text-gray">下单时间：{{item.createTimeText}}</text>
+          <text class="text-gray">寄养时间：{{item.startDate}} ~ {{item.endDate}}</text>
+        </view>
+        <text class="fee-highlight" style="font-size:28rpx;">¥{{item.totalFee}}</text>
+      </view>
+      <view class="order-actions" wx:if="{{item.pricePendingConfirm || item.hasUnread}}">
+        <button wx:if="{{item.pricePendingConfirm}}" class="btn-sm btn-orange" catchtap="onConfirmPrice" data-id="{{item.id}}">待确认</button>
+        <text wx:elif="{{item.hasUnread}}" class="unread-hint">商家已更新订单</text>
+      </view>
+    </view>
+  </view>
+  <view wx:else class="empty-state">
+    <text class="empty-icon">📦</text>
+    <text class="empty-text">暂无订单</text>
+  </view>
+</view>

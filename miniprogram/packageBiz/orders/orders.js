@@ -2,7 +2,7 @@ const app = getApp();
 const { copyText } = require('../../utils/clipboard');
 const badgeUtil = require('../../utils/badge');
 const { buildOrderListPetMeta } = require('../../utils/petSnapshot');
-const { canMerchantModifyOrder } = require('../../utils/orderActions');
+const { canMerchantModifyOrder } = require('../utils/orderActions');
 const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders, startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../utils/orderRefresh');
 

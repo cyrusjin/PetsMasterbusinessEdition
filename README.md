@@ -1,55 +1,52 @@
-# PetMasterBusiness（宠大师商家端）
+# PetMasterBusiness（宠大师 · 双端合一）
 
-独立商家小程序，与宠主端 `petmaster` 共用阿里云 API 与 MongoDB 数据。
+本仓库为商家端 AppID 小程序，已内嵌宠主端（用户版）页面。默认入口为用户首页；已入驻商家冷启动默认进入商家端。
 
 ## AppID
 
-- 商家端：`wx327ccf77cdedc252`
-- 宠主端：`wx95d01c319ed4f686`
+- 本小程序（商家端 AppID）：`wx327ccf77cdedc252`
+- 宠主端独立小程序（暂保留）：`wx95d01c319ed4f686`
+
+登录 `client` 仍为 `merchant`（与本 AppID 的 `code2Session` 一致）。
+
+## 双端壳
+
+| 场景 | 行为 |
+|------|------|
+| 普通用户打开 | 用户版（首页 / 订单 / 动态） |
+| 已入驻商家打开 | 商家版（日常 / 统计 / 店铺） |
+| 用户首页右上角「切换商家版」 | 已入驻 → 商家日常；未入驻 → 申请入驻 |
+| 商家页右上角「切换用户版」 | 进入用户版，并默认绑定自己的店（`visitStoreId`） |
+| 分享带 `store_id` | 强制用户版并绑定该店 |
+
+用户版使用原生 `tabBar` + `custom-tab-bar`；商家三页不在原生 Tab 内，使用页面内 `merchant-tab-bar`。
 
 ## 分享给客人
 
-商家在「日常」页点击「分享给客人」后，发送**落地页邀请海报图**给好友：
+商家点「分享给客人」直接转发**本小程序卡片**：
 
-1. 海报中的二维码为带 `store_id` 的服务号参数码
-2. 客人直接扫码关注「猫森宠物」，无需再点链接或菜单
-3. 关注后服务号**自动推送**宠主端小程序卡片，封面为该店铺头像
-4. 打开小程序后按 `store_id` / 待绑定意向自动绑定店铺
-
-也可打开链接 `https://api.petmaster.me/s/{store_id}` 查看同一落地页；海报图地址：`/s/{store_id}/poster.jpg`。
-
-员工邀请仍通过小程序卡片分享（`staff_invite=1`）。
-
-### 跳转配置（员工邀请等仍可用）
-
-在商家端 `miniprogram/app.json` 中声明可跳转的宠主端 AppID：
-
-```json
-"navigateToMiniProgramAppIdList": ["wx95d01c319ed4f686"]
+```text
+pages/index/index?store_id={store_id}
 ```
 
-修改后重新编译/上传代码即可。这是微信官方要求的配置方式，**不需要**在公众平台找「小程序跳转」菜单。
+好友打开后进入用户版，并自动绑定该店（成为本店客人）。历史落地页 `pages/share/store-landing` 仍兼容，会中转至用户首页。
 
-若使用**半屏打开**另一小程序（本项目未使用），才需要在后台 **设置 → 第三方设置 → 半屏小程序管理** 里申请。
+服务号关注后仅登记店铺意向并回复欢迎文字，**不再推送小程序卡片**。
+
+员工邀请仍为本小程序商家页：`pages/merchant/tab-daily/tab-daily?staff_invite=1&store_id=...`
 
 ## API
 
-- Base URL：`https://api.petmaster.me`（配置于 `miniprogram/config/api.js`）
-- 登录：`POST /api/auth/login`，body 带 `{ code, client: "merchant" }`
-- 业务接口与宠主端相同：`/api/user|store|order|pet|daily`、`/api/upload/sign`
-- 媒体上传：签名后 `wx.uploadFile` 到 `https://api.petmaster.me/api/upload`，文件落在服务器本地，公开访问 `https://api.petmaster.me/media/...`
+- Base URL：`https://api.petmaster.me`（`miniprogram/config/api.js`）
+- 登录：`POST /api/auth/login`，body `{ code, client: "merchant" }`
+- 业务接口：`/api/user|store|order|pet|daily`、`/api/upload/sign`
+- 媒体：`wx.uploadFile` → `https://api.petmaster.me/api/upload`，公开访问 `https://api.petmaster.me/media/...`
 
-## 身份打通
+## 身份说明
 
-两端 openid 不同。服务端通过以下方式对齐同一用户：
-
-1. 微信开放平台 **UnionID**（两端绑定同一开放平台账号时自动）
-2. **手机号绑定**（`bindPhone` 会合并同手机号账号）
-3. JWT 内始终使用业务主 `openid`，保证历史店铺/订单归属不断
+本小程序内用户版与商家版共用同一 openid（商家 AppID）。与独立宠主端小程序之间仍可通过 UnionID / 手机号绑定对齐账号。
 
 ## 微信后台配置
 
-1. 服务器域名 request：`https://api.petmaster.me`
-2. uploadFile / downloadFile：`https://api.petmaster.me`（本地媒体，不再使用 OSS）
-3. 服务端 `.env` 配置 `WX_MERCHANT_APPID` / `WX_MERCHANT_SECRET`
-4. 跳转宠主端：在 `app.json` 的 `navigateToMiniProgramAppIdList` 中声明（已配置），无需公众平台额外页面
+1. request / uploadFile / downloadFile 合法域名：`https://api.petmaster.me`
+2. 服务端 `.env` 配置 `WX_MERCHANT_APPID` / `WX_MERCHANT_SECRET`

@@ -1,0 +1,32 @@
+.oa-follow-banner {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 22rpx 24rpx;
+  margin-bottom: 20rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #FFF1E7 0%, #FFE4D1 100%);
+  border: 1rpx solid #F2C39E;
+  box-sizing: border-box;
+}
+
+.oa-follow-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #4E3729;
+  line-height: 1.4;
+}
+
+.oa-follow-btn {
+  flex-shrink: 0;
+  padding: 12rpx 28rpx;
+  border-radius: 999rpx;
+  background: #E98657;
+  color: #FFFFFF;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 8rpx 18rpx rgba(233, 134, 87, 0.28);
+}

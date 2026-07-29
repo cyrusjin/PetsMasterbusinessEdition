@@ -1,8 +1,14 @@
+const { uploadLocalImage } = require('./upload');
+const { isLocalTempPath, isRemotePhoto } = require('./photoPath');
+
 const LEGACY_ROOM_META = {
   small: { name: '小房间', maxWeight: 5 },
   medium: { name: '中房间', maxWeight: 15 },
   large: { name: '大房间', maxWeight: 40 }
 };
+
+/** 房间描述选填，上限与店铺介绍一致量级 */
+const MAX_ROOM_DESCRIPTION = 200;
 
 let roomIdSeed = 0;
 
@@ -11,16 +17,28 @@ function createRoomId() {
   return `room_${Date.now()}_${roomIdSeed}`;
 }
 
+function normalizeRoomPhoto(url) {
+  if (!url || typeof url !== 'string') return '';
+  const text = url.trim();
+  if (!text) return '';
+  if (isRemotePhoto(text) || isLocalTempPath(text)) return text;
+  return '';
+}
+
 function normalizeRoomItem(item, fallbackId) {
   const id = (item && item.id) || fallbackId || createRoomId();
   const name = ((item && item.name) || '').trim();
   const maxWeight = parseFloat(item && item.maxWeight);
   const price = parseFloat(item && item.price);
+  const description = ((item && item.description) || '').trim().slice(0, MAX_ROOM_DESCRIPTION);
+  const photo = normalizeRoomPhoto(item && item.photo);
   return {
     id,
     name,
     maxWeight: Number.isFinite(maxWeight) && maxWeight > 0 ? maxWeight : 0,
-    price: Number.isFinite(price) && price >= 0 ? price : 0
+    price: Number.isFinite(price) && price >= 0 ? price : 0,
+    description,
+    photo
   };
 }
 
@@ -87,12 +105,51 @@ function updateRoomField(list, index, field, rawValue) {
 
   if (field === 'name') {
     target.name = String(rawValue || '').trim();
+  } else if (field === 'description') {
+    target.description = String(rawValue || '').trim().slice(0, MAX_ROOM_DESCRIPTION);
+  } else if (field === 'photo') {
+    target.photo = normalizeRoomPhoto(rawValue);
   } else if (field === 'maxWeight' || field === 'price') {
     const parsed = parseFloat(rawValue);
     target[field] = Number.isFinite(parsed) ? parsed : 0;
   }
 
   return next.map((item) => normalizeRoomItem(item, item.id));
+}
+
+/**
+ * 保存前将房间本地临时图上传为远端 URL；描述与照片均为选填。
+ */
+function uploadRoomPricingPhotos(list, fallbackList) {
+  const normalized = normalizeRoomPricing(list);
+  const fallback = normalizeRoomPricing(fallbackList || []);
+  const fallbackById = {};
+  fallback.forEach((room) => {
+    fallbackById[room.id] = room;
+  });
+
+  return Promise.all(normalized.map((room) => {
+    const photo = room.photo;
+    if (!photo) {
+      return Promise.resolve(normalizeRoomItem({ ...room, photo: '' }, room.id));
+    }
+    if (isRemotePhoto(photo) && !isLocalTempPath(photo)) {
+      return Promise.resolve(room);
+    }
+    if (isLocalTempPath(photo)) {
+      return uploadLocalImage(photo, 'room-photos').then((url) => {
+        if (!isRemotePhoto(url)) {
+          return Promise.reject(new Error('房间照片上传失败，请重试'));
+        }
+        return normalizeRoomItem({ ...room, photo: url }, room.id);
+      });
+    }
+    const fallbackRoom = fallbackById[room.id];
+    if (fallbackRoom && isRemotePhoto(fallbackRoom.photo)) {
+      return Promise.resolve(normalizeRoomItem({ ...room, photo: fallbackRoom.photo }, room.id));
+    }
+    return Promise.resolve(normalizeRoomItem({ ...room, photo: '' }, room.id));
+  }));
 }
 
 function findRoom(list, roomType) {
@@ -118,15 +175,51 @@ function supportsPetWeight(room, petWeight) {
   return weight <= room.maxWeight;
 }
 
+/** 用户端可展示的房间图：排除商家本地临时路径 */
+function getDisplayRoomPhoto(photo) {
+  const text = normalizeRoomPhoto(photo);
+  if (!text) return '';
+  if (isLocalTempPath(text)) return '';
+  return text;
+}
+
 function buildRoomOptions(list, petWeight) {
   const normalized = normalizeRoomPricing(list);
   const weight = parsePetWeight(petWeight);
 
   return normalized.map((room) => ({
     ...room,
+    photo: getDisplayRoomPhoto(room.photo),
     weightLimitText: `≤${room.maxWeight}kg`,
-    disabled: weight != null ? !supportsPetWeight(room, weight) : true
+    // 未选宠物时不标超限；选了宠物体重后才按上限禁用
+    disabled: weight != null ? !supportsPetWeight(room, weight) : false
   }));
+}
+
+/**
+ * 解析房间选项中的远程图片（cloud:// / https）为可展示地址
+ */
+function resolveRoomOptionsPhotos(options) {
+  const list = Array.isArray(options) ? options : [];
+  const indexes = [];
+  const urls = [];
+  list.forEach((room, index) => {
+    const photo = getDisplayRoomPhoto(room && room.photo);
+    if (!photo) return;
+    indexes.push(index);
+    urls.push(photo);
+  });
+  if (!urls.length) return Promise.resolve(list.map((room) => ({ ...room })));
+
+  const { resolveImageUrls } = require('./imageCache');
+  return resolveImageUrls(urls).then((resolved) => {
+    const next = list.map((room) => ({ ...room }));
+    indexes.forEach((roomIndex, i) => {
+      const url = resolved[i];
+      if (url) next[roomIndex].photo = url;
+    });
+    return next;
+  }).catch(() => list.map((room) => ({ ...room })));
 }
 
 function validateRoomPricing(list) {
@@ -148,15 +241,19 @@ function validateRoomPricing(list) {
 }
 
 module.exports = {
+  MAX_ROOM_DESCRIPTION,
   getDefaultRoomPricing,
   normalizeRoomPricing,
   addRoom,
   removeRoom,
   updateRoomField,
+  uploadRoomPricingPhotos,
   findRoom,
   findRoomPrice,
   supportsPetWeight,
+  getDisplayRoomPhoto,
   buildRoomOptions,
+  resolveRoomOptionsPhotos,
   validateRoomPricing,
   parsePetWeight
 };

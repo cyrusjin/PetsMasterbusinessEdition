@@ -1,5 +1,8 @@
-<view class="merchant-page has-tab-bar" style="padding-bottom: 160rpx;">
+<view class="merchant-page {{hideMerchantTabBar ? 'apply-only' : 'has-tab-bar'}}" style="{{hideMerchantTabBar ? '' : 'padding-bottom: 160rpx;'}}">
   <view class="container">
+    <view class="mode-switch-row">
+      <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
+    </view>
     <block wx:if="{{isAdminDisabled}}">
       <view class="card apply-disabled-card">
         <view class="card-title">店铺已关闭</view>
@@ -336,20 +339,50 @@
       </view>
       <view wx:if="{{billingMode === 'room'}}" class="pricing-section mt-20">
         <view class="section-title">房间类型价格（元/天）</view>
-        <view class="weight-range-tip">可自定义房间名称、最大允许体重与价格</view>
-        <view class="room-config-row" wx:for="{{roomPricing}}" wx:key="id">
-          <input class="room-name-input" placeholder="房间名称" value="{{item.name}}" bindinput="onRoomField" data-index="{{index}}" data-field="name" />
-          <text class="room-field-label">≤</text>
-          <input class="weight-input" type="digit" placeholder="体重" value="{{item.maxWeight}}" bindinput="onRoomField" data-index="{{index}}" data-field="maxWeight" />
-          <text class="weight-unit">kg</text>
-          <input class="price-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onRoomField" data-index="{{index}}" data-field="price" />
-          <text class="price-unit">元</text>
-          <view
-            wx:if="{{roomPricing.length > 1}}"
-            class="weight-range-delete"
-            catchtap="onRemoveRoom"
-            data-index="{{index}}"
-          >删除</view>
+        <view class="weight-range-tip">可自定义房间名称、最大允许体重与价格；描述和照片选填，会展示给下单用户</view>
+        <view class="room-config-card" wx:for="{{roomPricing}}" wx:key="id">
+          <view class="room-config-row">
+            <input class="room-name-input" placeholder="房间名称" value="{{item.name}}" bindinput="onRoomField" data-index="{{index}}" data-field="name" />
+            <text class="room-field-label">≤</text>
+            <input class="weight-input" type="digit" placeholder="体重" value="{{item.maxWeight}}" bindinput="onRoomField" data-index="{{index}}" data-field="maxWeight" />
+            <text class="weight-unit">kg</text>
+            <input class="price-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onRoomField" data-index="{{index}}" data-field="price" />
+            <text class="price-unit">元</text>
+            <view
+              wx:if="{{roomPricing.length > 1}}"
+              class="weight-range-delete"
+              catchtap="onRemoveRoom"
+              data-index="{{index}}"
+            >删除</view>
+          </view>
+          <view class="room-extra-row">
+            <textarea
+              class="room-desc-input"
+              placeholder="房间描述（选填）"
+              value="{{item.description}}"
+              maxlength="{{maxRoomDescription}}"
+              auto-height
+              bindinput="onRoomField"
+              data-index="{{index}}"
+              data-field="description"
+            />
+            <view class="room-photo-picker">
+              <view wx:if="{{item.photo}}" class="room-photo-wrap">
+                <cached-image
+                  custom-class="room-photo-preview"
+                  src="{{item.photo}}"
+                  mode="aspectFill"
+                  bindtap="onPreviewRoomPhoto"
+                  data-index="{{index}}"
+                />
+                <view class="store-photo-delete" catchtap="onDeleteRoomPhoto" data-index="{{index}}">×</view>
+              </view>
+              <view wx:else class="store-photo-add room-photo-add" bindtap="onChooseRoomPhoto" data-index="{{index}}">
+                <text class="store-photo-add-icon">+</text>
+                <text class="store-photo-add-text">照片</text>
+              </view>
+            </view>
+          </view>
         </view>
         <view class="weight-range-add" bindtap="onAddRoom">+ 添加房间</view>
       </view>
@@ -630,4 +663,5 @@
   </view>
 
 </view>
+<merchant-tab-bar wx:if="{{!hideMerchantTabBar}}" active="store" isDemoMode="{{isDemoMode}}" />
 <hidden-admin-entry id="hiddenAdminEntry" />

@@ -1,5 +1,8 @@
 {
   "pages": [
+    "pages/index/index",
+    "pages/orders/orders",
+    "pages/daily/daily",
     "pages/merchant/tab-daily/tab-daily",
     "pages/merchant/tab-statistics/tab-statistics",
     "pages/merchant/tab-store/tab-store",
@@ -7,6 +10,22 @@
     "pages/merchant/apply/apply"
   ],
   "subPackages": [
+    {
+      "root": "packageUser",
+      "name": "packageUser",
+      "pages": [
+        "user/login/login",
+        "user/pets/pets",
+        "user/pet-form/pet-form",
+        "user/reserve/reserve",
+        "user/boarding-contract/boarding-contract",
+        "user/order-detail/order-detail",
+        "user/order-edit/order-edit",
+        "user/contract/contract",
+        "user/contract-sign/contract-sign",
+        "user/pet-daily/pet-daily"
+      ]
+    },
     {
       "root": "packageBiz",
       "name": "packageBiz",
@@ -42,15 +61,19 @@
     }
   ],
   "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["packageUser"]
+    },
     "pages/merchant/tab-daily/tab-daily": {
       "network": "all",
       "packages": ["packageBiz"]
     }
   },
   "window": {
-    "backgroundTextStyle": "light",
+    "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#FFF4E7",
-    "navigationBarTitleText": "宠大师商家端",
+    "navigationBarTitleText": "宠物寄养",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#FFF8F0",
     "backgroundColorTop": "#FFF4E7",
@@ -60,45 +83,44 @@
     "custom": true,
     "color": "#999999",
     "selectedColor": "#E98657",
-    "backgroundColor": "#ffffff",
-    "borderStyle": "white",
+    "backgroundColor": "#FFFDF8",
+    "borderStyle": "black",
     "list": [
       {
-        "pagePath": "pages/merchant/tab-daily/tab-daily",
-        "text": "日常管理",
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tab/tab-home.png",
+        "selectedIconPath": "images/tab/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/orders/orders",
+        "text": "订单",
         "iconPath": "images/tab/tab-order.png",
         "selectedIconPath": "images/tab/tab-order-active.png"
       },
       {
-        "pagePath": "pages/merchant/tab-statistics/tab-statistics",
-        "text": "营收统计",
-        "iconPath": "images/card/card-stats.png",
-        "selectedIconPath": "images/card/card-stats.png"
-      },
-      {
-        "pagePath": "pages/merchant/tab-store/tab-store",
-        "text": "我的店铺",
-        "iconPath": "images/tab/tab-shop.png",
-        "selectedIconPath": "images/tab/tab-shop-active.png"
+        "pagePath": "pages/daily/daily",
+        "text": "动态",
+        "iconPath": "images/tab/tab-daily.png",
+        "selectedIconPath": "images/tab/tab-daily-active.png"
       }
     ]
   },
   "usingComponents": {
     "cached-image": "/components/cached-image/cached-image",
-    "hidden-admin-entry": "/components/hidden-admin-entry/hidden-admin-entry"
+    "hidden-admin-entry": "/components/hidden-admin-entry/hidden-admin-entry",
+    "oa-follow-banner": "/components/oa-follow-banner/oa-follow-banner",
+    "daily-comments": "/components/daily-comments/daily-comments"
   },
   "sitemapLocation": "sitemap.json",
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
   "permission": {
     "scope.userLocation": {
-      "desc": "用于在地图上选择店铺营业地址"
+      "desc": "用于选择寄养地址与接送位置"
     }
   },
   "requiredPrivateInfos": [
     "chooseLocation"
-  ],
-  "navigateToMiniProgramAppIdList": [
-    "wx95d01c319ed4f686"
   ]
 }

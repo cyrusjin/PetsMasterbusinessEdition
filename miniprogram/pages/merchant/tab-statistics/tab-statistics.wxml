@@ -1,5 +1,8 @@
 <view class="merchant-page stats-page has-tab-bar" style="padding-bottom: 160rpx;">
   <view class="container">
+    <view class="mode-switch-row">
+      <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
+    </view>
     <view class="demo-banner" wx:if="{{isDemoMode}}">
       <text class="demo-banner-text">体验模式 · 以下为演示数据，入驻后可查看真实经营报表</text>
     </view>
@@ -132,4 +135,5 @@
   </view>
 
 </view>
+<merchant-tab-bar active="statistics" isDemoMode="{{isDemoMode}}" />
 <hidden-admin-entry id="hiddenAdminEntry" />

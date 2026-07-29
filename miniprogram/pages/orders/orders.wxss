@@ -1,0 +1,5 @@
+.order-info { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #F2DEC9; gap: 16rpx; }
+.order-info-texts { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.order-actions { display: flex; justify-content: flex-end; margin-top: 16rpx; gap: 16rpx; align-items: center; }
+.unread-dot { color: #E53935; font-size: 20rpx; margin-right: 6rpx; }
+.unread-hint { font-size: 22rpx; color: #E98657; }
