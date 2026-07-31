@@ -19,6 +19,7 @@ const {
 } = require('../../../utils/storePhotos');
 const { resolveImageUrls } = require('../../../utils/imageCache');
 const { showValidationAlert } = require('../../../utils/formAlert');
+const { isOaBound } = require('../../../utils/officialAccount');
 
 Page({
   data: {
@@ -26,7 +27,8 @@ Page({
     storePhotos: [],
     maxStorePhotos: MAX_STORE_PHOTOS,
     submitting: false,
-    applyStatus: ''
+    applyStatus: '',
+    oaFollowSheetVisible: false
   },
 
   onLoad() {
@@ -183,10 +185,10 @@ Page({
       })
       .then((store) => {
         wx.hideLoading();
-        wx.showToast({ title: '申请已提交', icon: 'success' });
         this._formDirty = false;
         this._formInitialized = true;
         this._applyFormFromShop(store, 'pending');
+        this._afterApplySuccess();
       })
       .catch((err) => {
         wx.hideLoading();
@@ -199,5 +201,20 @@ Page({
       .finally(() => {
         this.setData({ submitting: false });
       });
-  }
+  },
+
+  _afterApplySuccess() {
+    wx.showToast({ title: '申请已提交', icon: 'success', duration: 1500 });
+    const user = (app.globalData && app.globalData.userInfo) || {};
+    if (isOaBound(user)) return;
+    setTimeout(() => {
+      this.setData({ oaFollowSheetVisible: true });
+    }, 800);
+  },
+
+  onCloseOaFollowSheet() {
+    this.setData({ oaFollowSheetVisible: false });
+  },
+
+  onOaFollowSheetFollowed() {}
 });

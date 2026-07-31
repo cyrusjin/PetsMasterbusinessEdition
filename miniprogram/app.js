@@ -3,7 +3,7 @@ const { getDefaultWeightPricing } = require('./utils/weightPricing');
 const { getDefaultRoomPricing } = require('./utils/roomPricing');
 const auth = require('./utils/auth');
 const storeApi = require('./utils/store');
-const { API_BASE_URL, API_CLIENT } = require('./config/api');
+const { API_BASE_URL } = require('./config/api');
 const { ensureLogin } = require('./utils/api');
 const { normalizeIsMerchant, resolveRole, isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled, isMerchantStaff, isStaffOfStore, isStoreOwner, getMerchantStoreId, getVisitStoreId, hasMerchantCapability } = require('./utils/role');
 const { applyRoleShell: applyTabShell, getMerchantLandingUrl, getUserLandingUrl, isUserTabRoute } = require('./utils/shell');
@@ -78,10 +78,67 @@ App({
     storeDebug.logEntryOptions('App onShow', options);
     if (this._skipNextAppShowBootstrap) {
       this._skipNextAppShowBootstrap = false;
+      // 冷启动 onShow 偶发比 onLaunch 带更完整 query：先记下分享/员工邀请
+      const entry = this._normalizeEntryOptions(options);
+      const staffInviteId = this._parseStaffInviteStoreId(entry);
+      if (staffInviteId && !this.shouldIgnoreShareEntry()) {
+        this.globalData.pendingStaffInviteStoreId = staffInviteId;
+        this.globalData.pendingEntryStoreId = '';
+        this._exitUserClientMode();
+      } else {
+        this._rememberShareEntryStore(entry);
+      }
       return;
     }
     // 前后台切换走 TTL，避免每次强制登录打穿缓存
     this._bootstrapSession(options, { force: false });
+  },
+
+  /** 合并 App / 进入参数，兼容 tabBar 分享时 query 只在一侧出现 */
+  _normalizeEntryOptions(options) {
+    const base = options || {};
+    if (this._extractStoreId(base) || this._parseStaffInviteStoreId(base)) {
+      return base;
+    }
+    try {
+      const enter = typeof wx.getEnterOptionsSync === 'function' ? (wx.getEnterOptionsSync() || {}) : {};
+      if (this._extractStoreId(enter) || this._parseStaffInviteStoreId(enter)) {
+        return this._mergeEntryOptions(base, enter);
+      }
+      const launch = typeof wx.getLaunchOptionsSync === 'function' ? (wx.getLaunchOptionsSync() || {}) : {};
+      if (this._extractStoreId(launch) || this._parseStaffInviteStoreId(launch)) {
+        return this._mergeEntryOptions(base, launch);
+      }
+    } catch (err) {
+      // ignore
+    }
+    return base;
+  },
+
+  _mergeEntryOptions(base, extra) {
+    const baseQuery = (base && (base.query || base)) || {};
+    const extraQuery = (extra && (extra.query || extra)) || {};
+    const query = { ...baseQuery, ...extraQuery };
+    return {
+      ...base,
+      ...extra,
+      path: (extra && extra.path) || (base && base.path) || '',
+      query,
+      scene: (extra && extra.scene) || (base && base.scene)
+    };
+  },
+
+  _rememberShareEntryStore(options) {
+    const entry = this._normalizeEntryOptions(options);
+    if (this._isStaffInviteEntry(entry)) return '';
+    const storeId = this._extractStoreId(entry);
+    if (!storeId) return '';
+    if (!this._isUserEntryPath(entry) && (entry.path || '').includes('pages/merchant/')) {
+      return '';
+    }
+    this.globalData.pendingEntryStoreId = storeId;
+    storeDebug.log('记住分享入口 store_id', { storeId });
+    return storeId;
   },
 
   _hydrateRoleFromUser(user) {
@@ -96,19 +153,64 @@ App({
       this.globalData.role = 'user';
       return;
     }
+    if (this._prefersMerchantShell(user)) {
+      this.globalData.role = 'merchant';
+      this.globalData.isMerchant = isMerchantApproved(user);
+      return;
+    }
     this.globalData.isMerchant = false;
     this.globalData.role = 'user';
   },
 
+  _prefersMerchantShell(user) {
+    if (this.getData(STORAGE_KEYS.MERCHANT_SHELL_MODE)) return true;
+    const current = user || this.globalData.userInfo || {};
+    return current.role === 'merchant';
+  },
+
+  _enterMerchantShellMode(options = {}) {
+    const { persist = true } = options;
+    this.globalData.role = 'merchant';
+    if (persist) {
+      this.setData(STORAGE_KEYS.MERCHANT_SHELL_MODE, true);
+    }
+    const user = this.globalData.userInfo;
+    if (user) {
+      const next = { ...user, role: 'merchant' };
+      this.globalData.userInfo = next;
+      this.setData(STORAGE_KEYS.USER, next);
+    }
+  },
+
+  _exitMerchantShellMode() {
+    this.globalData[STORAGE_KEYS.MERCHANT_SHELL_MODE] = null;
+    try {
+      wx.removeStorageSync(STORAGE_KEYS.MERCHANT_SHELL_MODE);
+    } catch (err) {
+      // ignore
+    }
+  },
+
   _bootstrapSession(options, bootOptions = {}) {
     const force = !!(bootOptions && bootOptions.force);
+    const entry = this._normalizeEntryOptions(options);
+    const staffInviteId = this._parseStaffInviteStoreId(entry);
+    // 员工邀请优先：立刻退出用户版，避免商家页 onShow 把人踢回首页
+    if (staffInviteId && !this.shouldIgnoreShareEntry()) {
+      this.globalData.pendingStaffInviteStoreId = staffInviteId;
+      this.globalData.pendingEntryStoreId = '';
+      this._exitUserClientMode();
+    } else {
+      // 登录前先记下分享店，避免并行 getUserInfo 回写时冲掉绑店
+      this._rememberShareEntryStore(entry);
+    }
     return this.ensureCloudAndLogin(force ? { force: true } : {})
       .then(() => {
         this._reconcileClientModeFromCloudUser();
-        return this._handleEntryOptions(options);
+        return this._handleEntryOptions(entry);
       })
       .then(() => {
-        this._applyEntrySideEffects(options);
+        this._applyEntrySideEffects(entry);
         applyTabShell();
         this.refreshUserBadges();
         return this._flushPendingStoreBinding();
@@ -120,26 +222,34 @@ App({
         return null;
       })
       .then(() => {
-        this._ensureDefaultLanding(options);
+        this._ensureDefaultLanding(entry);
       });
   },
 
   _applyEntrySideEffects(options) {
+    const staffInviteStoreId = this.globalData.pendingStaffInviteStoreId
+      || this._parseStaffInviteStoreId(options);
+    if (staffInviteStoreId && !this.shouldIgnoreShareEntry()) {
+      this.globalData.pendingStaffInviteStoreId = staffInviteStoreId;
+      this._exitUserClientMode();
+      this._redirectStaffInviteIfNeeded(staffInviteStoreId);
+      return;
+    }
+
     if (this.isUserClientMode() && !this._extractStoreId(options)) {
       const storeId = this.getStoreId();
       if (storeId) {
         this.bindStore(storeId, { syncUser: false });
       }
-      return;
-    }
-
-    const staffInviteStoreId = this.globalData.pendingStaffInviteStoreId;
-    if (staffInviteStoreId && !this.shouldIgnoreShareEntry()) {
-      this._redirectStaffInviteIfNeeded(staffInviteStoreId);
     }
   },
 
   _reconcileClientModeFromCloudUser() {
+    // 员工邀请进行中：不要被 USER_CLIENT_MODE 本地标记拉回用户版
+    if (this.globalData.pendingStaffInviteStoreId) {
+      this._exitUserClientMode();
+      return;
+    }
     const user = this.globalData.userInfo;
     if (isMerchantApproved(user) && !this.isUserClientMode()) {
       this._exitUserClientMode();
@@ -156,11 +266,17 @@ App({
       this._storeVisitEntry = true;
       this.globalData.role = 'user';
       this.globalData.isMerchant = hasMerchantCapability(user);
+      return;
+    }
+    if (this._prefersMerchantShell(user)) {
+      this.globalData.role = 'merchant';
+      this.globalData.isMerchant = isMerchantApproved(user);
     }
   },
 
   _ensureDefaultLanding(options) {
-    const staffStoreId = this._parseStaffInviteStoreId(options);
+    const staffStoreId = this._parseStaffInviteStoreId(options)
+      || String(this.globalData.pendingStaffInviteStoreId || '').trim();
     if (staffStoreId) return;
     const storeId = this._extractStoreId(options);
     if (storeId && this._isUserEntryPath(options)) return;
@@ -169,6 +285,14 @@ App({
     const route = pages.length ? pages[pages.length - 1].route : '';
 
     if (this.isUserClientMode()) {
+      if (route && route.indexOf('pages/merchant/') === 0) {
+        wx.switchTab({ url: getUserLandingUrl() });
+      }
+      return;
+    }
+
+    // 无商家工作区（新用户等）误入商家 Tab 时回到用户首页
+    if (!this._hasMerchantWorkspace()) {
       if (route && route.indexOf('pages/merchant/') === 0) {
         wx.switchTab({ url: getUserLandingUrl() });
       }
@@ -336,6 +460,7 @@ App({
       this._keepStaffMerchantMode();
       return;
     }
+    this._exitMerchantShellMode();
     this._storeVisitEntry = true;
     this.globalData.role = 'user';
     if (persist) {
@@ -355,22 +480,12 @@ App({
     // 切商家前记住用户端正在访问的店，回来时恢复，避免被自家店/测试店覆盖
     this._rememberUserVisitStore();
     this._exitUserClientMode();
-    // 进入商家壳（未入驻只展示入驻页，不带商家 Tab）
-    this.globalData.role = 'merchant';
+    // 进入商家壳：统一进日常 Tab，保留底部商家 Tab（未入驻走体验模式，不强制入驻页）
+    this.globalData.isMerchant = !!isMerchantApproved(this.globalData.userInfo);
+    this._enterMerchantShellMode();
     this._resetOrdersFetchState();
-
-    if (isMerchantApproved(this.globalData.userInfo)) {
-      this.globalData.isMerchant = true;
-      applyTabShell();
-      wx.reLaunch({ url: getMerchantLandingUrl() });
-      return;
-    }
-
-    // 未入驻 / 审核中 / 已驳回 / 已关闭：仅入驻页
-    this.globalData.isMerchant = false;
     applyTabShell();
-    wx.hideTabBar({ animation: false }).catch(() => {});
-    wx.reLaunch({ url: '/pages/merchant/tab-store/tab-store' });
+    wx.reLaunch({ url: getMerchantLandingUrl() });
   },
 
   _rememberUserVisitStore() {
@@ -519,7 +634,8 @@ App({
 
     const signature = this._entryOptionsSignature(options);
     const staffStoreId = this._parseStaffInviteStoreId(options);
-    const storeId = this._extractStoreId(options);
+    const storeId = this._extractStoreId(options)
+      || String(this.globalData.pendingEntryStoreId || '').trim();
     const hasShareEntry = staffStoreId || (storeId && this._isUserEntryPath(options));
 
     if (hasShareEntry && this.shouldIgnoreShareEntry()) {
@@ -533,6 +649,7 @@ App({
     if (this._isStaffInviteEntry(options)) {
       if (staffStoreId) {
         this.globalData.pendingStaffInviteStoreId = staffStoreId;
+        this.globalData.pendingEntryStoreId = '';
         this._exitUserClientMode();
       }
       if (signature) this._lastHandledEntrySignature = signature;
@@ -585,18 +702,21 @@ App({
     const shop = this.getShop() || {};
     const user = this.globalData.userInfo || {};
     const current = this.getCurrentStore();
-    if (this.globalData.isMerchant) {
+    if (this.globalData.isMerchant && !this.isUserClientMode()) {
       return (
         shop.store_id
         || this.globalData.merchantStoreId
+        || user.merchantStoreId
         || user.store_id
         || ''
       );
     }
     return (
       this.getStoreId()
+      || getVisitStoreId(user)
       || user.store_id
       || (current && current.store_id)
+      || this.globalData.pendingEntryStoreId
       || ''
     );
   },
@@ -687,6 +807,9 @@ App({
           return res.store;
         }
         storeDebug.log('bindStore 失败', { storeId, errMsg: res.errMsg || '店铺不存在' });
+        if (this._isStoreMissingError(res.errMsg)) {
+          return this._handleMissingStoreReference(storeId, { syncUser }).then(() => null);
+        }
         const store = applyFallback();
         if (store && syncUser && !merchantDemo.isDemoEntityId(storeId)) {
           return this._maybeSyncUserStore(storeId).then(() => store);
@@ -773,6 +896,9 @@ App({
           this._enterUserClientMode(storeId, { applyShell: false });
         } else {
           const errMsg = (res && res.errMsg) || '绑定店铺失败';
+          if (this._isStoreMissingError(errMsg)) {
+            return this._clearStaleVisitStore(storeId).then(() => res);
+          }
           console.error('[bindUserStore] 失败', errMsg, res);
           wx.showToast({ title: errMsg, icon: 'none', duration: 3000 });
         }
@@ -880,19 +1006,31 @@ App({
           }
           return merged;
         }
+        if (res.success && !res.store) {
+          this._resetStaleStoreSession(!!res.reconciled);
+          return {};
+        }
         if (res && res.errMsg) {
           console.error('[店铺] 拉取服务端店铺失败', res.errMsg);
+          if (this._isStoreMissingError(res.errMsg)) {
+            this._resetStaleStoreSession(false);
+            return {};
+          }
         }
-        if (localShop.store_id) {
-          console.warn('[店铺] 服务端未返回店铺，保留本地缓存');
-          return localShop;
+        if (localShop.store_id && !merchantDemo.isDemoEntityId(localShop.store_id)) {
+          this._resetStaleStoreSession(false);
+          return {};
         }
         this.clearMerchantLocalCache();
         return {};
       })
       .catch((err) => {
         console.error('fetchMerchantStore failed', err);
-        return localShop.store_id ? localShop : (this.getShop() || {});
+        if (localShop.store_id && !merchantDemo.isDemoEntityId(localShop.store_id)) {
+          this._resetStaleStoreSession(false);
+          return {};
+        }
+        return this.getShop() || {};
       });
   },
 
@@ -955,8 +1093,28 @@ App({
         ? (remoteUser[key] || '')
         : (cached[key] || '')
     );
-    const merchantStoreId = pickRemoteString('merchantStoreId') || getMerchantStoreId(remoteUser) || getMerchantStoreId(cached);
-    const visitStoreId = pickRemoteString('visitStoreId') || getVisitStoreId(remoteUser) || getVisitStoreId(cached);
+    const merchantStoreId = pickRemoteString('merchantStoreId') || getMerchantStoreId(remoteUser);
+    // 分享绑店与后台刷新并发时，远端可能仍是旧 visitStoreId：优先保留本次入口/刚同步的店
+    const remoteVisitStoreId = Object.prototype.hasOwnProperty.call(remoteUser, 'visitStoreId')
+      ? String(remoteUser.visitStoreId || '').trim()
+      : '';
+    const pendingEntryStoreId = String(this.globalData.pendingEntryStoreId || '').trim();
+    const recentlySyncedStoreId = (
+      this._lastSyncedVisitStoreId
+      && this._lastSyncedVisitStoreAt
+      && (Date.now() - this._lastSyncedVisitStoreAt < STORE_BIND_TTL)
+    ) ? String(this._lastSyncedVisitStoreId).trim() : '';
+    const localVisitStoreId = (
+      getVisitStoreId(cached)
+      || (this.isUserClientMode() ? this.getStoreId() : '')
+      || ''
+    ).trim();
+    const visitStoreId = (
+      pendingEntryStoreId
+      || recentlySyncedStoreId
+      || remoteVisitStoreId
+      || localVisitStoreId
+    );
     const user = {
       openid: remoteUser.openid || meta.requestOpenid || cached.openid || '',
       nickName: remoteUser.nickName || cached.nickName || '微信用户',
@@ -987,6 +1145,11 @@ App({
       user.role = 'user';
       this.globalData.role = 'user';
       this.globalData.isMerchant = hasMerchantCapability(user);
+    } else if (this._prefersMerchantShell(cached)) {
+      user.role = 'merchant';
+      this.globalData.role = 'merchant';
+      this.globalData.isMerchant = isMerchant;
+      this._enterMerchantShellMode({ persist: false });
     } else {
       if (isMerchantStaff(user) && isMerchantApproved(user)) {
         this._exitUserClientMode();
@@ -1038,8 +1201,17 @@ App({
       && !isMerchantRejected(user)
       && !isMerchantDisabled(user)
       && !isMerchant
+      && !this._prefersMerchantShell(cached)
     ) {
-      this.clearMerchantLocalCache();
+      // 纯客人：只清残留商家店铺缓存，绝不能把 visitStoreId 当「过期商家数据」清掉
+      const hadStaleMerchantShop = !!(
+        ((this.getData(STORAGE_KEYS.SHOP) || {}).store_id)
+        || getMerchantStoreId(cached)
+      );
+      if (hadStaleMerchantShop) {
+        this.clearMerchantLocalCache();
+      }
+      this._defaultToUserClientMode({ applyShell: false });
     }
 
     if (!isMerchantPending(user)) {
@@ -1276,8 +1448,8 @@ App({
 
   _keepStaffMerchantMode() {
     this._exitUserClientMode();
-    this.globalData.role = 'merchant';
     this.globalData.isMerchant = true;
+    this._enterMerchantShellMode();
     if (this.globalData.userInfo) {
       this.globalData.userInfo = {
         ...this.globalData.userInfo,
@@ -1297,7 +1469,11 @@ App({
       wx.showToast({ title: '请先配置 API 地址', icon: 'none' });
       return Promise.resolve(false);
     }
+    // 先成客人再点员工邀请：必须离开用户版，否则后续落地会被踢回首页
+    this.globalData.pendingEntryStoreId = '';
+    this._exitUserClientMode();
     if (this.isStaffForStore(id) || (this._staffInviteHandled && this._staffInviteHandled[id])) {
+      this._keepStaffMerchantMode();
       return Promise.resolve(true);
     }
     if (this._staffInviteInFlight === id && this._staffInvitePromise) {
@@ -1320,9 +1496,12 @@ App({
           this.saveShop(res.store);
           this.globalData.merchantStoreId = res.store.store_id;
         }
+        this.globalData.pendingStaffInviteStoreId = '';
         return this.forceRefreshRole().then(() => {
+          this._exitUserClientMode();
           this.globalData.role = 'merchant';
           this.globalData.isMerchant = true;
+          this._enterMerchantShellMode();
           applyTabShell();
           this._merchantStoreFetchedAt = 0;
           if (!wasAlreadyStaff) {
@@ -1402,6 +1581,126 @@ App({
         // ignore
       }
     });
+  },
+
+  _isStoreMissingError(errMsg) {
+    return String(errMsg || '').indexOf('店铺不存在') >= 0;
+  },
+
+  _handleMissingStoreReference(storeId, options = {}) {
+    const id = String(storeId || '').trim();
+    if (!id || merchantDemo.isDemoEntityId(id)) {
+      return Promise.resolve(null);
+    }
+    const syncUser = options.syncUser !== false;
+    storeDebug.log('handleMissingStoreReference', { storeId: id, syncUser });
+
+    if (this.isUserClientMode() || (syncUser && this._shouldSyncUserStore())) {
+      return this._clearStaleVisitStore(id);
+    }
+
+    if (!this.isUserClientMode()) {
+      return Promise.resolve(this._resetStaleStoreSession(false));
+    }
+
+    if (this.getStoreId() === id) {
+      this.globalData.storeId = '';
+      this.globalData.currentStore = null;
+      this.setData(STORAGE_KEYS.STORE_ID, '');
+      this.setData(STORAGE_KEYS.CURRENT_STORE, null);
+    }
+    return Promise.resolve(null);
+  },
+
+  _clearStaleVisitStore(storeId) {
+    const id = String(storeId || '').trim();
+    const current = (
+      this.getStoreId()
+      || getVisitStoreId(this.globalData.userInfo)
+      || ''
+    ).trim();
+    if (current && current !== id) {
+      return Promise.resolve({ success: true, skipped: true });
+    }
+    this._lastSyncedVisitStoreId = '';
+    this._lastSyncedVisitStoreAt = 0;
+    this.globalData.pendingEntryStoreId = '';
+    return this.clearVisitStoreBinding();
+  },
+
+  _defaultToUserClientMode(options = {}) {
+    const { redirect = false, applyShell = true } = options;
+    this._exitMerchantShellMode();
+    this.globalData.role = 'user';
+    this.globalData.isMerchant = false;
+    const user = this.globalData.userInfo;
+    if (user) {
+      const next = {
+        ...user,
+        role: 'user',
+        isMerchant: false,
+        hasMerchantCapability: false
+      };
+      this.globalData.userInfo = next;
+      this.setData(STORAGE_KEYS.USER, next);
+    }
+    this._enterUserClientMode('', { persist: true, applyShell });
+    if (redirect) {
+      const pages = getCurrentPages();
+      const route = pages.length ? pages[pages.length - 1].route : '';
+      if (route && route.indexOf('pages/merchant/') === 0) {
+        wx.switchTab({ url: getUserLandingUrl() });
+      }
+    }
+  },
+
+  /** 服务端店铺已不存在：清本地缓存，回到用户端（与新用户一致） */
+  _resetStaleStoreSession(reconciled = false) {
+    const user = { ...(this.globalData.userInfo || {}) };
+    const staleStoreId = (
+      getMerchantStoreId(user)
+      || this.globalData.merchantStoreId
+      || (this.getData(STORAGE_KEYS.SHOP) || {}).store_id
+      || ''
+    ).trim();
+
+    this.clearMerchantLocalCache();
+    this.globalData.storeId = '';
+    this.globalData.currentStore = null;
+    this.setData(STORAGE_KEYS.STORE_ID, '');
+    this.setData(STORAGE_KEYS.CURRENT_STORE, null);
+    this.setData(STORAGE_KEYS.ORDERS, []);
+    this.setData(STORAGE_KEYS.MERCHANT_ORDERS, []);
+    this.setData(STORAGE_KEYS.PETS, []);
+    this.setData(STORAGE_KEYS.DAILY_LOGS, []);
+    this._resetOrdersFetchState();
+    this._petsFetchedAt = 0;
+    this._dailyLogsFetchedAt = 0;
+    this._merchantStoreFetchedAt = Date.now();
+    this.globalData.merchantAccessRole = '';
+    this.globalData.pendingEntryStoreId = '';
+
+    const nextUser = {
+      ...user,
+      merchantStoreId: '',
+      visitStoreId: '',
+      store_id: '',
+      pet_ids: [],
+      isMerchant: false,
+      merchantStatus: '',
+      merchantRole: '',
+      hasMerchantCapability: false,
+      role: 'user'
+    };
+    this.globalData.userInfo = nextUser;
+    this.globalData.isMerchant = false;
+    this.globalData.merchantStoreId = '';
+    this.setData(STORAGE_KEYS.USER, nextUser);
+
+    storeDebug.log('resetStaleStoreSession', { reconciled, staleStoreId });
+    this._exitMerchantShellMode();
+    this._defaultToUserClientMode({ redirect: true });
+    return {};
   },
 
   clearMerchantLocalCache() {

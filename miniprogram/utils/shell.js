@@ -65,16 +65,8 @@ function hasMerchantStore() {
 }
 
 function getMerchantLandingUrl() {
-  try {
-    const app = getApp();
-    // 未入驻 / 审核中 / 已驳回 / 已关闭：只进「申请入驻」，不进带 Tab 的日常页
-    if (app && app.isMerchantApproved && app.isMerchantApproved()) {
-      return MERCHANT_HOME;
-    }
-    return MERCHANT_APPLY_HOME;
-  } catch (err) {
-    return MERCHANT_HOME;
-  }
+  // 统一进日常 Tab；未入驻走体验模式，由「我的店铺」自行申请，不强制入驻页
+  return MERCHANT_HOME;
 }
 
 function getUserLandingUrl() {

@@ -47,3 +47,12 @@
     <button class="btn-primary" bindtap="onSubmit" loading="{{submitting}}" disabled="{{submitting || applyStatus === 'pending'}}">{{applyStatus === 'pending' ? '等待审核' : '申请入驻'}}</button>
   </view>
 </view>
+
+<oa-follow-sheet
+  show="{{oaFollowSheetVisible}}"
+  title="申请已提交"
+  headline="关注服务号，接收新订单提醒"
+  desc="有新预约或订单变更时，服务号会第一时间通知你"
+  bind:close="onCloseOaFollowSheet"
+  bind:followed="onOaFollowSheetFollowed"
+/>

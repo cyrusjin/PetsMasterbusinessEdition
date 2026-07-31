@@ -1,4 +1,6 @@
 {
   "component": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "oa-follow-sheet": "/components/oa-follow-sheet/oa-follow-sheet"
+  }
 }

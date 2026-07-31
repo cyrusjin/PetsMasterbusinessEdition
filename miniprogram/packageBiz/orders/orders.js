@@ -30,6 +30,13 @@ Page({
     refreshing: false
   },
 
+  onLoad(options) {
+    const tab = (options && options.tab) ? String(options.tab).trim() : '';
+    if (tab) {
+      this.setData({ tab });
+    }
+  },
+
   onShow() {
     if (app.canAccessMerchantBackend()) {
       if (app.isMerchantDemoMode() || app.getOrders().length) {

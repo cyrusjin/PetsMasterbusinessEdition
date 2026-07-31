@@ -43,10 +43,16 @@ Page({
   onLoad(options) {
     hideHomeButton();
     enableStoreShareMenu();
+    this._pendingOpenOrders = options.openOrders === '1';
+    this._pendingOrdersTab = (options.tab || 'pending').trim() || 'pending';
     const inviteFromOptions = parseStaffInviteStoreId(options);
     if (inviteFromOptions && !app.shouldIgnoreShareEntry()) {
       this._staffInviteStoreId = inviteFromOptions;
       app.globalData.pendingStaffInviteStoreId = inviteFromOptions;
+      // 已是客人（用户版）时先退出，避免 onShow 被踢回首页导致邀请失效
+      if (app.isUserClientMode && app.isUserClientMode() && app._exitUserClientMode) {
+        app._exitUserClientMode();
+      }
     } else {
       this._staffInviteStoreId = '';
       if (inviteFromOptions) {
@@ -64,6 +70,43 @@ Page({
     hideHomeButton();
     this._syncTabBar();
 
+    const inviteId = this._staffInviteStoreId
+      || app.globalData.pendingStaffInviteStoreId
+      || parseStaffInviteStoreId(this._getPageEntryQuery());
+
+    // 员工邀请优先于「用户版误入商家页」纠正，否则先成客人再点邀请会被踢回首页
+    if (inviteId && !app.shouldIgnoreShareEntry()) {
+      if (app.isUserClientMode && app.isUserClientMode() && app._exitUserClientMode) {
+        app._exitUserClientMode();
+      }
+      this._staffInviteStoreId = '';
+      app.globalData.pendingStaffInviteStoreId = '';
+      app.ensureCloudAndLogin({ force: true }).then(() => {
+        this._syncTabBar();
+        return app.acceptStaffInvite(inviteId).then(() => this._bootstrapPage({ force: true }));
+      }).then(() => {
+        this._openOrdersFromNotify();
+      }).catch((err) => {
+        console.error('[日常管理] 员工邀请处理失败', err);
+        this._bootstrapped = true;
+        this._syncTabBar();
+      });
+      startMerchantOrdersPoll(this, () => {
+        if (!app.canAccessMerchantBackend() || app.isMerchantDemoMode()) return Promise.resolve();
+        return app.loadOrders({ force: false }).then(() => {
+          const shop = app.getShop();
+          if (!shop || !shop.store_id) return;
+          return this._applyBoardingData(shop);
+        });
+      }, DAILY_POLL_MS);
+      return;
+    }
+
+    if (inviteId && app.shouldIgnoreShareEntry()) {
+      this._staffInviteStoreId = '';
+      app.globalData.pendingStaffInviteStoreId = '';
+    }
+
     if (app.isUserClientMode && app.isUserClientMode()) {
       wx.switchTab({ url: '/pages/index/index' });
       return;
@@ -78,47 +121,15 @@ Page({
     );
     app.ensureCloudAndLogin(forceUser ? { force: true } : {}).then(() => {
       this._syncTabBar();
-      const inviteId = this._staffInviteStoreId
-        || app.globalData.pendingStaffInviteStoreId
-        || parseStaffInviteStoreId(this._getPageEntryQuery());
 
-      if (inviteId && !app.shouldIgnoreShareEntry()) {
-        this._staffInviteStoreId = '';
-        app.globalData.pendingStaffInviteStoreId = '';
-        return app.acceptStaffInvite(inviteId).then(() => this._bootstrapPage({ force: true }));
-      }
-
-      if (inviteId && app.shouldIgnoreShareEntry()) {
-        this._staffInviteStoreId = '';
-        app.globalData.pendingStaffInviteStoreId = '';
-      }
-
-      // 未入驻通过：不展示商家 Tab 日常页，只保留入驻页
-      if (!app.isMerchantApproved()) {
-        wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
-        return;
-      }
-
-      // 未具备商家能力时仍渲染页面壳，禁止 reLaunch 到自身造成白屏死循环
-      if (!app.canAccessMerchantBackend()) {
-        this._bootstrapped = true;
-        this.setData({
-          isDemoMode: true,
-          boardingList: [],
-          pendingOrderCount: 0,
-          pickupPendingCount: 0,
-          uncheckedPetCount: 0,
-          staffCount: 0
-        });
-        return;
-      }
-
-      // Tab 切回：页面实例还在，走轻量刷新
+      // Tab 切回：页面实例还在，走轻量刷新（未入驻走体验/审核态，保留商家 Tab）
       if (this._bootstrapped && !forceUser) {
         return this._softRefresh();
       }
 
       return this._bootstrapPage();
+    }).then(() => {
+      this._openOrdersFromNotify();
     }).catch((err) => {
       console.error('[日常管理] onShow 初始化失败', err);
       this._bootstrapped = true;
@@ -298,6 +309,23 @@ Page({
       .then((shop) => {
         const isStoreOwner = app.isStoreOwner();
         if (!shop || !shop.store_id) {
+          if (app.isMerchantDemoMode()) {
+            merchantDemo.ensureDemoData();
+            const demoShop = merchantDemo.getDemoShop();
+            app.globalData.merchantStoreId = demoShop.store_id;
+            this._bootstrapped = true;
+            this.setData({
+              shop: demoShop,
+              isStoreOwner: false,
+              isDemoMode: true,
+              boardingList: [],
+              pendingOrderCount: 0,
+              pickupPendingCount: 0,
+              uncheckedPetCount: 0,
+              staffCount: 0
+            });
+            return this._applyBoardingData(demoShop);
+          }
           // 无店铺时停留在本页空态，避免 reLaunch 自身导致白屏循环
           this._bootstrapped = true;
           this.setData({
@@ -473,6 +501,14 @@ Page({
   onGoMerchantOrders() {
     if (!this._guardMerchantFeature()) return;
     wx.navigateTo({ url: '/packageBiz/orders/orders' });
+  },
+
+  _openOrdersFromNotify() {
+    if (!this._pendingOpenOrders) return;
+    this._pendingOpenOrders = false;
+    if (!this._guardMerchantFeature()) return;
+    const tab = encodeURIComponent(this._pendingOrdersTab || 'pending');
+    wx.navigateTo({ url: `/packageBiz/orders/orders?tab=${tab}` });
   },
   onGoDailyCheck() {
     if (!this._guardMerchantFeature()) return;

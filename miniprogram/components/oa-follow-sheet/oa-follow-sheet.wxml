@@ -5,21 +5,28 @@
     <view class="oa-sheet-close" catchtap="onClose">×</view>
 
     <text class="oa-sheet-title">{{title}}</text>
-    <text class="oa-sheet-headline">关注服务号，接收寄养动态</text>
-    <text class="oa-sheet-desc">商家打卡后第一时间通知你</text>
+    <text class="oa-sheet-headline">{{headline}}</text>
+    <text class="oa-sheet-desc">{{desc}}</text>
 
-    <view class="oa-sheet-qr-wrap" bindtap="onPreviewQrcode">
+    <view class="oa-sheet-qr-wrap" wx:if="{{bindQrReady}}" bindtap="onPreviewQrcode">
       <image
         class="oa-sheet-qr"
         src="{{oaQrcodeUrl}}"
         mode="aspectFit"
         show-menu-by-longpress="{{true}}"
       />
+      <text class="oa-sheet-qr-badge">长按识别</text>
     </view>
-    <text class="oa-sheet-hint">长按识别二维码，或点击下方按钮关注「{{oaDisplayName}}」</text>
+    <view class="oa-sheet-qr-wrap oa-sheet-qr-wrap--loading" wx:elif="{{bindQrLoading}}">
+      <text class="oa-sheet-qr-status">正在生成绑定码…</text>
+    </view>
+    <view class="oa-sheet-qr-wrap oa-sheet-qr-wrap--error" wx:else bindtap="onRetryBindQr">
+      <text class="oa-sheet-qr-status">{{bindQrError || '绑定码加载失败'}}</text>
+      <text class="oa-sheet-qr-retry">点击重试</text>
+    </view>
 
-    <button class="oa-sheet-btn" hover-class="oa-sheet-btn-hover" bindtap="onFollowTap">
-      去关注服务号
-    </button>
+    <text class="oa-sheet-hint" wx:if="{{bindQrReady}}">请长按上方二维码，选择「识别图中二维码」并关注「{{oaDisplayName}}」</text>
+    <text class="oa-sheet-subhint" wx:if="{{bindQrReady}}">关注完成后返回小程序，将自动完成绑定</text>
+    <text class="oa-sheet-subhint" wx:else>需使用带参数绑定码，关注后才能接收服务号通知</text>
   </view>
 </view>

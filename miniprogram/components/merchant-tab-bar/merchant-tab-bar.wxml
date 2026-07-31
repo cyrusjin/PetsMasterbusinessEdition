@@ -11,7 +11,7 @@
   </view>
   <view class="tab-item {{active === 'store' ? 'active' : ''}}">
     <image class="tab-icon-img" src="{{active === 'store' ? '/images/tab/tab-shop-active.png' : '/images/tab/tab-shop.png'}}" mode="aspectFit" />
-    <view class="tab-text">{{isDemoMode ? '申请入驻' : '我的店铺'}}</view>
+    <view class="tab-text">{{isDemoMode ? '门店授权' : '我的门店'}}</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStore" />
   </view>
 </view>

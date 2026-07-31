@@ -1,12 +1,47 @@
-const { isOaBound, openOfficialAccountProfile } = require('../../utils/officialAccount');
+const { isOaBound } = require('../../utils/officialAccount');
+const { hasMerchantApplication, hasMerchantCapability } = require('../../utils/role');
+
+const SCENE_COPY = {
+  user: {
+    bannerText: '关注服务号接收毛孩子的寄养动态',
+    sheetTitle: '关注服务号',
+    sheetHeadline: '关注服务号，接收寄养动态',
+    sheetDesc: '商家打卡后，服务号会第一时间通知你'
+  },
+  merchant: {
+    bannerText: '关注服务号接收新订单提醒',
+    sheetTitle: '关注服务号',
+    sheetHeadline: '关注服务号，接收新订单提醒',
+    sheetDesc: '有新预约或订单变更时，服务号会第一时间通知你'
+  }
+};
 
 Component({
+  properties: {
+    scene: {
+      type: String,
+      value: 'user'
+    }
+  },
+
   data: {
-    visible: false
+    visible: false,
+    showSheet: false,
+    bannerText: SCENE_COPY.user.bannerText,
+    sheetTitle: SCENE_COPY.user.sheetTitle,
+    sheetHeadline: SCENE_COPY.user.sheetHeadline,
+    sheetDesc: SCENE_COPY.user.sheetDesc
+  },
+
+  observers: {
+    scene(value) {
+      this._applySceneCopy(value);
+    }
   },
 
   lifetimes: {
     attached() {
+      this._applySceneCopy(this.properties.scene);
       this._syncVisible();
       if (this.data.visible) {
         this._refreshOaStatus();
@@ -24,6 +59,16 @@ Component({
   },
 
   methods: {
+    _applySceneCopy(scene) {
+      const copy = SCENE_COPY[scene] || SCENE_COPY.user;
+      this.setData({
+        bannerText: copy.bannerText,
+        sheetTitle: copy.sheetTitle,
+        sheetHeadline: copy.sheetHeadline,
+        sheetDesc: copy.sheetDesc
+      });
+    },
+
     _readLocalUser() {
       try {
         const app = getApp();
@@ -34,8 +79,15 @@ Component({
     },
 
     _syncVisible(user) {
-      const bound = isOaBound(user || this._readLocalUser());
-      this.setData({ visible: !bound });
+      const info = user || this._readLocalUser();
+      const bound = isOaBound(info);
+      const isMerchantScene = this.properties.scene === 'merchant';
+      const visible = !bound && (
+        !isMerchantScene
+        || hasMerchantApplication(info)
+        || hasMerchantCapability(info)
+      );
+      this.setData({ visible });
       return bound;
     },
 
@@ -77,19 +129,24 @@ Component({
     },
 
     onFollowTap() {
-      openOfficialAccountProfile({
-        onComplete: () => {
-          const delays = [800, 2000, 4000];
-          let chain = Promise.resolve(false);
-          delays.forEach((ms) => {
-            chain = chain.then((bound) => {
-              if (bound) return true;
-              return this._refreshOaStatus({ delayMs: ms });
-            });
-          });
-          return chain;
-        }
+      this.setData({ showSheet: true });
+    },
+
+    onSheetClose() {
+      this.setData({ showSheet: false });
+      this._refreshOaStatus();
+    },
+
+    onSheetFollowed() {
+      const delays = [800, 2000, 4000];
+      let chain = Promise.resolve(false);
+      delays.forEach((ms) => {
+        chain = chain.then((bound) => {
+          if (bound) return true;
+          return this._refreshOaStatus({ delayMs: ms });
+        });
       });
+      return chain;
     }
   }
 });

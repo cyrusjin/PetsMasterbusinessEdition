@@ -30,11 +30,7 @@ Page({
       wx.switchTab({ url: '/pages/index/index' });
       return;
     }
-    // 未入驻通过：不展示营收 Tab，统一回入驻页
-    if (!app.isMerchantApproved()) {
-      wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
-      return;
-    }
+    // 未入驻也保留营收 Tab（体验数据），不强制跳入驻页
     this._loadStats();
   },
 

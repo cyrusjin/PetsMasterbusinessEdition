@@ -3,6 +3,7 @@
     <view class="mode-switch-row">
       <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
     </view>
+    <oa-follow-banner scene="merchant" />
     <block wx:if="{{isAdminDisabled}}">
       <view class="card apply-disabled-card">
         <view class="card-title">店铺已关闭</view>
@@ -663,5 +664,13 @@
   </view>
 
 </view>
+<oa-follow-sheet
+  show="{{oaFollowSheetVisible}}"
+  title="申请已提交"
+  headline="关注服务号，接收新订单提醒"
+  desc="有新预约或订单变更时，服务号会第一时间通知你"
+  bind:close="onCloseOaFollowSheet"
+  bind:followed="onOaFollowSheetFollowed"
+/>
 <merchant-tab-bar wx:if="{{!hideMerchantTabBar}}" active="store" isDemoMode="{{isDemoMode}}" />
 <hidden-admin-entry id="hiddenAdminEntry" />

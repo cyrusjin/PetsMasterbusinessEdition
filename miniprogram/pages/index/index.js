@@ -90,6 +90,10 @@ Page({
     this._refreshPageFromCache();
 
     if (storeId) {
+      // 尽早登记，避免 App 并行刷新用户时冲掉绑店
+      if (app.globalData) {
+        app.globalData.pendingEntryStoreId = storeId;
+      }
       this._lastAppliedEnterSig = `${storeId}|onload`;
       this._applyStoreEntry(storeId, { query: options });
       return;

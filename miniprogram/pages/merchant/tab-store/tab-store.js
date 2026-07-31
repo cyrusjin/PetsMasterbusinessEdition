@@ -34,6 +34,7 @@ const { copyText } = require('../../../utils/clipboard');
 const { buildMerchantCoopContract } = require('../../../utils/merchantCoopContract');
 const { isMerchantRejected, isMerchantDisabled } = require('../../../utils/role');
 const { isAuthorizedNickName } = require('../../../utils/userAuth');
+const { isOaBound } = require('../../../utils/officialAccount');
 const { normalizePhone, validateMobilePhone } = require('../../../utils/phone');
 const {
   normalizeReceptionRange,
@@ -175,6 +176,7 @@ Page({
       ghostSize: 100
     },
     hideMerchantTabBar: false,
+    oaFollowSheetVisible: false,
     pickupFreeMode: 'none',
     showContractModal: false,
     showCoopContractModal: false,
@@ -199,18 +201,9 @@ Page({
     return isPureDemo || pending || rejected;
   },
 
-  /** 入驻 / 关闭态：隐藏商家底部 Tab，只留本页 */
+  /** 商家底部 Tab 始终保留；入驻表单在「我的店铺」内完成，不强制藏栏 */
   _syncApplyShellChrome() {
-    const hideTabs = !!(
-      this.data.isDemoMode
-      || this.data.isAdminDisabled
-      || this._shouldShowApplyFlow()
-      || app.isMerchantDisabled()
-    );
-    this.setData({ hideMerchantTabBar: hideTabs });
-    if (hideTabs) {
-      wx.hideTabBar({ animation: false }).catch(() => {});
-    }
+    this.setData({ hideMerchantTabBar: false });
   },
 
   _syncDisabledState(shop) {
@@ -225,7 +218,7 @@ Page({
 
   _hydrateFromCache() {
     if (app.isMerchantDisabled()) {
-      this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: true });
+      this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: false });
       const cachedShop = app.getShop();
       if (cachedShop && cachedShop.store_id) {
         app.globalData.merchantStoreId = cachedShop.store_id;
@@ -236,7 +229,7 @@ Page({
 
     const showApplyFlow = this._shouldShowApplyFlow();
     if (showApplyFlow) {
-      this.setData({ isDemoMode: true, isAdminDisabled: false, hideMerchantTabBar: true });
+      this.setData({ isDemoMode: true, isAdminDisabled: false, hideMerchantTabBar: false });
       this._hydrateApplyFormFromCache();
       return;
     }
@@ -316,7 +309,7 @@ Page({
       }
 
       if (app.isMerchantDisabled()) {
-        this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: true });
+        this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: false });
         this._syncApplyShellChrome();
         return app.ensureMerchantStore({ force: true }).then((shop) => {
           if (shop && shop.store_id) {
@@ -330,8 +323,8 @@ Page({
       this.setData({
         isDemoMode: showApplyFlow,
         isAdminDisabled: false,
-        hideMerchantTabBar: showApplyFlow,
-        ...(showApplyFlow ? {} : { applyStatus: '', applyRejectReason: '', hideMerchantTabBar: false })
+        hideMerchantTabBar: false,
+        ...(showApplyFlow ? {} : { applyStatus: '', applyRejectReason: '' })
       });
       this._syncApplyShellChrome();
 
@@ -347,7 +340,14 @@ Page({
         : {};
       return app.ensureMerchantStore(storeOpts).then((shop) => {
         if (!shop || !shop.store_id) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+          this.setData({
+            isDemoMode: true,
+            isAdminDisabled: false,
+            applyStatus: '',
+            applyRejectReason: '',
+            hideMerchantTabBar: false
+          });
+          this._hydrateApplyFormFromCache();
           return;
         }
         if (this._formDirty) return;
@@ -381,11 +381,8 @@ Page({
     wx.switchTab({ url: '/pages/index/index' });
   },
 
-  _setMerchantTabHidden(hidden) {
-    if (hidden) {
-      this.setData({ hideMerchantTabBar: true });
-      return;
-    }
+  _setMerchantTabHidden(_hidden) {
+    // 商家底部 Tab 始终展示
     this._syncApplyShellChrome();
   },
 
@@ -413,7 +410,14 @@ Page({
     app.refreshMerchantStore()
       .then((shop) => {
         if (!shop || !shop.store_id) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+          this.setData({
+            isDemoMode: true,
+            isAdminDisabled: false,
+            applyStatus: '',
+            applyRejectReason: '',
+            hideMerchantTabBar: false
+          });
+          this._hydrateApplyFormFromCache();
           return;
         }
         this._applyShopToForm(shop);
@@ -920,7 +924,6 @@ Page({
       })
       .then((store) => {
         wx.hideLoading();
-        wx.showToast({ title: '申请已提交', icon: 'success' });
         this._applyFormDirty = false;
         wx.removeStorageSync(STORAGE_KEYS.DEMO_APPLY_DRAFT);
         this.setData({
@@ -931,6 +934,7 @@ Page({
         });
         app.globalData.signedCoopContractDraft = null;
         this._applyFormFromShop(store, 'pending');
+        this._afterApplySuccess();
       })
       .catch((err) => {
         wx.hideLoading();
@@ -944,6 +948,21 @@ Page({
         this.setData({ submitting: false });
       });
   },
+
+  _afterApplySuccess() {
+    wx.showToast({ title: '申请已提交', icon: 'success', duration: 1500 });
+    const user = (app.globalData && app.globalData.userInfo) || {};
+    if (isOaBound(user)) return;
+    setTimeout(() => {
+      this.setData({ oaFollowSheetVisible: true });
+    }, 800);
+  },
+
+  onCloseOaFollowSheet() {
+    this.setData({ oaFollowSheetVisible: false });
+  },
+
+  onOaFollowSheetFollowed() {},
 
   _buildCoopContractDraft() {
     const user = app.globalData.userInfo || {};
@@ -1584,12 +1603,8 @@ Page({
     this.setData({ roomPricing: removeRoom(this.data.roomPricing, index) });
   },
 
-  _setTabBarVisible(visible) {
-    if (!visible) {
-      this.setData({ hideMerchantTabBar: true });
-      return;
-    }
-    // 入驻 / 关闭态关闭弹窗后仍保持无 Tab
+  _setTabBarVisible(_visible) {
+    // 商家底部 Tab 始终展示
     this._syncApplyShellChrome();
   },
 

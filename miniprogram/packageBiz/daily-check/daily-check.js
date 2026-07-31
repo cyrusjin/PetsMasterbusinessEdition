@@ -650,7 +650,7 @@ Page({
           images: cloudImages,
           video: cloudVideo,
           videoCover: cloudVideoCover,
-          notifyOwner: isScheduled,
+          notifyOwner: true,
           isAbnormal: false,
           time
         };

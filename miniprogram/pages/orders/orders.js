@@ -8,6 +8,13 @@ const { formatOrderCreateTime } = require('../../utils/util');
 Page({
   data: { activeTab: 'all', orders: [], filteredOrders: [] },
 
+  onLoad(options) {
+    const tab = (options && options.tab) ? String(options.tab).trim() : '';
+    if (tab) {
+      this.setData({ activeTab: tab });
+    }
+  },
+
   _syncUserTabBar(index) {
     if (typeof this.getTabBar !== 'function') return;
     const tabBar = this.getTabBar();

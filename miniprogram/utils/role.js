@@ -85,6 +85,11 @@ function hasMerchantCapability(user) {
   return isMerchantApproved(user);
 }
 
+/** 是否已提交过商家入驻申请（含待审/驳回/通过/停用） */
+function hasMerchantApplication(user) {
+  return !!normalizeMerchantStatus(user && user.merchantStatus);
+}
+
 module.exports = {
   normalizeIsMerchant,
   normalizeMerchantStatus,
@@ -98,5 +103,6 @@ module.exports = {
   isStaffOfStore,
   isStoreOwner,
   resolveRole,
-  hasMerchantCapability
+  hasMerchantCapability,
+  hasMerchantApplication
 };

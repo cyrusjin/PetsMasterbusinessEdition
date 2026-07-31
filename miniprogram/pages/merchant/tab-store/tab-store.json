@@ -9,6 +9,7 @@
   "usingComponents": {
     "cached-image": "/components/cached-image/cached-image",
     "hidden-admin-entry": "/components/hidden-admin-entry/hidden-admin-entry",
-    "merchant-tab-bar": "/components/merchant-tab-bar/merchant-tab-bar"
+    "merchant-tab-bar": "/components/merchant-tab-bar/merchant-tab-bar",
+    "oa-follow-sheet": "/components/oa-follow-sheet/oa-follow-sheet"
   }
 }
