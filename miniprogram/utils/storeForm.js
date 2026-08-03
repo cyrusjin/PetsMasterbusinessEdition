@@ -5,13 +5,15 @@ const {
   normalizeIntroPhotos,
   normalizeNoticePhotos,
   MAX_INTRO_TEXT,
-  MAX_NOTICE_TEXT
+  MAX_NOTICE_TEXT,
+  MAX_PICKUP_NOTICE_TEXT
 } = require('./storePhotos');
 const { normalizeDepartureCharge } = require('./billing');
 const { isVagueAddress } = require('./location');
 const { validateWeightPricing } = require('./weightPricing');
 const { validateRoomPricing } = require('./roomPricing');
 const { validatePickupPricing } = require('./pickupPricing');
+const { validateMultiPetDiscount } = require('./multiPetPricing');
 
 const DEFAULT_LOGO = '/images/default-avatar.png';
 
@@ -65,6 +67,8 @@ function validateStoreForm(payload) {
 
   if (!hasValidLogo(shop.logo)) return '请上传店铺头像';
   if (!(shop.name || '').trim()) return '请填写店铺名称';
+  const wechatId = (shop.wechatId || '').trim();
+  if (wechatId.length > 30) return '微信号不超过30个字符';
   if (!(shop.address || '').trim()) return '请选择营业地址';
   const lat = parseFloat(shop.latitude);
   const lng = parseFloat(shop.longitude);
@@ -85,11 +89,17 @@ function validateStoreForm(payload) {
 
   const billingError = validateBillingRules(billingRules);
   if (billingError) return billingError;
+  const multiPetError = validateMultiPetDiscount(billingRules.multiPetDiscount);
+  if (multiPetError) return multiPetError;
 
   const pickupService = shop.pickupService === 'yes' ? 'yes' : 'no';
   if (!pickupService) return '请选择接送设置';
   if (pickupService === 'yes') {
-    if (!(shop.pickupNotice || '').trim()) return '请填写接送须知';
+    const pickupNotice = (shop.pickupNotice || '').trim();
+    if (!pickupNotice) return '请填写接送须知';
+    if (pickupNotice.length > MAX_PICKUP_NOTICE_TEXT) {
+      return `接送须知不超过${MAX_PICKUP_NOTICE_TEXT}字`;
+    }
     const pickupPricingError = validatePickupPricing(shop);
     if (pickupPricingError) return pickupPricingError;
   }
@@ -108,5 +118,6 @@ module.exports = {
   validateStoreForm,
   validateBillingRules,
   MAX_INTRO_TEXT,
-  MAX_NOTICE_TEXT
+  MAX_NOTICE_TEXT,
+  MAX_PICKUP_NOTICE_TEXT
 };

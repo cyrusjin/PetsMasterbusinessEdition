@@ -4,9 +4,10 @@ const { isCloudFileId, isLocalTempPath, isRemotePhoto } = require('./photoPath')
 const MAX_STORE_PHOTOS = 5;
 const MAX_INTRO_PHOTOS = 5;
 const MAX_NOTICE_PHOTOS = 5;
-/** 微信 textarea 默认 140，提高一倍 */
-const MAX_INTRO_TEXT = 280;
-const MAX_NOTICE_TEXT = 280;
+/** 微信 textarea 默认 140；介绍/须知统一放宽到 1000 */
+const MAX_INTRO_TEXT = 1000;
+const MAX_NOTICE_TEXT = 1000;
+const MAX_PICKUP_NOTICE_TEXT = 1000;
 
 function normalizePhotoList(photos, maxCount) {
   const max = Number.isInteger(maxCount) && maxCount > 0 ? maxCount : MAX_STORE_PHOTOS;
@@ -140,6 +141,7 @@ module.exports = {
   MAX_NOTICE_PHOTOS,
   MAX_INTRO_TEXT,
   MAX_NOTICE_TEXT,
+  MAX_PICKUP_NOTICE_TEXT,
   isCloudFileId,
   isLocalTempPath,
   isRemotePhoto,

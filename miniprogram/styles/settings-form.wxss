@@ -172,6 +172,11 @@
 .logo-picker { display: flex; align-items: center; gap: 20rpx; }
 .logo-preview { width: 120rpx; height: 120rpx; border-radius: 16rpx; background: #F2DEC9; flex-shrink: 0; }
 .logo-tip { font-size: 24rpx; color: #999999; }
+.store-id-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
 .store-id-text { font-size: 24rpx; color: #E98657; word-break: break-all; font-weight: 600; }
-.copyable-code { display: block; }
-.store-id-hint { display: block; margin-top: 8rpx; font-size: 22rpx; color: #999999; }
+.copyable-code { display: inline; }
+.store-id-hint { flex-shrink: 0; font-size: 22rpx; color: #999999; }

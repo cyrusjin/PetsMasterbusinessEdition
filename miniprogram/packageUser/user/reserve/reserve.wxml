@@ -4,15 +4,15 @@
   </view>
 
   <view class="card" wx:if="{{store && store.isOpen}}">
-    <view class="card-title">选择宠物</view>
+    <view class="card-title"><text>选择宠物 <text class="required-star">*</text></text><text class="text-gray pet-multi-hint">可多选</text></view>
     <view wx:if="{{pets.length > 0}}">
-      <view class="pet-select-item {{selectedPet && selectedPet.id === item.id ? 'selected' : ''}}" wx:for="{{pets}}" wx:key="id" bindtap="onSelectPet" data-id="{{item.id}}">
+      <view class="pet-select-item {{selectedPetIds[item.id] ? 'selected' : ''}}" wx:for="{{pets}}" wx:key="id" bindtap="onSelectPet" data-id="{{item.id}}">
         <view class="flex-row gap-20">
           <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-avatar-small" />
           <view wx:else class="pet-avatar-small">{{item.name[0]}}</view>
           <view><text>{{item.name}}</text><text class="text-gray pet-meta" style="display:block;font-size:22rpx;">{{item.type}} · {{item.age}}岁 · {{item.weight}}kg</text></view>
         </view>
-        <view wx:if="{{selectedPet && selectedPet.id === item.id}}" class="tag tag-green">已选</view>
+        <view wx:if="{{selectedPetIds[item.id]}}" class="tag tag-green">已选</view>
       </view>
     </view>
     <view wx:else class="text-gray pet-empty-tip">暂无宠物档案</view>
@@ -20,7 +20,7 @@
   </view>
 
   <view class="card" wx:if="{{store && store.isOpen && billingMode === 'room'}}">
-    <view class="card-title">选择房间</view>
+    <view class="card-title"><text>选择房间 <text class="required-star">*</text></text></view>
     <view class="room-select-row">
       <view
         class="room-item {{roomType === item.id ? 'room-selected' : ''}} {{item.disabled ? 'room-disabled' : ''}}"
@@ -51,15 +51,15 @@
 
   <block wx:if="{{store && store.isOpen}}">
     <view class="card">
-      <view class="card-title">选择寄养时间</view>
+      <view class="card-title"><text>选择寄养时间 <text class="required-star">*</text></text></view>
       <calendar startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
       <view wx:if="{{startDate && endDate}}" class="time-pickers mt-20">
         <view class="time-row">
-          <text class="time-label">入住时间</text>
+          <text class="time-label">入住时间 <text class="required-star">*</text></text>
           <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
         </view>
         <view class="time-row">
-          <text class="time-label">离店时间</text>
+          <text class="time-label">离店时间 <text class="required-star">*</text></text>
           <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
         </view>
       </view>
@@ -73,7 +73,16 @@
           </view>
           <view class="pickup-notice-box pickup-notice-inline" wx:if="{{needPickup && (store.pickupNotice || pickupPricingSummary)}}">
             <text class="pickup-notice-title" wx:if="{{store.pickupNotice}}">接送须知</text>
-            <text class="pickup-notice-text" wx:if="{{store.pickupNotice}}">{{store.pickupNotice}}</text>
+            <view
+              wx:if="{{store.pickupNotice}}"
+              class="notice-preview {{pickupNoticeExpandable ? 'notice-preview-expandable' : ''}}"
+              bindtap="onOpenNoticePreview"
+              data-title="接送须知"
+              data-expandable="{{pickupNoticeExpandable}}"
+            >
+              <text class="pickup-notice-text {{pickupNoticeExpandable ? 'notice-text-clamped' : ''}}">{{store.pickupNotice}}</text>
+              <text class="notice-more-link" wx:if="{{pickupNoticeExpandable}}">查看完整</text>
+            </view>
             <text class="pickup-pricing-summary" wx:if="{{pickupPricingSummary}}">{{pickupPricingSummary}}</text>
           </view>
           <view class="pickup-form pickup-form-inline" wx:if="{{needPickup}}">
@@ -122,12 +131,22 @@
 
         <block wx:if="{{feeReady}}">
           <view class="fee-breakdown">
-            <view class="fee-breakdown-title">费用明细（¥{{basePriceText}}/天）</view>
+            <view class="fee-breakdown-title">{{feeBreakdownTitle}}</view>
+            <view class="fee-pet-row" wx:for="{{multiPetFeeItems}}" wx:key="name" wx:if="{{multiPetFeeItems.length > 1}}">
+              <text class="fee-day-date">{{item.name}}</text>
+              <text class="fee-day-label">寄养费</text>
+              <text class="fee-day-factor" wx:if="{{item.discountAmountText}}">已减 ¥{{item.discountAmountText}}</text>
+              <text class="fee-day-amount">¥{{item.boardingFeeText}}</text>
+            </view>
             <view class="fee-day-row" wx:for="{{dailyBreakdown}}" wx:key="date">
               <text class="fee-day-date">{{item.dateDisplay}}</text>
               <text class="fee-day-label">{{item.dayLabel}}</text>
               <text class="fee-day-factor">{{item.factorText}}</text>
               <text class="fee-day-amount">¥{{item.feeText}}</text>
+            </view>
+            <view class="fee-discount-tip" wx:if="{{hasMultiPetDiscount && multiPetDiscountTip}}">
+              <text>{{multiPetDiscountTip}}</text>
+              <text wx:if="{{multiPetDiscountTotalText}}">，共优惠 ¥{{multiPetDiscountTotalText}}</text>
             </view>
             <view class="fee-pickup-block" wx:if="{{needPickup && pickupFeeReady}}">
               <view class="fee-day-row fee-pickup-row">
@@ -174,7 +193,16 @@
 
     <view class="card" wx:if="{{store.notice || (store.noticePhotos && store.noticePhotos.length)}}">
       <view class="card-title">寄养须知</view>
-      <text class="boarding-notice-text" wx:if="{{store.notice}}">{{store.notice}}</text>
+      <view
+        wx:if="{{store.notice}}"
+        class="notice-preview {{boardingNoticeExpandable ? 'notice-preview-expandable' : ''}}"
+        bindtap="onOpenNoticePreview"
+        data-title="寄养须知"
+        data-expandable="{{boardingNoticeExpandable}}"
+      >
+        <text class="boarding-notice-text {{boardingNoticeExpandable ? 'notice-text-clamped' : ''}}">{{store.notice}}</text>
+        <text class="notice-more-link" wx:if="{{boardingNoticeExpandable}}">查看完整</text>
+      </view>
       <view class="boarding-notice-photos" wx:if="{{store.noticePhotos && store.noticePhotos.length}}">
         <view
           class="boarding-notice-photo-item"
@@ -213,6 +241,18 @@
         />
       </view>
       <view class="form-group">
+        <text class="form-label">身份证号</text>
+        <input
+          class="form-input"
+          type="idcard"
+          maxlength="18"
+          placeholder="选填，将写入寄养协议"
+          value="{{contactIdCard}}"
+          bindinput="onContactIdCardInput"
+          bindblur="onContactBlur"
+        />
+      </view>
+      <view class="form-group">
         <text class="form-label">紧急联系电话</text>
         <input
           class="form-input"
@@ -227,11 +267,27 @@
 
     <view class="card">
       <view class="card-title">特殊需求</view>
-      <textarea class="form-textarea" style="min-height:120rpx;" placeholder="请填写特殊照料需求..." value="{{specialNeeds}}" bindinput="onSpecialInput" />
+      <scroll-view scroll-x class="special-guide-scroll" show-scrollbar="{{false}}">
+        <view class="special-guide-row">
+          <view
+            class="special-guide-chip {{item.active ? 'active' : ''}}"
+            wx:for="{{specialNeedGuides}}"
+            wx:key="label"
+            bindtap="onTapSpecialGuide"
+            data-label="{{item.label}}"
+          >{{item.label}}</view>
+        </view>
+      </scroll-view>
+      <textarea
+        class="form-textarea special-needs-textarea"
+        placeholder="点击上方标签添加条目，冒号后补充说明"
+        value="{{specialNeeds}}"
+        bindinput="onSpecialInput"
+      />
     </view>
 
     <view class="card">
-      <view class="card-title">寄养协议</view>
+      <view class="card-title"><text>寄养协议 <text class="required-star">*</text></text></view>
       <view class="contract-preview" bindtap="onOpenContractPreview">
         <image class="contract-preview-icon" src="/images/card/card-settings.png" mode="aspectFit" />
         <view class="contract-info">
@@ -302,3 +358,15 @@
   bind:close="onCloseOaFollowSheet"
   bind:followed="onOaFollowSheetFollowed"
 />
+
+<view class="notice-full-mask" wx:if="{{noticePreviewVisible}}" catchtouchmove="onNoticePreviewTouchMove" bindtap="onCloseNoticePreview">
+  <view class="notice-full-sheet" catchtap="onNoticePreviewSheetTap">
+    <view class="notice-full-head">
+      <text class="notice-full-title">{{noticePreviewTitle}}</text>
+      <text class="notice-full-close" bindtap="onCloseNoticePreview">关闭</text>
+    </view>
+    <scroll-view scroll-y class="notice-full-body" enhanced show-scrollbar="{{false}}">
+      <text class="notice-full-text">{{noticePreviewContent}}</text>
+    </scroll-view>
+  </view>
+</view>

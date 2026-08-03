@@ -53,6 +53,10 @@
         <input class="form-input" type="number" maxlength="11" value="{{contactPhone}}" bindinput="onContactPhoneInput" />
       </view>
       <view class="form-group">
+        <text class="form-label">身份证号</text>
+        <input class="form-input" type="idcard" maxlength="18" placeholder="选填，将写入寄养协议" value="{{contactIdCard}}" bindinput="onContactIdCardInput" />
+      </view>
+      <view class="form-group">
         <text class="form-label">紧急联系电话</text>
         <input class="form-input" type="number" maxlength="11" value="{{emergencyPhone}}" bindinput="onEmergencyPhoneInput" />
       </view>
@@ -74,11 +78,11 @@
           </view>
         </view>
         <view class="form-group">
-          <text class="form-label">接送电话</text>
+          <text class="form-label">接送电话 <text class="required-star">*</text></text>
           <input class="form-input" type="number" maxlength="11" value="{{pickupContactPhone}}" bindinput="onPickupPhoneInput" />
         </view>
         <view class="form-group">
-          <text class="form-label">接送范围</text>
+          <text class="form-label">接送范围 <text class="required-star">*</text></text>
           <radio-group class="pickup-leg-group" bindchange="onPickupLegChange">
             <label class="pickup-leg-item"><radio value="both" checked="{{pickupLeg === 'both'}}" color="#E98657" />去程+返程</label>
             <label class="pickup-leg-item"><radio value="outbound" checked="{{pickupLeg === 'outbound'}}" color="#E98657" />仅去程</label>

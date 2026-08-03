@@ -16,7 +16,7 @@
       <text class="greeting-title" wx:else>Hi，{{displayNickName}}</text>
       <text class="greeting-sub">愿每一天都和毛孩子更亲近</text>
     </view>
-    <view class="mode-switch-btn" bindtap="onSwitchToMerchant">切换商家版</view>
+    <view class="mode-switch-btn" wx:if="{{showMerchantSwitch}}" bindtap="onSwitchToMerchant">切换商家版</view>
   </view>
 
   <view class="pet-hero" bindtap="onGoPets">
@@ -61,8 +61,10 @@
       <text class="reserve-title">预约专属服务</text>
       <text class="reserve-sub">{{currentStore ? '专业照护，到店安心寄养' : '通过商家分享链接进入后预约'}}</text>
       <view class="reserve-button {{currentStore ? '' : 'reserve-button-disabled'}}">
-        <text>{{currentStore ? '立即预约' : '请先绑定店铺'}}</text>
-        <text class="reserve-button-icon">›</text>
+        <view class="reserve-button-text">{{currentStore ? '立即预约' : '请先绑定店铺'}}</view>
+        <view class="reserve-button-icon">
+          <view class="reserve-button-chevron"></view>
+        </view>
       </view>
     </view>
     <image class="reserve-art" src="/images/home/reserve-art.png" mode="aspectFit" />
@@ -139,7 +141,14 @@
           <cached-image custom-class="welcome-avatar" src="{{currentStore.logo}}" default-src="/images/default-avatar.png" mode="aspectFill" />
           <view class="welcome-info">
             <text class="welcome-name">{{currentStore.name}}</text>
-            <text class="welcome-sub">{{currentStore.intro || '欢迎预约宠物寄养'}}</text>
+            <view
+              class="welcome-intro {{introExpandable ? 'welcome-intro-expandable' : ''}}"
+              bindtap="onOpenIntroPreview"
+              data-expandable="{{introExpandable}}"
+            >
+              <text class="welcome-sub {{introExpandable ? 'welcome-sub-clamped' : ''}}">{{currentStore.intro || '欢迎预约宠物寄养'}}</text>
+              <text class="intro-more-link" wx:if="{{introExpandable}}">查看完整</text>
+            </view>
             <view class="intro-photos-grid" wx:if="{{currentStore.introPhotos && currentStore.introPhotos.length}}">
               <view
                 class="intro-photo-item"
@@ -174,7 +183,29 @@
           <text class="store-phone-icon">☎</text>
           <text class="store-phone">{{currentStore.contactPhone}}</text>
         </view>
+        <view
+          wx:if="{{currentStore.wechatId}}"
+          class="store-wechat-row"
+          bindtap="onCopyStoreWechat"
+        >
+          <view class="store-wechat-icon">微</view>
+          <text class="store-wechat">{{currentStore.wechatId}}</text>
+          <text class="store-wechat-hint">复制</text>
+        </view>
       </view>
     </view>
+  </view>
+</view>
+
+<view class="intro-full-root" wx:if="{{introPreviewVisible}}">
+  <view class="intro-full-mask" catchtouchmove="onIntroPreviewTouchMove" bindtap="onCloseIntroPreview"></view>
+  <view class="intro-full-sheet">
+    <view class="intro-full-head">
+      <text class="intro-full-title">店铺介绍</text>
+      <text class="intro-full-close" bindtap="onCloseIntroPreview">关闭</text>
+    </view>
+    <scroll-view scroll-y class="intro-full-body" show-scrollbar="{{false}}">
+      <view class="intro-full-text">{{introPreviewContent}}</view>
+    </scroll-view>
   </view>
 </view>

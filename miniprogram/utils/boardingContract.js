@@ -147,11 +147,13 @@ function buildPartyA(contact) {
   const c = contact || {};
   const name = (c.name || c.contactName || '').trim() || '——';
   const phone = (c.phone || c.contactPhone || '').trim() || '——';
+  const idCard = (c.idCard || c.contactIdCard || '').trim();
   return {
     label: '甲方（宠主）',
     nickName: name,
     name,
-    phone
+    phone,
+    idCard: idCard || '——'
   };
 }
 
@@ -166,11 +168,26 @@ function buildPartyB(store) {
   };
 }
 
+function buildMultiPetInfoLines(pets, orderFallback) {
+  const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
+  if (list.length <= 1) {
+    return buildContractPetInfoLines(list[0] || null, orderFallback || {});
+  }
+  const lines = [];
+  list.forEach((p, idx) => {
+    if (idx > 0) lines.push({ label: '', value: '' });
+    lines.push({ label: `【宠物 ${idx + 1}】`, value: (p.name || '').trim() || '——' });
+    lines.push(...buildContractPetInfoLines(p, {}));
+  });
+  return lines;
+}
+
 function buildContractDraft(input) {
   const {
     user,
     store,
     pet,
+    pets,
     startDate,
     endDate,
     startTime,
@@ -184,22 +201,33 @@ function buildContractDraft(input) {
     billingMode,
     contactName,
     contactPhone,
+    contactIdCard,
     orderFallback
   } = input || {};
 
   const compensationLimit = formatCompensationLimit(store);
+  const hasContact = !!(contactName || contactPhone || contactIdCard);
   const partyA = buildPartyA(
-    contactName || contactPhone
-      ? { name: contactName, phone: contactPhone }
-      : { name: user && user.nickName, phone: user && user.phone }
+    hasContact
+      ? { name: contactName, phone: contactPhone, idCard: contactIdCard }
+      : {
+        name: user && (user.realName || user.nickName),
+        phone: user && user.phone,
+        idCard: user && user.idCard
+      }
   );
   const partyB = buildPartyB(store);
   const sections = resolveClauseSections(store, compensationLimit);
 
-  const petInfoLines = buildContractPetInfoLines(pet, orderFallback || {});
-  const petNameLine = petInfoLines.find((line) => line.label === '宠物名称');
-  const petTypeLine = petInfoLines.find((line) => line.label === '宠物类型');
-  const petWeightLine = petInfoLines.find((line) => line.label === '体重');
+  const petList = Array.isArray(pets) && pets.length
+    ? pets.filter(Boolean)
+    : (pet ? [pet] : []);
+  const primaryPet = pet || petList[0] || null;
+  const petInfoLines = buildMultiPetInfoLines(petList.length ? petList : null, orderFallback || {});
+  const primaryPetLines = buildContractPetInfoLines(primaryPet, orderFallback || {});
+  const petNameLine = primaryPetLines.find((line) => line.label === '宠物名称');
+  const petTypeLine = primaryPetLines.find((line) => line.label === '宠物类型');
+  const petWeightLine = primaryPetLines.find((line) => line.label === '体重');
   const petName = (petNameLine && petNameLine.value) || '——';
   const petType = (petTypeLine && petTypeLine.value) || '——';
   const petWeight = (petWeightLine && petWeightLine.value) || '——';
@@ -213,6 +241,7 @@ function buildContractDraft(input) {
     `${partyA.label}`,
     `联系人：${partyA.name}`,
     `联系电话：${partyA.phone}`,
+    `身份证号：${partyA.idCard}`,
     '',
     `${partyB.label}：${partyB.name}`,
     `营业地址：${partyB.address}`,
@@ -220,7 +249,15 @@ function buildContractDraft(input) {
     `负责人：${partyB.legalName}`,
     '',
     '【寄养宠物信息】',
-    ...petInfoLines.map((line) => `${line.label}：${line.value}`),
+    ...(petList.length > 1
+      ? petList.flatMap((p, idx) => {
+        const block = [`—— 宠物 ${idx + 1} ——`];
+        buildContractPetInfoLines(p, {}).forEach((line) => {
+          block.push(`${line.label}：${line.value}`);
+        });
+        return block;
+      })
+      : petInfoLines.map((line) => `${line.label}：${line.value}`)),
     '',
     '【寄养服务信息】',
     `寄养时间：${timeRange}`,
@@ -251,6 +288,7 @@ function buildContractDraft(input) {
     petType,
     petWeight,
     petInfoLines,
+    pets: petList,
     startDate: startDate || '',
     endDate: endDate || '',
     startTime: startTime || '',
@@ -303,7 +341,8 @@ function buildContractFromOrder(order, user, store) {
     roomName: order.roomName,
     billingMode: order.billingMode,
     contactName: order.contactName,
-    contactPhone: order.contactPhone
+    contactPhone: order.contactPhone,
+    contactIdCard: order.contactIdCard
   });
 }
 

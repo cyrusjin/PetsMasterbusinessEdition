@@ -47,6 +47,7 @@ const {
   MAX_NOTICE_PHOTOS,
   MAX_INTRO_TEXT,
   MAX_NOTICE_TEXT,
+  MAX_PICKUP_NOTICE_TEXT,
   normalizeStorePhotos,
   normalizeIntroPhotos,
   normalizeNoticePhotos,
@@ -113,6 +114,9 @@ function pickBillingState(rules) {
   );
   const checkInDayCharge = (rules && rules.checkInDayCharge) || 'full';
   const departureDayCharge = (rules && rules.departureDayCharge) || 'full';
+  const multiPetDiscount = (rules && rules.multiPetDiscount) || {};
+  const multiPetDiscountEnabled = multiPetDiscount.enabled === true;
+  const multiPetPercent = multiPetDiscount.percent;
   const billingState = {
     checkInDayCharge,
     departureDayCharge,
@@ -122,6 +126,10 @@ function pickBillingState(rules) {
     billingMode: (rules && rules.billingMode) || 'weight',
     weightPricing: normalizeWeightPricing((rules && rules.weightPricing) || []),
     roomPricing: normalizeRoomPricing((rules && rules.roomPricing) || []),
+    multiPetDiscountEnabled,
+    multiPetDiscountPercent: multiPetDiscountEnabled && multiPetPercent != null && multiPetPercent !== ''
+      ? String(multiPetPercent)
+      : (multiPetPercent != null && multiPetPercent !== '' ? String(multiPetPercent) : ''),
     ...billingState,
     chargeSummary: buildChargeSummary({ ...rules, ...billingState })
   };
@@ -164,6 +172,7 @@ Page({
     maxNoticePhotos: MAX_NOTICE_PHOTOS,
     maxIntroText: MAX_INTRO_TEXT,
     maxNoticeText: MAX_NOTICE_TEXT,
+    maxPickupNoticeText: MAX_PICKUP_NOTICE_TEXT,
     maxRoomDescription: MAX_ROOM_DESCRIPTION,
     photoDrag: {
       active: false,
@@ -178,6 +187,8 @@ Page({
     hideMerchantTabBar: true,
     oaFollowSheetVisible: false,
     pickupFreeMode: 'none',
+    multiPetDiscountEnabled: false,
+    multiPetDiscountPercent: '',
     showContractModal: false,
     showCoopContractModal: false,
     coopContractMode: 'preview',
@@ -1098,6 +1109,7 @@ Page({
       address,
       pickupService: shop.pickupService === 'yes' ? 'yes' : 'no',
       pickupNotice: shop.pickupNotice || '',
+      wechatId: (shop.wechatId || '').trim(),
       ...normalizePickupPricing(shop),
       deposit: normalizeDeposit(shop.deposit),
       compensationLimit: shop.compensationLimit != null && shop.compensationLimit !== ''
@@ -1204,6 +1216,7 @@ Page({
   },
 
   _getBillingRulesPayload() {
+    const percent = parseFloat(this.data.multiPetDiscountPercent);
     return {
       ...app.getBillingRules(),
       billingMode: this.data.billingMode,
@@ -1211,8 +1224,28 @@ Page({
       roomPricing: normalizeRoomPricing(this.data.roomPricing),
       checkInDayCharge: this.data.checkInDayCharge,
       departureDayCharge: this.data.departureDayCharge,
-      departureCharge: normalizeDepartureCharge(this.data.departureCharge)
+      departureCharge: normalizeDepartureCharge(this.data.departureCharge),
+      multiPetDiscount: {
+        enabled: !!this.data.multiPetDiscountEnabled,
+        mode: 'fromSecondPercent',
+        percent: Number.isFinite(percent) ? percent : 0,
+        applyTo: 'boarding'
+      }
     };
+  },
+
+  onMultiPetDiscountSwitch(e) {
+    this._markDirty();
+    const enabled = !!(e.detail && e.detail.value);
+    this.setData({
+      multiPetDiscountEnabled: enabled,
+      multiPetDiscountPercent: enabled ? (this.data.multiPetDiscountPercent || '') : this.data.multiPetDiscountPercent
+    });
+  },
+
+  onMultiPetDiscountPercentInput(e) {
+    this._markDirty();
+    this.setData({ multiPetDiscountPercent: e.detail.value });
   },
 
   onField(e) {

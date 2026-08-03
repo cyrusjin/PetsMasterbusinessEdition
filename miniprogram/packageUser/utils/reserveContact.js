@@ -5,22 +5,24 @@ function loadReserveContact() {
   try {
     const cached = wx.getStorageSync(STORAGE_KEYS.RESERVE_CONTACT);
     if (!cached || typeof cached !== 'object') {
-      return { contactName: '', contactPhone: '' };
+      return { contactName: '', contactPhone: '', contactIdCard: '' };
     }
     return {
       contactName: String(cached.contactName || '').trim(),
-      contactPhone: String(cached.contactPhone || '').trim()
+      contactPhone: String(cached.contactPhone || '').trim(),
+      contactIdCard: String(cached.contactIdCard || '').trim()
     };
   } catch (err) {
-    return { contactName: '', contactPhone: '' };
+    return { contactName: '', contactPhone: '', contactIdCard: '' };
   }
 }
 
-function saveReserveContact(contactName, contactPhone) {
+function saveReserveContact(contactName, contactPhone, contactIdCard) {
   try {
     wx.setStorageSync(STORAGE_KEYS.RESERVE_CONTACT, {
       contactName: String(contactName || '').trim(),
-      contactPhone: String(contactPhone || '').trim()
+      contactPhone: String(contactPhone || '').trim(),
+      contactIdCard: String(contactIdCard || '').trim()
     });
   } catch (err) {
     console.warn('[预约] 保存联系人缓存失败', err);
@@ -39,8 +41,16 @@ function validateReserveContact(contactName, contactPhone) {
   return '';
 }
 
+function validateContactIdCard(contactIdCard) {
+  const idCard = String(contactIdCard || '').trim();
+  if (!idCard) return '';
+  if (!/^(\d{15}|\d{17}[\dXx])$/.test(idCard)) return '请输入正确的15或18位身份证号';
+  return '';
+}
+
 module.exports = {
   loadReserveContact,
   saveReserveContact,
-  validateReserveContact
+  validateReserveContact,
+  validateContactIdCard
 };

@@ -13,6 +13,7 @@
     <copyable-detail-row label="服务类型" value="{{order.serviceType}}" />
     <copyable-detail-row label="宠主" value="{{order.contactName || order.userNickName}}" />
     <copyable-detail-row label="联系电话" value="{{order.contactPhone || order.userPhone}}" />
+    <copyable-detail-row wx:if="{{order.contactIdCard}}" label="身份证号" value="{{order.contactIdCard}}" />
     <copyable-detail-row wx:if="{{order.emergencyPhone}}" label="紧急联系电话" value="{{order.emergencyPhone}}" />
     <copyable-detail-row label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
     <copyable-detail-row label="房间" value="{{order.roomName}}" />

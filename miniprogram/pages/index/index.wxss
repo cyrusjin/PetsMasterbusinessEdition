@@ -328,27 +328,50 @@
 
 .reserve-button {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 8rpx;
+  gap: 10rpx;
+  height: 54rpx;
   margin-top: 24rpx;
-  padding: 14rpx 22rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
   border-radius: 999rpx;
   background: linear-gradient(135deg, #F7AA78, #E98657);
   color: #FFFFFF;
-  font-size: 23rpx;
-  font-weight: 800;
   box-shadow: 0 10rpx 20rpx rgba(233, 134, 87, 0.26);
 }
 
+.reserve-button-text {
+  height: 28rpx;
+  line-height: 28rpx;
+  font-size: 23rpx;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
 .reserve-button-icon {
-  width: 24rpx;
-  height: 24rpx;
+  position: relative;
+  width: 28rpx;
+  height: 28rpx;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+  flex-shrink: 0;
+}
+
+.reserve-button-chevron {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  width: 8rpx;
+  height: 8rpx;
+  border-top: 3rpx solid #FFFFFF;
+  border-right: 3rpx solid #FFFFFF;
+  box-sizing: border-box;
+  transform: rotate(45deg);
+  transform-origin: center center;
 }
 
 .reserve-button-disabled {
@@ -605,10 +628,92 @@
 .welcome-sub {
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.welcome-sub-clamped {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 6;
   overflow: hidden;
+  white-space: normal;
+}
+
+.intro-more-link {
+  display: inline-block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #E98657;
+  font-weight: 500;
+}
+
+.intro-full-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 20000;
+}
+
+.intro-full-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.intro-full-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 72vh;
+  background: #FFFFFF;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 28rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+.intro-full-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+  flex-shrink: 0;
+}
+
+.intro-full-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333333;
+}
+
+.intro-full-close {
+  font-size: 26rpx;
+  color: #E98657;
+  padding: 8rpx 0 8rpx 24rpx;
+}
+
+.intro-full-body {
+  flex: 1;
+  height: 0;
+  width: 100%;
+}
+
+.intro-full-text {
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: #333333;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding-bottom: 24rpx;
 }
 
 .intro-photos-grid {
@@ -666,6 +771,7 @@
 
 .store-address-row.tappable:active,
 .store-phone-row:active,
+.store-wechat-row:active,
 .reserve-card:active,
 .pet-hero:active,
 .info-card:active {
@@ -674,11 +780,27 @@
 }
 
 .store-address-icon,
-.store-phone-icon {
+.store-phone-icon,
+.store-wechat-icon {
   flex-shrink: 0;
   color: #DFA06F;
   font-size: 24rpx;
   line-height: 1.5;
+}
+
+.store-wechat-icon {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 8rpx;
+  background: #E98657;
+  color: #FFFFFF;
+  font-size: 18rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 28rpx;
+  text-align: center;
 }
 
 .store-address {
@@ -689,7 +811,8 @@
 }
 
 .store-nav-hint,
-.store-phone {
+.store-phone,
+.store-wechat-hint {
   flex-shrink: 0;
   color: #E98657;
   font-size: 22rpx;
@@ -697,9 +820,26 @@
   font-weight: 800;
 }
 
-.store-phone-row {
+.store-phone-row,
+.store-wechat-row {
   display: flex;
   align-items: center;
   gap: 10rpx;
   margin-top: 14rpx;
+}
+
+.store-wechat-label {
+  flex-shrink: 0;
+  color: #A98972;
+  font-size: 22rpx;
+}
+
+.store-wechat {
+  flex: 1;
+  color: #8C6A52;
+  font-size: 23rpx;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

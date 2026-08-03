@@ -1,6 +1,5 @@
 const app = getApp();
-const util = require('../../../utils/util');
-const { calcStayFeeBreakdown, formatMoney, buildChargeSummary } = require('../../../utils/billing');
+const { formatMoney, buildChargeSummary } = require('../../../utils/billing');
 const { buildRoomOptions, resolveRoomOptionsPhotos, findRoom, supportsPetWeight } = require('../../../utils/roomPricing');
 const timePicker = require('../../utils/timePicker');
 const { buildPetSnapshot } = require('../../../utils/petSnapshot');
@@ -9,7 +8,8 @@ const { showValidationAlert } = require('../../../utils/formAlert');
 const {
   loadReserveContact,
   saveReserveContact,
-  validateReserveContact
+  validateReserveContact,
+  validateContactIdCard
 } = require('../../utils/reserveContact');
 const { validatePickupInfo, buildPickupPayload } = require('../../utils/pickupInfo');
 const {
@@ -26,6 +26,41 @@ const {
   getPickupLocationValidationMessage
 } = require('../../../utils/location');
 const { isOaBound } = require('../../../utils/officialAccount');
+const { calcMultiPetBoardingFees } = require('../../../utils/multiPetPricing');
+const { findFirstPetsBookingConflict } = require('../../../utils/bookingOverlap');
+
+/** 超过该字数时预览截断，点击查看完整 */
+const NOTICE_EXPAND_CHARS = 90;
+
+function isNoticeExpandable(text) {
+  return String(text || '').trim().length > NOTICE_EXPAND_CHARS;
+}
+
+const SPECIAL_NEED_GUIDE_LABELS = ['日常喂食习惯', '遛弯习惯', '宠物性格', '特殊行为习惯'];
+
+function buildSpecialNeedGuides(specialNeeds) {
+  const text = String(specialNeeds || '');
+  return SPECIAL_NEED_GUIDE_LABELS.map((label) => {
+    const prefix = `${label}：`;
+    const active = text.split('\n').some((line) => {
+      const trimmed = line.trim();
+      return trimmed === label || trimmed.indexOf(prefix) === 0 || trimmed.indexOf(`${label}:`) === 0;
+    });
+    return { label, active };
+  });
+}
+
+function appendSpecialNeedGuide(specialNeeds, label) {
+  const prefix = `${label}：`;
+  const text = String(specialNeeds || '');
+  const exists = text.split('\n').some((line) => {
+    const trimmed = line.trim();
+    return trimmed === label || trimmed.indexOf(prefix) === 0 || trimmed.indexOf(`${label}:`) === 0;
+  });
+  if (exists) return text;
+  if (!text.trim()) return prefix;
+  return `${text.endsWith('\n') ? text : `${text}\n`}${prefix}`;
+}
 
 function getTodayStr() {
   const today = new Date();
@@ -35,13 +70,35 @@ function getTodayStr() {
   return `${y}-${m}-${d}`;
 }
 
+function buildSelectedPetIds(selectedPets) {
+  const ids = {};
+  (selectedPets || []).forEach((p) => {
+    if (p && p.id) ids[p.id] = true;
+  });
+  return ids;
+}
+
+function getHeaviestPetWeight(pets) {
+  const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
+  if (!list.length) return null;
+  return Math.max(...list.map((p) => parseFloat(p.weight) || 0));
+}
+
 Page({
   data: {
     store: null,
     pets: [],
+    selectedPets: [],
+    selectedPetIds: {},
     selectedPet: null,
+    multiPetFeeItems: [],
+    multiPetDiscountTip: '',
+    hasMultiPetDiscount: false,
+    multiPetDiscountTotalText: '',
+    feeBreakdownTitle: '费用明细',
     contactName: '',
     contactPhone: '',
+    contactIdCard: '',
     emergencyPhone: '',
     startDate: '',
     endDate: '',
@@ -84,6 +141,7 @@ Page({
     roomOptions: [],
     extraList: [],
     specialNeeds: '',
+    specialNeedGuides: buildSpecialNeedGuides(''),
     needPickup: false,
     pickupAddress: '',
     pickupLocationName: '',
@@ -102,7 +160,12 @@ Page({
     contractModalVisible: false,
     oaFollowSheetVisible: false,
     contractModalSignable: false,
-    contractDoc: {}
+    contractDoc: {},
+    pickupNoticeExpandable: false,
+    boardingNoticeExpandable: false,
+    noticePreviewVisible: false,
+    noticePreviewTitle: '',
+    noticePreviewContent: ''
   },
 
   onLoad() {
@@ -143,25 +206,32 @@ Page({
     }).catch(() => {});
   },
 
-  _applyPetSelection(pet) {
+  _applyPetsSelection(selectedPets) {
     this._invalidateSignedContract();
     const rules = app.getStoreBillingRules();
+    const list = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
     let roomType = this.data.roomType;
     const selectedRoom = findRoom(rules.roomPricing, roomType);
-    // 仅在已选宠物时按体重校验；未选宠物不因「超限」清空房间
-    if (pet && (!selectedRoom || !supportsPetWeight(selectedRoom, pet.weight))) {
-      roomType = '';
+    if (roomType && selectedRoom) {
+      const allSupport = list.length > 0 && list.every((p) => supportsPetWeight(selectedRoom, p.weight));
+      if (!allSupport) roomType = '';
     } else if (!selectedRoom) {
       roomType = '';
     }
-    this._setRoomOptions(pet && pet.weight, { selectedPet: pet }, roomType);
+    const selectedPet = list[0] || null;
+    const selectedPetIds = buildSelectedPetIds(list);
+    this._setRoomOptions(getHeaviestPetWeight(list), {
+      selectedPets: list,
+      selectedPet,
+      selectedPetIds
+    }, roomType);
     this.calcFee();
   },
 
   _loadPage(options = {}) {
     const preserveForm = !!options.preserveForm;
     const prevForm = preserveForm ? {
-      selectedPetId: this.data.selectedPet && this.data.selectedPet.id,
+      selectedPetIds: (this.data.selectedPets || []).map((p) => p.id),
       startDate: this.data.startDate,
       endDate: this.data.endDate,
       startTime: this.data.startTime,
@@ -177,10 +247,12 @@ Page({
       pickupTimeDisplay: this.data.pickupTimeDisplay,
       pickupLeg: this.data.pickupLeg,
       specialNeeds: this.data.specialNeeds,
-      emergencyPhone: this.data.emergencyPhone
+      emergencyPhone: this.data.emergencyPhone,
+      contactIdCard: this.data.contactIdCard
     } : null;
 
     const cachedContact = loadReserveContact();
+    const userInfo = app.globalData.userInfo || {};
     const storeId = app.getStoreId();
     const loadStore = storeId && app.globalData.env
       ? app.bindStore(storeId, { force: !preserveForm, syncUser: false })
@@ -207,21 +279,25 @@ Page({
       const chargeSummary = buildChargeSummary(rules);
 
       return app.loadPets().then((pets) => {
-        let selectedPet = null;
-        if (prevForm && prevForm.selectedPetId) {
-          selectedPet = pets.find((p) => p.id === prevForm.selectedPetId) || null;
+        let selectedPets = [];
+        if (prevForm && prevForm.selectedPetIds && prevForm.selectedPetIds.length) {
+          selectedPets = prevForm.selectedPetIds
+            .map((id) => pets.find((p) => p.id === id))
+            .filter(Boolean);
         }
-        if (!selectedPet && pets.length > 0) {
-          selectedPet = pets[0];
+        if (!selectedPets.length && pets.length > 0) {
+          selectedPets = [pets[0]];
         }
+        const selectedPet = selectedPets[0] || null;
+        const selectedPetIds = buildSelectedPetIds(selectedPets);
 
-        const roomOptions = buildRoomOptions(rules.roomPricing, selectedPet && selectedPet.weight);
+        const roomOptions = buildRoomOptions(rules.roomPricing, getHeaviestPetWeight(selectedPets));
         let roomType = preserveForm && prevForm ? prevForm.roomType : '';
         if (roomType) {
           const rawRoom = findRoom(rules.roomPricing, roomType);
           if (!rawRoom) {
             roomType = '';
-          } else if (selectedPet && !supportsPetWeight(rawRoom, selectedPet.weight)) {
+          } else if (selectedPets.some((p) => !supportsPetWeight(rawRoom, p.weight))) {
             roomType = '';
           }
         }
@@ -232,10 +308,15 @@ Page({
           extraList,
           billingMode: rules.billingMode || 'weight',
           pickupPricingSummary: formatPickupPricingSummary(store),
+          pickupNoticeExpandable: isNoticeExpandable(store.pickupNotice),
+          boardingNoticeExpandable: isNoticeExpandable(store.notice),
           chargeSummary,
           minDate: getTodayStr(),
           contactName: cachedContact.contactName || this.data.contactName,
           contactPhone: cachedContact.contactPhone || this.data.contactPhone,
+          contactIdCard: cachedContact.contactIdCard || this.data.contactIdCard || userInfo.idCard || '',
+          selectedPets,
+          selectedPetIds,
           selectedPet,
           roomOptions,
           roomType
@@ -257,9 +338,11 @@ Page({
             pickupTimeDisplay: prevForm.pickupTimeDisplay,
             pickupLeg: prevForm.pickupLeg,
             specialNeeds: prevForm.specialNeeds,
-            emergencyPhone: prevForm.emergencyPhone
+            emergencyPhone: prevForm.emergencyPhone,
+            contactIdCard: prevForm.contactIdCard
           });
         }
+        patch.specialNeedGuides = buildSpecialNeedGuides(patch.specialNeeds || this.data.specialNeeds);
 
         this.setData(patch);
         this._pageReady = true;
@@ -282,7 +365,7 @@ Page({
   },
 
   _persistContactCache() {
-    saveReserveContact(this.data.contactName, this.data.contactPhone);
+    saveReserveContact(this.data.contactName, this.data.contactPhone, this.data.contactIdCard);
   },
 
   onContactNameInput(e) {
@@ -293,6 +376,11 @@ Page({
   onContactPhoneInput(e) {
     this._invalidateSignedContract();
     this.setData({ contactPhone: (e.detail.value || '').trim() });
+  },
+
+  onContactIdCardInput(e) {
+    this._invalidateSignedContract();
+    this.setData({ contactIdCard: (e.detail.value || '').trim() });
   },
 
   onEmergencyPhoneInput(e) {
@@ -306,7 +394,15 @@ Page({
   onSelectPet(e) {
     const id = e.currentTarget.dataset.id;
     const pet = this.data.pets.find((p) => p.id === id);
-    this._applyPetSelection(pet);
+    if (!pet) return;
+    let selectedPets = [...(this.data.selectedPets || [])];
+    const idx = selectedPets.findIndex((p) => p.id === id);
+    if (idx >= 0) {
+      selectedPets.splice(idx, 1);
+    } else {
+      selectedPets.push(pet);
+    }
+    this._applyPetsSelection(selectedPets);
   },
 
   _formatPickupTimeDisplay(date, time) {
@@ -405,7 +501,21 @@ Page({
   },
 
   onSpecialInput(e) {
-    this.setData({ specialNeeds: e.detail.value });
+    const specialNeeds = e.detail.value;
+    this.setData({
+      specialNeeds,
+      specialNeedGuides: buildSpecialNeedGuides(specialNeeds)
+    });
+  },
+
+  onTapSpecialGuide(e) {
+    const label = e.currentTarget.dataset.label;
+    if (!label) return;
+    const specialNeeds = appendSpecialNeedGuide(this.data.specialNeeds, label);
+    this.setData({
+      specialNeeds,
+      specialNeedGuides: buildSpecialNeedGuides(specialNeeds)
+    });
   },
 
   onPickupChange(e) {
@@ -503,15 +613,15 @@ Page({
 
   onRoomTypeSelect(e) {
     const roomType = e.currentTarget.dataset.type;
-    const { roomOptions, selectedPet } = this.data;
-    if (!selectedPet) {
+    const { roomOptions, selectedPets } = this.data;
+    if (!selectedPets || !selectedPets.length) {
       wx.showToast({ title: '请先选择宠物', icon: 'none' });
       return;
     }
     const room = roomOptions.find((item) => item.id === roomType);
     const rules = app.getStoreBillingRules();
     const rawRoom = findRoom(rules.roomPricing, roomType);
-    if (!rawRoom || !supportsPetWeight(rawRoom, selectedPet.weight)) {
+    if (!rawRoom || selectedPets.some((p) => !supportsPetWeight(rawRoom, p.weight))) {
       wx.showToast({ title: '宠物体重超出该房间限制', icon: 'none' });
       return;
     }
@@ -525,6 +635,7 @@ Page({
   },
 
   _resetFeeState(chargeSummary) {
+    this._multiPetFeeResult = null;
     this.setData({
       feeReady: false,
       days: 0,
@@ -553,13 +664,18 @@ Page({
       basePriceText: '0',
       pickupFeePending: false,
       pickupFeePendingText: '',
-      totalDisplayReady: false
+      totalDisplayReady: false,
+      multiPetFeeItems: [],
+      multiPetDiscountTip: '',
+      hasMultiPetDiscount: false,
+      multiPetDiscountTotalText: '',
+      feeBreakdownTitle: '费用明细'
     });
   },
 
   calcFee() {
     const {
-      selectedPet, startDate, endDate, startTime, endTime, extraList, needPickup,
+      selectedPets, startDate, endDate, startTime, endTime, extraList, needPickup,
       roomType, billingMode, store, pickupLatitude, pickupLongitude,
       pickupDrivingDistanceKm, pickupDistanceMode
     } = this.data;
@@ -567,8 +683,9 @@ Page({
     const chargeSummary = buildChargeSummary(rules);
     const pickupFlags = this._getPickupFlags();
     const feeToken = (this._feeCalcToken = (this._feeCalcToken || 0) + 1);
+    const pets = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
 
-    if (!selectedPet || !startDate || !endDate || !startTime || !endTime) {
+    if (!pets.length || !startDate || !endDate || !startTime || !endTime) {
       this._resetFeeState(chargeSummary);
       return;
     }
@@ -578,18 +695,37 @@ Page({
       return;
     }
 
-    const basePrice = util.getPriceByMode(rules, selectedPet.weight, roomType);
-    const breakdown = calcStayFeeBreakdown(
-      startDate, endDate, startTime, endTime, rules, basePrice
-    );
-
-    let extrasFee = 0;
+    let extrasFeePerDay = 0;
     extraList.filter((e) => e.checked).forEach((e) => {
-      extrasFee += e.price * breakdown.days;
+      extrasFeePerDay += e.price;
     });
 
+    const multiResult = calcMultiPetBoardingFees({
+      pets,
+      rules,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      roomType,
+      extrasFeePerDay
+    });
+    this._multiPetFeeResult = multiResult;
+
+    const primaryItem = multiResult.items.find((item) => item.isPrimary) || multiResult.items[0];
+    const breakdown = primaryItem.breakdown;
+    const boardingTotalFee = multiResult.boardingTotal;
+    const basePrice = primaryItem.basePrice;
+    const multiPetFeeItems = multiResult.items.map((item) => ({
+      name: item.pet.name,
+      boardingFeeText: formatMoney(item.boardingFee),
+      discountAmountText: item.discountAmount > 0 ? formatMoney(item.discountAmount) : '',
+      isPrimary: item.isPrimary
+    }));
+    const feeBreakdownTitle = multiResult.items.length > 1
+      ? '费用明细'
+      : `费用明细（¥${formatMoney(basePrice)}/天）`;
     const storeView = store || app.getUserStoreView() || {};
-    const boardingTotalFee = breakdown.baseFee + extrasFee;
     const isDistanceMode = storeView.pickupPricingMode === 'distance';
     const storeHasLocation = !!parseStoreCoords(storeView);
     const hasPickupCoords = !!(pickupLatitude && pickupLongitude);
@@ -714,7 +850,12 @@ Page({
         grandTotalFee,
         grandTotalFeeText: formatMoney(grandTotalFee),
         totalFee: grandTotalFee,
-        totalFeeText: formatMoney(grandTotalFee)
+        totalFeeText: formatMoney(grandTotalFee),
+        multiPetFeeItems,
+        multiPetDiscountTip: multiResult.discountTip || '',
+        hasMultiPetDiscount: multiResult.hasDiscount,
+        multiPetDiscountTotalText: multiResult.hasDiscount ? multiResult.discountTotalText : '',
+        feeBreakdownTitle
       });
     };
 
@@ -745,21 +886,24 @@ Page({
   },
 
   _validateContact() {
-    return validateReserveContact(this.data.contactName, this.data.contactPhone);
+    const contactErr = validateReserveContact(this.data.contactName, this.data.contactPhone);
+    if (contactErr) return contactErr;
+    return validateContactIdCard(this.data.contactIdCard);
   },
 
   _validateBeforeContract() {
     const store = this.data.store;
     const {
-      selectedPet, startDate, endDate, startTime, endTime, billingMode, roomType, feeReady
+      selectedPets, startDate, endDate, startTime, endTime, billingMode, roomType, feeReady
     } = this.data;
+    const pets = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
 
     const contactErr = this._validateContact();
     if (contactErr) return contactErr;
 
     if (!store || !store.store_id) return '请先通过店铺分享链接进入';
     if (!store.isOpen) return '店铺当前不可预约';
-    if (!selectedPet) return '请选择宠物';
+    if (!pets.length) return '请选择宠物';
     if (!startDate || !endDate) return '请选择寄养时间';
     if (startDate < getTodayStr()) return '不能选择过去的日期';
     if (!startTime || !endTime) return '请选择入住和离店时间';
@@ -767,8 +911,8 @@ Page({
     if (billingMode === 'room') {
       const rules = app.getStoreBillingRules();
       const room = findRoom(rules.roomPricing, roomType);
-      if (!room || !supportsPetWeight(room, selectedPet.weight)) {
-        return '请选择适合宠物体重的房间';
+      if (!room || pets.some((p) => !supportsPetWeight(room, p.weight))) {
+        return '请选择适合全部宠物体重的房间';
       }
     }
     if (!feeReady) return '请完成时间和费用选择';
@@ -795,34 +939,44 @@ Page({
       return '紧急联系电话需为11位手机号';
     }
 
+    const overlapErr = findFirstPetsBookingConflict(
+      typeof app.getOrders === 'function' ? app.getOrders() : [],
+      pets,
+      { startDate, endDate, startTime, endTime }
+    );
+    if (overlapErr) return overlapErr;
+
     return '';
   },
 
   _buildContractDraft() {
     const {
-      selectedPet, startDate, endDate, startTime, endTime, days, totalFee,
-      specialNeeds, needPickup, roomType, billingMode, contactName, contactPhone
+      selectedPets, selectedPet, startDate, endDate, startTime, endTime, days, grandTotalFee,
+      specialNeeds, needPickup, roomType, billingMode, contactName, contactPhone, contactIdCard
     } = this.data;
     const store = this._getContractStore();
     const rules = app.getStoreBillingRules();
     const room = findRoom(rules.roomPricing, roomType);
+    const pets = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
 
     return buildContractDraft({
       store,
-      pet: selectedPet,
+      pet: selectedPet || pets[0] || null,
+      pets,
       startDate,
       endDate,
       startTime,
       endTime,
       days,
-      totalFee,
+      totalFee: grandTotalFee,
       deposit: store.deposit != null ? store.deposit : 0,
       specialNeeds,
       needPickup: store.hasPickup && needPickup,
       roomName: room ? room.name : '',
       billingMode,
       contactName,
-      contactPhone
+      contactPhone,
+      contactIdCard
     });
   },
 
@@ -843,18 +997,60 @@ Page({
   },
 
   _doSubmitOrder() {
+    const { selectedPets, startDate, endDate, startTime, endTime } = this.data;
+
+    const refreshOrders = typeof app.loadOrders === 'function'
+      ? app.loadOrders({ force: true }).catch(() => (typeof app.getOrders === 'function' ? app.getOrders() : []))
+      : Promise.resolve(typeof app.getOrders === 'function' ? app.getOrders() : []);
+
+    refreshOrders.then((orders) => {
+      const pets = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
+      const overlapErr = findFirstPetsBookingConflict(
+        orders || [],
+        pets,
+        { startDate, endDate, startTime, endTime }
+      );
+      if (overlapErr) {
+        showValidationAlert(overlapErr);
+        return;
+      }
+      this._submitOrdersAfterOverlapCheck();
+    });
+  },
+
+  _submitOrdersAfterOverlapCheck() {
     const {
       store,
-      selectedPet, startDate, endDate, startTime, endTime, days, baseFee,
+      selectedPets, startDate, endDate, startTime, endTime, days,
       extraList, specialNeeds, needPickup, roomType, billingMode,
-      signedContractDraft, contactName, contactPhone, emergencyPhone
+      signedContractDraft, contactName, contactPhone, contactIdCard, emergencyPhone
     } = this.data;
 
-    let extrasFee = 0;
-    extraList.filter((e) => e.checked).forEach((e) => {
-      extrasFee += e.price * days;
-    });
+    let multiResult = this._multiPetFeeResult;
+    if (!multiResult) {
+      const rules = app.getStoreBillingRules();
+      let extrasFeePerDay = 0;
+      extraList.filter((e) => e.checked).forEach((e) => {
+        extrasFeePerDay += e.price;
+      });
+      multiResult = calcMultiPetBoardingFees({
+        pets: selectedPets,
+        rules,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        roomType,
+        extrasFeePerDay
+      });
+      this._multiPetFeeResult = multiResult;
+    }
+
+    const items = multiResult.items || [];
+    const orderGroupId = `og_${Date.now()}`;
+    const petCountInGroup = items.length;
     const storeView = store || app.getUserStoreView() || {};
+    const deposit = store.deposit != null ? parseFloat(store.deposit) || 0 : 0;
     const pickupFee = (storeView.hasPickup && needPickup)
       ? calcPickupShippingFee({
         store: storeView,
@@ -866,99 +1062,150 @@ Page({
         stayDays: days
       })
       : 0;
-    const boardingFee = baseFee + extrasFee;
-    const finalTotalFee = boardingFee + pickupFee;
+    const signTime = signedContractDraft.signTime || new Date().toLocaleString('zh-CN');
+    const roomName = (findRoom(app.getStoreBillingRules().roomPricing, roomType) || {}).name || '';
+    const checkedExtras = extraList.filter((e) => e.checked).map((e) => e.key);
 
-    const contractId = `ctr_${Date.now()}`;
-    const contractPayload = {
-      ...signedContractDraft,
-      id: contractId,
-      petName: selectedPet.name,
-      petType: selectedPet.type,
-      signed: true,
-      signTime: signedContractDraft.signTime || new Date().toLocaleString('zh-CN'),
-      signMethod: 'electronic'
+    const buildOrderForItem = (item, index) => {
+      const pet = item.pet;
+      const isPrimary = item.isPrimary;
+      const shippingFee = isPrimary ? pickupFee : 0;
+      const orderBoardingFee = item.boardingFee;
+      const orderTotalFee = orderBoardingFee + shippingFee;
+      const contractId = `ctr_${Date.now()}_${index}`;
+
+      const contractPayload = {
+        ...buildContractDraft({
+          store: this._getContractStore(),
+          pet,
+          pets: [pet],
+          startDate,
+          endDate,
+          startTime,
+          endTime,
+          days,
+          totalFee: orderTotalFee,
+          deposit,
+          specialNeeds,
+          needPickup: isPrimary && store.hasPickup && needPickup,
+          roomName,
+          billingMode,
+          contactName,
+          contactPhone,
+          contactIdCard
+        }),
+        id: contractId,
+        petName: pet.name,
+        petType: pet.type,
+        signed: true,
+        signTime,
+        signMethod: 'electronic'
+      };
+
+      const pickupPayload = isPrimary
+        ? buildPickupPayload({
+          needPickup: store.hasPickup && needPickup,
+          pickupAddress: this.data.pickupAddress,
+          pickupLocationName: this.data.pickupLocationName,
+          pickupLatitude: this.data.pickupLatitude,
+          pickupLongitude: this.data.pickupLongitude,
+          pickupContactPhone: this.data.pickupContactPhone,
+          pickupTime: this.data.pickupTime || this.data.startTime,
+          ...this._getPickupFlags()
+        })
+        : { needPickup: false };
+
+      return {
+        orderGroupId,
+        petCountInGroup,
+        isGroupPrimary: isPrimary,
+        petName: pet.name,
+        petType: pet.type,
+        petGender: pet.gender,
+        petAge: pet.age,
+        petId: pet.id,
+        petWeight: pet.weight,
+        petBreed: pet.breed || '',
+        petPhoto: pet.photo || '',
+        petSnapshot: buildPetSnapshot(pet),
+        contactName,
+        contactPhone,
+        contactIdCard: String(contactIdCard || '').trim(),
+        emergencyPhone: String(emergencyPhone || '').trim(),
+        ...pickupPayload,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        days,
+        boardingFee: orderBoardingFee,
+        shippingFee,
+        totalFee: orderTotalFee,
+        basePrice: item.basePrice,
+        deposit,
+        feeSnapshot: {
+          basePrice: item.basePrice,
+          dailyBreakdown: item.breakdown.dailyBreakdown,
+          chargeSummary: item.breakdown.chargeSummary,
+          daysText: item.breakdown.daysText,
+          multiPetDiscount: multiResult.discount,
+          originalBoardingFee: item.originalBoardingFee,
+          discountAmount: item.discountAmount,
+          petIndex: index,
+          petCount: petCountInGroup,
+          pickupDistanceKm: isPrimary && this.data.pickupDrivingDistanceKm != null
+            ? this.data.pickupDrivingDistanceKm
+            : undefined,
+          pickupDistanceMode: isPrimary && storeView.pickupPricingMode === 'distance'
+            ? (this.data.pickupDistanceMode || 'driving')
+            : undefined
+        },
+        extras: checkedExtras,
+        needPickup: store.hasPickup ? (isPrimary && needPickup) : false,
+        specialNeeds,
+        billingMode,
+        roomType,
+        roomName,
+        serviceType: '寄养预约',
+        status: 'pending',
+        store_id: store.store_id,
+        storeName: store.name || '',
+        storeLogo: store.logo || '',
+        storeAddress: store.address || '',
+        contractId,
+        contractSigned: true,
+        contractSignTime: signTime,
+        contractSnapshot: contractPayload
+      };
     };
 
-    const pickupPayload = buildPickupPayload({
-      needPickup: store.hasPickup && needPickup,
-      pickupAddress: this.data.pickupAddress,
-      pickupLocationName: this.data.pickupLocationName,
-      pickupLatitude: this.data.pickupLatitude,
-      pickupLongitude: this.data.pickupLongitude,
-      pickupContactPhone: this.data.pickupContactPhone,
-      pickupTime: this.data.pickupTime || this.data.startTime,
-      ...this._getPickupFlags()
-    });
-
-    const order = {
-      petName: selectedPet.name,
-      petType: selectedPet.type,
-      petGender: selectedPet.gender,
-      petAge: selectedPet.age,
-      petId: selectedPet.id,
-      petWeight: selectedPet.weight,
-      petBreed: selectedPet.breed || '',
-      petPhoto: selectedPet.photo || '',
-      petSnapshot: buildPetSnapshot(selectedPet),
-      contactName,
-      contactPhone,
-      emergencyPhone: String(emergencyPhone || '').trim(),
-      ...pickupPayload,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
-      days,
-      boardingFee,
-      shippingFee: pickupFee,
-      totalFee: finalTotalFee,
-      basePrice: this.data.basePrice,
-      deposit: store.deposit != null ? parseFloat(store.deposit) || 0 : 0,
-      feeSnapshot: {
-        basePrice: this.data.basePrice,
-        dailyBreakdown: this.data.dailyBreakdown,
-        chargeSummary: this.data.chargeSummary,
-        daysText: this.data.daysText,
-        pickupDistanceKm: this.data.pickupDrivingDistanceKm != null
-          ? this.data.pickupDrivingDistanceKm
-          : undefined,
-        pickupDistanceMode: storeView.pickupPricingMode === 'distance'
-          ? (this.data.pickupDistanceMode || 'driving')
-          : undefined
-      },
-      extras: extraList.filter((e) => e.checked).map((e) => e.key),
-      needPickup: store.hasPickup ? needPickup : false,
-      specialNeeds,
-      billingMode,
-      roomType,
-      roomName: (findRoom(app.getStoreBillingRules().roomPricing, roomType) || {}).name || '',
-      serviceType: '寄养预约',
-      status: 'pending',
-      store_id: store.store_id,
-      storeName: store.name || '',
-      storeLogo: store.logo || '',
-      storeAddress: store.address || '',
-      contractId,
-      contractSigned: true,
-      contractSignTime: contractPayload.signTime,
-      contractSnapshot: contractPayload
-    };
     wx.showLoading({ title: '提交中' });
-    app.saveOrder(order)
-      .then((savedOrder) => {
-        app.saveContract({
-          ...contractPayload,
-          orderId: savedOrder.id
+    const submitNext = (index) => {
+      if (index >= items.length) return Promise.resolve();
+      const order = buildOrderForItem(items[index], index);
+      const contractPayload = order.contractSnapshot;
+      return app.saveOrder(order)
+        .then((savedOrder) => {
+          app.saveContract({
+            ...contractPayload,
+            orderId: savedOrder.id
+          });
+          return submitNext(index + 1);
         });
-        return savedOrder;
-      })
+    };
+
+    submitNext(0)
       .then(() => {
         wx.hideLoading();
         this.setData({ agreedToContract: false, signedContractDraft: null });
         app.globalData.signedContractDraft = null;
         app.globalData.contractSignDraft = null;
-        this._afterReserveSuccess();
+        this._multiPetFeeResult = null;
+        const toastTitle = items.length > 1
+          ? `已提交${items.length}只宠物预约`
+          : '预约成功';
+        wx.showToast({ title: toastTitle, icon: 'success' });
+        setTimeout(() => this._afterReserveSuccess(), 700);
       })
       .catch((err) => {
         wx.hideLoading();
@@ -975,7 +1222,6 @@ Page({
   _afterReserveSuccess() {
     const user = (app.globalData && app.globalData.userInfo) || {};
     if (isOaBound(user)) {
-      wx.showToast({ title: '预约成功', icon: 'success' });
       setTimeout(() => this._goOrdersAfterReserve(), 700);
       return;
     }
@@ -1065,6 +1311,32 @@ Page({
     if (!url || !urls.length) return;
     wx.previewImage({ current: url, urls });
   },
+
+  onOpenNoticePreview(e) {
+    const expandable = e.currentTarget.dataset.expandable;
+    if (!(expandable === true || expandable === 'true')) return;
+    const title = e.currentTarget.dataset.title || '须知';
+    const store = this.data.store || {};
+    const content = title === '接送须知' ? (store.pickupNotice || '') : (store.notice || '');
+    if (!String(content).trim()) return;
+    this.setData({
+      noticePreviewVisible: true,
+      noticePreviewTitle: title,
+      noticePreviewContent: content
+    });
+  },
+
+  onCloseNoticePreview() {
+    this.setData({
+      noticePreviewVisible: false,
+      noticePreviewTitle: '',
+      noticePreviewContent: ''
+    });
+  },
+
+  onNoticePreviewTouchMove() {},
+
+  onNoticePreviewSheetTap() {},
 
   onGoPets() {
     wx.navigateTo({ url: '/packageUser/user/pet-form/pet-form' });

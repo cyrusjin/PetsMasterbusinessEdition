@@ -8,11 +8,11 @@
       <view class="card-title">入驻申请</view>
       <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后可完善店铺详情。</text>
       <view class="form-group">
-        <text class="form-label">店铺名称</text>
+        <text class="form-label">店铺名称 <text class="required-star">*</text></text>
         <input class="form-input" placeholder="请输入店铺名称" value="{{shop.name}}" bindinput="onField" data-field="name" disabled="{{applyStatus === 'pending'}}" />
       </view>
       <view class="form-group">
-        <text class="form-label">营业地址</text>
+        <text class="form-label">营业地址 <text class="required-star">*</text></text>
         <view class="address-box">
           <view class="address-content">
             <text class="address-text {{shop.address ? '' : 'address-placeholder'}}">{{shop.address || '暂未选择地址'}}</text>
@@ -22,15 +22,15 @@
         </view>
       </view>
       <view class="form-group">
-        <text class="form-label">联系电话</text>
+        <text class="form-label">联系电话 <text class="required-star">*</text></text>
         <input class="form-input" type="number" maxlength="11" placeholder="请输入联系电话" value="{{shop.contactPhone}}" bindinput="onField" data-field="contactPhone" disabled="{{applyStatus === 'pending'}}" />
       </view>
       <view class="form-group">
-        <text class="form-label">负责人姓名</text>
+        <text class="form-label">负责人姓名 <text class="required-star">*</text></text>
         <input class="form-input" placeholder="请输入负责人姓名" value="{{shop.legalName}}" bindinput="onField" data-field="legalName" disabled="{{applyStatus === 'pending'}}" />
       </view>
       <view class="form-group">
-        <text class="form-label">店铺照片</text>
+        <text class="form-label">店铺照片 <text class="required-star">*</text></text>
         <text class="store-photos-tip">至少上传 1 张，最多 {{maxStorePhotos}} 张，这些照片会展示给用户。长按可拖拽调整顺序</text>
         <view class="store-photos-grid">
           <view class="store-photo-item" wx:for="{{storePhotos}}" wx:key="*this">

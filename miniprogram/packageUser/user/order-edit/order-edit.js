@@ -2,13 +2,14 @@ const app = getApp();
 const util = require('../../../utils/util');
 const { calcStayFeeBreakdown, formatMoney } = require('../../../utils/billing');
 const timePicker = require('../../utils/timePicker');
-const { validateReserveContact } = require('../../utils/reserveContact');
+const { validateReserveContact, validateContactIdCard } = require('../../utils/reserveContact');
 const { validatePickupInfo, buildPickupPayload } = require('../../utils/pickupInfo');
 const { calcPickupShippingFee, canCalcDistancePickupFee, parseStoreCoords, isPickupFreeByStayDays } = require('../../../utils/pickupPricing');
 const { resolveStorePickupDrivingDistance } = require('../../utils/mapDistance');
 const { choosePickupLocation, formatLocationAddress, getPickupLocationValidationMessage } = require('../../../utils/location');
 const { isOrderEditTimeOnly } = require('../../utils/orderActions');
 const { showValidationAlert } = require('../../../utils/formAlert');
+const { getPetBookingConflictMessage } = require('../../../utils/bookingOverlap');
 
 function getTodayStr() {
   const today = new Date();
@@ -27,6 +28,7 @@ Page({
     minDate: getTodayStr(),
     contactName: '',
     contactPhone: '',
+    contactIdCard: '',
     emergencyPhone: '',
     specialNeeds: '',
     needPickup: false,
@@ -80,6 +82,7 @@ Page({
       endTime: order.endTime,
       contactName: order.contactName || '',
       contactPhone: order.contactPhone || order.userPhone || '',
+      contactIdCard: order.contactIdCard || '',
       emergencyPhone: order.emergencyPhone || '',
       specialNeeds: order.specialNeeds || '',
       needPickup: !!order.needPickup,
@@ -165,6 +168,7 @@ Page({
 
   onContactNameInput(e) { this.setData({ contactName: (e.detail.value || '').trim() }); },
   onContactPhoneInput(e) { this.setData({ contactPhone: (e.detail.value || '').trim() }); },
+  onContactIdCardInput(e) { this.setData({ contactIdCard: (e.detail.value || '').trim() }); },
   onEmergencyPhoneInput(e) { this.setData({ emergencyPhone: (e.detail.value || '').trim() }); },
   onSpecialInput(e) { this.setData({ specialNeeds: e.detail.value }); },
 
@@ -338,6 +342,11 @@ Page({
         showValidationAlert(contactErr);
         return;
       }
+      const idCardErr = validateContactIdCard(this.data.contactIdCard);
+      if (idCardErr) {
+        showValidationAlert(idCardErr);
+        return;
+      }
       if (this.data.needPickup) {
         const pickupErr = validatePickupInfo({
           needPickup: true,
@@ -367,6 +376,7 @@ Page({
         startTime: this.data.startTime,
         contactName: this.data.contactName,
         contactPhone: this.data.contactPhone,
+        contactIdCard: this.data.contactIdCard,
         emergencyPhone: this.data.emergencyPhone,
         specialNeeds: this.data.specialNeeds,
         ...buildPickupPayload({
@@ -380,6 +390,26 @@ Page({
           ...this._getPickupFlags()
         })
       });
+    }
+
+    const scheduleRange = {
+      startDate: updates.startDate || order.startDate,
+      endDate: updates.endDate || order.endDate,
+      startTime: updates.startTime || order.startTime,
+      endTime: updates.endTime || order.endTime
+    };
+    const overlapErr = getPetBookingConflictMessage(
+      typeof app.getOrders === 'function' ? app.getOrders() : [],
+      { id: order.petId, name: order.petName },
+      scheduleRange,
+      {
+        excludeOrderId: order.id || order.order_id,
+        excludeGroupId: order.orderGroupId || ''
+      }
+    );
+    if (overlapErr) {
+      showValidationAlert(overlapErr);
+      return;
     }
 
     wx.showLoading({ title: '保存中' });

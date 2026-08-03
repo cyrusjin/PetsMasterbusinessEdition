@@ -19,6 +19,10 @@ const { clearImageFileCache } = require('./utils/imageCache');
 const { attachOrderDisplayNo, attachStoreDisplayNo, buildOrderDisplayNo } = require('./utils/displayNo');
 const badgeUtil = require('./utils/badge');
 const userFeed = require('./utils/userFeed');
+const {
+  fetchMerchantSwitchEnabled,
+  applyMerchantSwitchToApp
+} = require('./utils/merchantSwitch');
 
 const USER_INFO_TTL = 5 * 60 * 1000;
 const ORDERS_TTL = 60 * 1000;
@@ -69,6 +73,10 @@ App({
       this._hydrateRoleFromUser(cachedUser);
     }
     this._userInfoFetchedAt = 0;
+    // 提前拉取商家入口开关，供首页与冷启动路由使用
+    fetchMerchantSwitchEnabled().then((enabled) => {
+      applyMerchantSwitchToApp(this, enabled);
+    });
     // 标记冷启动：紧随其后的 onShow 不再重复 bootstrap
     this._skipNextAppShowBootstrap = true;
     this._bootstrapSession(options, { force: true });
@@ -319,7 +327,9 @@ App({
     const user = this.globalData.userInfo;
     if (isMerchantApproved(user)) return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
-    // 主动进入商家壳（未入驻仅门店授权，不再依赖演示模式）
+    // 线上关闭商家入口时，未入驻不可再进商家壳
+    if (this.globalData.merchantSwitchEnabled === false) return false;
+    // 主动进入商家壳（未入驻仅门店授权）
     if (this.globalData.role === 'merchant') return true;
     if (this.getData(STORAGE_KEYS.MERCHANT_SHELL_MODE)) return true;
     return false;
@@ -479,23 +489,45 @@ App({
   },
 
   enterMerchantMode() {
-    // 切商家前记住用户端正在访问的店，回来时恢复，避免被自家店/测试店覆盖
-    this._rememberUserVisitStore();
-    this._exitUserClientMode();
-    // 进入商家壳：已入驻进日常管理，未入驻只进门店授权（不再注入演示数据）
-    merchantDemo.clearDemoRuntimeData();
-    if (merchantDemo.isDemoEntityId(this.globalData.merchantStoreId)) {
-      this.globalData.merchantStoreId = '';
+    const approved = isMerchantApproved(this.globalData.userInfo);
+    if (!approved && this.globalData.merchantSwitchEnabled === false) {
+      wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
+      return;
     }
-    const cachedShop = this.getData(STORAGE_KEYS.SHOP);
-    if (cachedShop && merchantDemo.isDemoEntityId(cachedShop.store_id)) {
-      this.setData(STORAGE_KEYS.SHOP, {});
+
+    const proceed = () => {
+      // 切商家前记住用户端正在访问的店，回来时恢复，避免被自家店/测试店覆盖
+      this._rememberUserVisitStore();
+      this._exitUserClientMode();
+      // 进入商家壳：已入驻进日常管理，未入驻只进门店授权（不再注入演示数据）
+      merchantDemo.clearDemoRuntimeData();
+      if (merchantDemo.isDemoEntityId(this.globalData.merchantStoreId)) {
+        this.globalData.merchantStoreId = '';
+      }
+      const cachedShop = this.getData(STORAGE_KEYS.SHOP);
+      if (cachedShop && merchantDemo.isDemoEntityId(cachedShop.store_id)) {
+        this.setData(STORAGE_KEYS.SHOP, {});
+      }
+      this.globalData.isMerchant = !!isMerchantApproved(this.globalData.userInfo);
+      this._enterMerchantShellMode();
+      this._resetOrdersFetchState();
+      applyTabShell();
+      wx.reLaunch({ url: getMerchantLandingUrl() });
+    };
+
+    if (approved) {
+      proceed();
+      return;
     }
-    this.globalData.isMerchant = !!isMerchantApproved(this.globalData.userInfo);
-    this._enterMerchantShellMode();
-    this._resetOrdersFetchState();
-    applyTabShell();
-    wx.reLaunch({ url: getMerchantLandingUrl() });
+
+    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
+      applyMerchantSwitchToApp(this, enabled);
+      if (!enabled) {
+        wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
+        return;
+      }
+      proceed();
+    });
   },
 
   _rememberUserVisitStore() {
@@ -2617,7 +2649,8 @@ App({
       pricing: { cat: 60, smallDog: 80, midDog: 100, largeDog: 150, other: 50 },
       holidayRate: 1.5,
       overtimeRate: 20,
-      extras: { pickup: 30, medicine: 20, wash: 80, extraMeal: 15, walk: 25, specialCare: 50 }
+      extras: { pickup: 30, medicine: 20, wash: 80, extraMeal: 15, walk: 25, specialCare: 50 },
+      multiPetDiscount: { enabled: false, mode: 'fromSecondPercent', percent: 0, applyTo: 'boarding' }
     };
   },
 

@@ -6,9 +6,11 @@ const { resolveStoreDisplayUrls, isCloudFileId } = require('./mediaResolve');
 const { normalizeWeightPricing } = require('./weightPricing');
 const { normalizeRoomPricing } = require('./roomPricing');
 const { attachStoreDisplayNo } = require('./displayNo');
+const { normalizeMultiPetDiscount, getDefaultMultiPetDiscount } = require('./multiPetPricing');
 
 function mergeBillingRules(store, defaults) {
   const fromStore = (store && store.billingRules) || {};
+  const defaultDiscount = (defaults && defaults.multiPetDiscount) || getDefaultMultiPetDiscount();
   return {
     ...defaults,
     ...fromStore,
@@ -34,7 +36,10 @@ function mergeBillingRules(store, defaults) {
     extras: {
       ...defaults.extras,
       ...(fromStore.extras || {})
-    }
+    },
+    multiPetDiscount: normalizeMultiPetDiscount(
+      fromStore.multiPetDiscount != null ? fromStore.multiPetDiscount : defaultDiscount
+    )
   };
 }
 
@@ -57,6 +62,7 @@ function buildUserStoreView(store) {
     ...normalized,
     address,
     contactPhone: (normalized.contactPhone || '').trim(),
+    wechatId: (normalized.wechatId || '').trim(),
     hasLocation: Number.isFinite(latitude) && Number.isFinite(longitude),
     receptionRange,
     receptionRangeText: formatReceptionRangeText(receptionRange) || normalized.range || '',

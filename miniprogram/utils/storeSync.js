@@ -10,6 +10,7 @@ const MERGE_TEXT_FIELDS = [
   'locationName',
   'addressRegion',
   'contactPhone',
+  'wechatId',
   'legalName',
   'hours',
   'logo',

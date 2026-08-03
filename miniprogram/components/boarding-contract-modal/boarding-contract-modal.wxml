@@ -15,6 +15,7 @@
           <text class="party-label">{{doc.partyA.label}}</text>
           <text class="party-line">联系人：{{doc.partyA.nickName || doc.partyA.name}}</text>
           <text class="party-line">联系电话：{{doc.partyA.phone}}</text>
+          <text class="party-line">身份证号：{{doc.partyA.idCard || '——'}}</text>
           </view>
           <view class="party-block">
             <text class="party-label">{{doc.partyB.label}}</text>

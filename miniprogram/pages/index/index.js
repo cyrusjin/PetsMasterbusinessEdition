@@ -6,6 +6,22 @@ const { refreshUserOrders } = require('../../utils/orderRefresh');
 const { resolveEntryStoreId, enterStoreAndRefresh } = require('../../utils/storeEntry');
 const { formatOrderCreateTime } = require('../../utils/util');
 const { isAuthorizedNickName, getDisplayNickName } = require('../../utils/userAuth');
+const { copyText } = require('../../utils/clipboard');
+const {
+  getMiniProgramMeta,
+  fetchMerchantSwitchEnabled,
+  applyMerchantSwitchToApp,
+  readCachedEnabled
+} = require('../../utils/merchantSwitch');
+
+/** 超过该字数时首页店铺介绍截断，点击查看完整 */
+const INTRO_EXPAND_CHARS = 72;
+
+function isIntroExpandable(intro) {
+  const text = String(intro || '').trim();
+  if (!text) return false;
+  return text.length > INTRO_EXPAND_CHARS;
+}
 
 Page({
   data: {
@@ -18,7 +34,11 @@ Page({
     petsCount: 0,
     previewPets: [],
     petsMoreCount: 0,
-    petPreviewSize: 'single'
+    petPreviewSize: 'single',
+    showMerchantSwitch: false,
+    introExpandable: false,
+    introPreviewVisible: false,
+    introPreviewContent: ''
   },
 
   _syncUserTabBar(index) {
@@ -74,6 +94,24 @@ Page({
     return this._storeEntryPromise;
   },
 
+  _syncMerchantSwitch(options = {}) {
+    const meta = getMiniProgramMeta();
+    console.log('[首页] 当前小程序版本信息', {
+      envVersion: meta.envVersion || '(空)',
+      version: meta.version || '(空)',
+      tip: meta.version ? '已拿到版本号' : '未拿到版本号（开发版/体验版常见为空，正式版才有）'
+    });
+
+    const cached = readCachedEnabled();
+    if (cached !== null) {
+      this.setData({ showMerchantSwitch: applyMerchantSwitchToApp(app, cached) });
+    }
+    return fetchMerchantSwitchEnabled(options).then((enabled) => {
+      this.setData({ showMerchantSwitch: applyMerchantSwitchToApp(app, enabled) });
+      return enabled;
+    });
+  },
+
   onLoad(options) {
     storeDebug.logEntryOptions('首页 onLoad', options);
 
@@ -88,6 +126,7 @@ Page({
 
     // 先用缓存铺屏，避免等网络时白屏
     this._refreshPageFromCache();
+    this._syncMerchantSwitch();
 
     if (storeId) {
       // 尽早登记，避免 App 并行刷新用户时冲掉绑店
@@ -103,11 +142,13 @@ Page({
 
   onShow() {
     this._syncUserTabBar(0);
+    this._setTabBarHidden(!!this.data.introPreviewVisible);
     storeDebug.log('首页 onShow');
     if (guardUserTabPage()) return;
 
     // 始终先渲染缓存，再静默刷新（切 Tab 回首页不阻塞 UI）
     this._refreshPageFromCache();
+    this._syncMerchantSwitch();
 
     const { storeId, enterOptions, fromEnter } = this._getEntryContext();
     if (fromEnter && storeId) {
@@ -253,16 +294,18 @@ Page({
   },
 
   _applyPageData(payload) {
+    const currentStore = payload.currentStore;
     this.setData({
       ...this._buildUserViewState(payload.userInfo),
-      currentStore: payload.currentStore,
+      currentStore,
       boardingPets: payload.boardingPets,
       petsCount: payload.petsCount,
       previewPets: payload.previewPets || [],
       petsMoreCount: payload.petsMoreCount || 0,
-      petPreviewSize: payload.petPreviewSize || 'single'
+      petPreviewSize: payload.petPreviewSize || 'single',
+      introExpandable: isIntroExpandable(currentStore && currentStore.intro)
     });
-    this._syncNavTitle(payload.currentStore);
+    this._syncNavTitle(currentStore);
   },
 
   _refreshPageFromCache() {
@@ -357,6 +400,40 @@ Page({
     wx.previewImage({ current: url, urls });
   },
 
+  _setTabBarHidden(hidden) {
+    if (typeof this.getTabBar !== 'function') return;
+    const tabBar = this.getTabBar();
+    if (tabBar && typeof tabBar.setData === 'function') {
+      tabBar.setData({ hidden: !!hidden });
+    }
+  },
+
+  onOpenIntroPreview(e) {
+    const expandable = e.currentTarget.dataset.expandable;
+    if (!(expandable === true || expandable === 'true')) return;
+    const content = String((this.data.currentStore && this.data.currentStore.intro) || '').trim();
+    if (!content) return;
+    this._setTabBarHidden(true);
+    this.setData({
+      introPreviewVisible: true,
+      introPreviewContent: content
+    });
+  },
+
+  onCloseIntroPreview() {
+    this._setTabBarHidden(false);
+    this.setData({
+      introPreviewVisible: false,
+      introPreviewContent: ''
+    });
+  },
+
+  onIntroPreviewTouchMove() {},
+
+  onHide() {
+    this._setTabBarHidden(false);
+  },
+
   onOpenStoreLocation() {
     const store = this.data.currentStore;
     if (!store || !store.hasLocation) {
@@ -380,6 +457,11 @@ Page({
     wx.makePhoneCall({ phoneNumber: phone });
   },
 
+  onCopyStoreWechat() {
+    const wechatId = this.data.currentStore && this.data.currentStore.wechatId;
+    copyText(wechatId, '已复制微信号');
+  },
+
   onGoReserve() {
     const storeId = app.getStoreId();
     const currentStore = app.getCurrentStore();
@@ -399,11 +481,28 @@ Page({
   onGoDaily(e) { wx.navigateTo({ url: '/packageUser/user/pet-daily/pet-daily?id=' + e.currentTarget.dataset.id }); },
 
   onSwitchToMerchant() {
-    if (app.enterMerchantMode) {
-      app.enterMerchantMode();
+    const go = () => {
+      if (app.enterMerchantMode) {
+        app.enterMerchantMode();
+        return;
+      }
+      wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+    };
+
+    // 已入驻商家始终可进；未入驻受线上开关控制
+    if (app.isMerchantApproved && app.isMerchantApproved()) {
+      go();
       return;
     }
-    wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+
+    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
+      this.setData({ showMerchantSwitch: applyMerchantSwitchToApp(app, enabled) });
+      if (!enabled) {
+        wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
+        return;
+      }
+      go();
+    });
   },
 
   onShareAppMessage() {
