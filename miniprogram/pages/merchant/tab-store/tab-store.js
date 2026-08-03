@@ -175,7 +175,7 @@ Page({
       ghostY: 0,
       ghostSize: 100
     },
-    hideMerchantTabBar: false,
+    hideMerchantTabBar: true,
     oaFollowSheetVisible: false,
     pickupFreeMode: 'none',
     showContractModal: false,
@@ -195,15 +195,18 @@ Page({
 
   _shouldShowApplyFlow() {
     if (app.isMerchantDisabled()) return false;
-    const isPureDemo = app.isMerchantDemoMode();
-    const pending = app.isMerchantPending();
-    const rejected = isMerchantRejected(app.globalData.userInfo);
-    return isPureDemo || pending || rejected;
+    // 未审核通过（含全新未入驻 / 待审 / 已拒绝）只展示门店授权申请
+    if (app.isMerchantApproved()) return false;
+    return true;
   },
 
-  /** 商家底部 Tab 始终保留；入驻表单在「我的店铺」内完成，不强制藏栏 */
+  /** 未入驻/待审/拒绝/关闭：隐藏底部 Tab，只留门店授权页 */
+  _shouldHideMerchantTabBar() {
+    return !app.isMerchantApproved();
+  },
+
   _syncApplyShellChrome() {
-    this.setData({ hideMerchantTabBar: false });
+    this.setData({ hideMerchantTabBar: this._shouldHideMerchantTabBar() });
   },
 
   _syncDisabledState(shop) {
@@ -218,7 +221,7 @@ Page({
 
   _hydrateFromCache() {
     if (app.isMerchantDisabled()) {
-      this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: false });
+      this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: true });
       const cachedShop = app.getShop();
       if (cachedShop && cachedShop.store_id) {
         app.globalData.merchantStoreId = cachedShop.store_id;
@@ -229,7 +232,7 @@ Page({
 
     const showApplyFlow = this._shouldShowApplyFlow();
     if (showApplyFlow) {
-      this.setData({ isDemoMode: true, isAdminDisabled: false, hideMerchantTabBar: false });
+      this.setData({ isDemoMode: true, isAdminDisabled: false, hideMerchantTabBar: true });
       this._hydrateApplyFormFromCache();
       return;
     }
@@ -239,7 +242,7 @@ Page({
       isAdminDisabled: false,
       applyStatus: '',
       applyRejectReason: '',
-      hideMerchantTabBar: false
+      hideMerchantTabBar: this._shouldHideMerchantTabBar()
     });
     const cachedShop = app.getShop();
     if (cachedShop && cachedShop.store_id && !merchantDemo.isDemoEntityId(cachedShop.store_id)) {
@@ -303,14 +306,8 @@ Page({
   _reloadStorePage(options = {}) {
     const forceUser = !!(options && options.forceUser);
     return app.ensureCloudAndLogin(forceUser ? { force: true } : {}).then(() => {
-      if (!app.canAccessMerchantBackend()) {
-        wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
-        return;
-      }
-
       if (app.isMerchantDisabled()) {
-        this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: false });
-        this._syncApplyShellChrome();
+        this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: true });
         return app.ensureMerchantStore({ force: true }).then((shop) => {
           if (shop && shop.store_id) {
             this._syncDisabledState(shop);
@@ -323,7 +320,7 @@ Page({
       this.setData({
         isDemoMode: showApplyFlow,
         isAdminDisabled: false,
-        hideMerchantTabBar: false,
+        hideMerchantTabBar: showApplyFlow || this._shouldHideMerchantTabBar(),
         ...(showApplyFlow ? {} : { applyStatus: '', applyRejectReason: '' })
       });
       this._syncApplyShellChrome();
@@ -345,7 +342,7 @@ Page({
             isAdminDisabled: false,
             applyStatus: '',
             applyRejectReason: '',
-            hideMerchantTabBar: false
+            hideMerchantTabBar: true
           });
           this._hydrateApplyFormFromCache();
           return;
@@ -382,7 +379,6 @@ Page({
   },
 
   _setMerchantTabHidden(_hidden) {
-    // 商家底部 Tab 始终展示
     this._syncApplyShellChrome();
   },
 
@@ -415,7 +411,7 @@ Page({
             isAdminDisabled: false,
             applyStatus: '',
             applyRejectReason: '',
-            hideMerchantTabBar: false
+            hideMerchantTabBar: true
           });
           this._hydrateApplyFormFromCache();
           return;
@@ -1604,7 +1600,6 @@ Page({
   },
 
   _setTabBarVisible(_visible) {
-    // 商家底部 Tab 始终展示
     this._syncApplyShellChrome();
   },
 

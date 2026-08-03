@@ -5,6 +5,7 @@ const { buildOrderListPetMeta } = require('../../utils/petSnapshot');
 const { canMerchantModifyOrder } = require('../utils/orderActions');
 const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders, startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../utils/orderRefresh');
+const { redirectToStoreAuthIfNeeded } = require('../../utils/shell');
 
 const LIST_PAGE_SIZE = 30;
 
@@ -38,8 +39,9 @@ Page({
   },
 
   onShow() {
-    if (app.canAccessMerchantBackend()) {
-      if (app.isMerchantDemoMode() || app.getOrders().length) {
+    if (redirectToStoreAuthIfNeeded()) return;
+    if (app.isMerchantApproved()) {
+      if (app.getOrders().length) {
         this.load();
       }
     }

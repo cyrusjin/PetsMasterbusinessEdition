@@ -3,6 +3,7 @@ const merchantDemo = require('../../../utils/merchantDemo');
 const { PERIOD_OPTIONS, buildMerchantStatistics } = require('../../../utils/merchantStats');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
+const { redirectToStoreAuthIfNeeded } = require('../../../utils/shell');
 
 Page({
   data: {
@@ -30,7 +31,8 @@ Page({
       wx.switchTab({ url: '/pages/index/index' });
       return;
     }
-    // 未入驻也保留营收 Tab（体验数据），不强制跳入驻页
+    // 未入驻不再展示演示营收，统一回门店授权
+    if (redirectToStoreAuthIfNeeded()) return;
     this._loadStats();
   },
 

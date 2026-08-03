@@ -8,6 +8,7 @@ const {
   countPendingPickupTasks
 } = require('../../utils/pickupManage');
 const { refreshMerchantOrders, startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../utils/orderRefresh');
+const { redirectToStoreAuthIfNeeded } = require('../../utils/shell');
 
 Page({
   data: {
@@ -20,6 +21,7 @@ Page({
   },
 
   onShow() {
+    if (redirectToStoreAuthIfNeeded()) return;
     this._loadList();
     startMerchantOrdersPoll(this, () => this._loadList({ force: false }));
   },

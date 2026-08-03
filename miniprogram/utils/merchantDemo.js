@@ -1,7 +1,6 @@
 const { STORAGE_KEYS } = require('./constants');
-const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
 const { dedupeDailyLogs } = require('./dailyLogUtil');
-const { attachOrderDisplayNo, attachStoreDisplayNo } = require('./displayNo');
+const { attachStoreDisplayNo } = require('./displayNo');
 
 const DEMO_STORE_ID = 'demo_store';
 
@@ -18,21 +17,22 @@ function formatDateTime(date) {
   return `${formatDate(date)} ${h}:${min}`;
 }
 
-/** 未入驻审核通过，且非待审/已拒绝/已关闭：商家壳下的本地体验模式 */
-function isMerchantDemoMode(user) {
-  if (isMerchantApproved(user)) return false;
-  if (isMerchantPending(user)) return false;
-  if (isMerchantRejected(user)) return false;
-  if (isMerchantDisabled(user)) return false;
+/** 商家端演示/体验模式已关闭：未入驻只走门店授权，不再注入本地假订单 */
+function isMerchantDemoMode() {
+  return false;
+}
+
+/** 清除历史本地演示种子（保留入驻申请草稿） */
+function clearDemoRuntimeData() {
   try {
-    const app = getApp();
-    if (!app) return false;
-    // 用户版壳：永不注入演示数据
-    if (app.isUserClientMode && app.isUserClientMode()) return false;
-    // 统一小程序默认用户端：只有进入商家工作区（role=merchant）才启用演示
-    return !!(app.globalData && app.globalData.role === 'merchant');
+    wx.removeStorageSync(STORAGE_KEYS.DEMO_INITIALIZED);
+    wx.removeStorageSync(STORAGE_KEYS.DEMO_ORDERS);
+    wx.removeStorageSync(STORAGE_KEYS.DEMO_PETS);
+    wx.removeStorageSync(STORAGE_KEYS.DEMO_DAILY_LOGS);
+    wx.removeStorageSync(STORAGE_KEYS.DEMO_SHOP);
+    wx.removeStorageSync(STORAGE_KEYS.DEMO_CONTRACTS);
   } catch (err) {
-    return false;
+    // ignore
   }
 }
 
@@ -340,46 +340,31 @@ function _set(key, value) {
 }
 
 function ensureDemoData() {
-  if (_get(STORAGE_KEYS.DEMO_INITIALIZED)) {
-    return;
-  }
-  const seed = buildSeedData();
-  _set(STORAGE_KEYS.DEMO_ORDERS, seed.orders);
-  _set(STORAGE_KEYS.DEMO_PETS, seed.pets);
-  _set(STORAGE_KEYS.DEMO_DAILY_LOGS, seed.dailyLogs);
-  _set(STORAGE_KEYS.DEMO_SHOP, seed.shop);
-  _set(STORAGE_KEYS.DEMO_CONTRACTS, []);
-  _set(STORAGE_KEYS.DEMO_INITIALIZED, true);
+  // 演示模式已关闭，不再写入本地种子
 }
 
 function resetDemoData() {
-  wx.removeStorageSync(STORAGE_KEYS.DEMO_INITIALIZED);
-  ensureDemoData();
+  clearDemoRuntimeData();
 }
 
 function getDemoOrders() {
-  ensureDemoData();
-  return (_get(STORAGE_KEYS.DEMO_ORDERS) || []).map(attachOrderDisplayNo);
+  return [];
 }
 
 function getDemoPets() {
-  ensureDemoData();
-  return _get(STORAGE_KEYS.DEMO_PETS) || [];
+  return [];
 }
 
 function getDemoDailyLogs() {
-  ensureDemoData();
-  return _get(STORAGE_KEYS.DEMO_DAILY_LOGS) || [];
+  return [];
 }
 
 function getDemoShop() {
-  ensureDemoData();
-  return attachStoreDisplayNo(_get(STORAGE_KEYS.DEMO_SHOP) || buildSeedData().shop);
+  return null;
 }
 
 function getDemoContracts() {
-  ensureDemoData();
-  return _get(STORAGE_KEYS.DEMO_CONTRACTS) || [];
+  return [];
 }
 
 function saveDemoShop(shop) {
@@ -471,6 +456,7 @@ function saveDemoApplyDraft(draft) {
 
 /** 商家审核通过后，清理体验模式运行时状态，避免污染正式数据 */
 function onMerchantApproved(app) {
+  clearDemoRuntimeData();
   if (!app) return;
   if (app.globalData.merchantStoreId === DEMO_STORE_ID) {
     app.globalData.merchantStoreId = '';
@@ -495,6 +481,7 @@ module.exports = {
   DEMO_STORE_ID,
   isMerchantDemoMode,
   isDemoEntityId,
+  clearDemoRuntimeData,
   ensureDemoData,
   resetDemoData,
   getDemoOrders,

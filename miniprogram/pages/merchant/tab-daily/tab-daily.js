@@ -12,6 +12,7 @@ const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
 const { startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../../utils/orderRefresh');
 const { isMerchantRejected } = require('../../../utils/role');
+const { redirectToStoreAuthIfNeeded } = require('../../../utils/shell');
 
 const STAFF_COUNT_TTL = 60 * 1000;
 const DAILY_POLL_MS = 60 * 1000;
@@ -90,9 +91,10 @@ Page({
         console.error('[日常管理] 员工邀请处理失败', err);
         this._bootstrapped = true;
         this._syncTabBar();
+        redirectToStoreAuthIfNeeded();
       });
       startMerchantOrdersPoll(this, () => {
-        if (!app.canAccessMerchantBackend() || app.isMerchantDemoMode()) return Promise.resolve();
+        if (!app.isMerchantApproved() || app.isMerchantDemoMode()) return Promise.resolve();
         return app.loadOrders({ force: false }).then(() => {
           const shop = app.getShop();
           if (!shop || !shop.store_id) return;
@@ -112,18 +114,15 @@ Page({
       return;
     }
 
-    // 审核中/已拒绝强制拉用户，避免本地状态缓存导致横幅不消失
-    const forceUser = !!(
-      this.data.isPendingReview
-      || this.data.isApplyRejected
-      || app.isMerchantPending()
-      || isMerchantRejected(app.globalData.userInfo)
-    );
-    app.ensureCloudAndLogin(forceUser ? { force: true } : {}).then(() => {
-      this._syncTabBar();
+    // 未入驻不再提供日常管理演示，统一回门店授权
+    if (redirectToStoreAuthIfNeeded()) return;
 
-      // Tab 切回：页面实例还在，走轻量刷新（未入驻走体验/审核态，保留商家 Tab）
-      if (this._bootstrapped && !forceUser) {
+    app.ensureCloudAndLogin({}).then(() => {
+      this._syncTabBar();
+      if (redirectToStoreAuthIfNeeded()) return null;
+
+      // Tab 切回：页面实例还在，走轻量刷新
+      if (this._bootstrapped) {
         return this._softRefresh();
       }
 
@@ -136,7 +135,7 @@ Page({
       this._syncTabBar();
     });
     startMerchantOrdersPoll(this, () => {
-      if (!app.canAccessMerchantBackend() || app.isMerchantDemoMode()) return Promise.resolve();
+      if (!app.isMerchantApproved() || app.isMerchantDemoMode()) return Promise.resolve();
       return app.loadOrders({ force: false }).then(() => {
         const shop = app.getShop();
         if (!shop || !shop.store_id) return;

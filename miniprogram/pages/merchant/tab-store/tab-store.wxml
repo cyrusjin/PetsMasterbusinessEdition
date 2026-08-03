@@ -11,7 +11,7 @@
       </view>
     </block>
 
-    <!-- 体验模式：入驻申请表单 -->
+    <!-- 门店授权：入驻申请表单 -->
     <block wx:elif="{{isDemoMode}}">
       <view class="card apply-pending-card" wx:if="{{applyStatus === 'pending'}}">
         <view class="card-title">审核中</view>
@@ -27,7 +27,7 @@
       </view>
       <view class="card">
         <view class="card-title">申请入驻</view>
-        <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后可完善店铺详情。日常管理可先体验本地演示数据。</text>
+        <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后即可使用商家端完整功能。</text>
         <view class="form-group">
           <text class="form-label">微信昵称</text>
           <input

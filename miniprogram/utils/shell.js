@@ -3,7 +3,6 @@
  */
 
 const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
-const { isMerchantDemoMode } = require('./merchantDemo');
 
 const USER_TAB_ROUTES = [
   'pages/index/index',
@@ -52,7 +51,8 @@ function canUseMerchantShell() {
     if (app.isUserClientMode && app.isUserClientMode()) return false;
     const user = app.globalData && app.globalData.userInfo;
     if (hasMerchantBackendAccess()) return true;
-    if (isMerchantDemoMode(user)) return true;
+    // 未入驻也可进商家壳，仅用于门店授权/申请入驻（不再走演示模式）
+    if (app.globalData && app.globalData.role === 'merchant') return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
     return false;
   } catch (err) {
@@ -65,8 +65,25 @@ function hasMerchantStore() {
 }
 
 function getMerchantLandingUrl() {
-  // 统一进日常 Tab；未入驻走体验模式，由「我的店铺」自行申请，不强制入驻页
-  return MERCHANT_HOME;
+  // 已入驻进日常管理；未入驻只进门店授权
+  if (hasMerchantBackendAccess()) return MERCHANT_HOME;
+  return MERCHANT_APPLY_HOME;
+}
+
+/** 未审核通过时强制回到门店授权页；返回 true 表示已发起跳转 */
+function redirectToStoreAuthIfNeeded() {
+  try {
+    const app = getApp();
+    if (!app) return false;
+    if (app.isUserClientMode && app.isUserClientMode()) return false;
+    if (app.isMerchantApproved && app.isMerchantApproved()) return false;
+    const route = getCurrentRoute();
+    if (route === 'pages/merchant/tab-store/tab-store') return false;
+    wx.redirectTo({ url: MERCHANT_APPLY_HOME });
+    return true;
+  } catch (err) {
+    return false;
+  }
 }
 
 function getUserLandingUrl() {
@@ -119,5 +136,6 @@ module.exports = {
   hasMerchantBackendAccess,
   canUseMerchantShell,
   getMerchantLandingUrl,
-  getUserLandingUrl
+  getUserLandingUrl,
+  redirectToStoreAuthIfNeeded
 };

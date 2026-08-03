@@ -318,8 +318,10 @@ App({
   _hasMerchantWorkspace() {
     const user = this.globalData.userInfo;
     if (isMerchantApproved(user)) return true;
-    if (this.isMerchantDemoMode()) return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
+    // 主动进入商家壳（未入驻仅门店授权，不再依赖演示模式）
+    if (this.globalData.role === 'merchant') return true;
+    if (this.getData(STORAGE_KEYS.MERCHANT_SHELL_MODE)) return true;
     return false;
   },
 
@@ -480,7 +482,15 @@ App({
     // 切商家前记住用户端正在访问的店，回来时恢复，避免被自家店/测试店覆盖
     this._rememberUserVisitStore();
     this._exitUserClientMode();
-    // 进入商家壳：统一进日常 Tab，保留底部商家 Tab（未入驻走体验模式，不强制入驻页）
+    // 进入商家壳：已入驻进日常管理，未入驻只进门店授权（不再注入演示数据）
+    merchantDemo.clearDemoRuntimeData();
+    if (merchantDemo.isDemoEntityId(this.globalData.merchantStoreId)) {
+      this.globalData.merchantStoreId = '';
+    }
+    const cachedShop = this.getData(STORAGE_KEYS.SHOP);
+    if (cachedShop && merchantDemo.isDemoEntityId(cachedShop.store_id)) {
+      this.setData(STORAGE_KEYS.SHOP, {});
+    }
     this.globalData.isMerchant = !!isMerchantApproved(this.globalData.userInfo);
     this._enterMerchantShellMode();
     this._resetOrdersFetchState();
@@ -1416,8 +1426,8 @@ App({
   canAccessMerchantBackend() {
     if (this.isUserClientMode()) return false;
     const user = this.globalData.userInfo;
+    // 审核通过可使用完整商家能力；待审/拒绝/关闭仍可拉申请店铺资料（不再含演示模式）
     if (isMerchantApproved(user)) return true;
-    if (merchantDemo.isMerchantDemoMode(user)) return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
     return false;
   },

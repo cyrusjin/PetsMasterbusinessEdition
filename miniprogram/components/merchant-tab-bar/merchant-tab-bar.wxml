@@ -1,17 +1,17 @@
 <view class="merchant-tab-bar">
-  <view class="tab-item {{active === 'daily' ? 'active' : ''}}">
+  <view class="tab-item {{active === 'daily' ? 'active' : ''}}" wx:if="{{showBizTabs}}">
     <image class="tab-icon-img" src="{{active === 'daily' ? '/images/tab/tab-order-active.png' : '/images/tab/tab-order.png'}}" mode="aspectFit" />
     <view class="tab-text">日常管理</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabDaily" />
   </view>
-  <view class="tab-item {{active === 'statistics' ? 'active' : ''}}">
+  <view class="tab-item {{active === 'statistics' ? 'active' : ''}}" wx:if="{{showBizTabs}}">
     <image class="tab-icon-img" src="/images/card/card-stats.png" mode="aspectFit" />
     <view class="tab-text">营收统计</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStatistics" />
   </view>
   <view class="tab-item {{active === 'store' ? 'active' : ''}}">
     <image class="tab-icon-img" src="{{active === 'store' ? '/images/tab/tab-shop-active.png' : '/images/tab/tab-shop.png'}}" mode="aspectFit" />
-    <view class="tab-text">{{isDemoMode ? '门店授权' : '我的门店'}}</view>
+    <view class="tab-text">{{showBizTabs ? '我的门店' : '门店授权'}}</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStore" />
   </view>
 </view>
