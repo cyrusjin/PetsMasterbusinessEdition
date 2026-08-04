@@ -1,3 +1,5 @@
+const { getHolidaySurchargeAmount } = require('./legalHolidays');
+
 const CHECK_IN_CHARGE_OPTIONS = [
   { value: 'full', label: '全价' },
   { value: 'half', label: '半价' },
@@ -120,13 +122,24 @@ function calcStayFeeBreakdown(startDate, endDate, startTime, endTime, rules, bas
       dayLabel = '寄养期间';
     }
 
-    const fee = Math.round(price * factor * 100) / 100;
+    const baseDayFee = Math.round(price * factor * 100) / 100;
+    const holidayFee = factor > 0
+      ? getHolidaySurchargeAmount(billingRules.holidayPricing, date)
+      : 0;
+    const fee = Math.round((baseDayFee + holidayFee) * 100) / 100;
+    if (holidayFee > 0) {
+      dayLabel = `${dayLabel} · 休息日+¥${formatMoney(holidayFee)}`;
+    }
     dailyBreakdown.push({
       date,
       dateDisplay: formatDisplayDate(date),
       dayLabel,
       factor,
       factorText: formatFactorText(factor),
+      baseDayFee,
+      baseDayFeeText: formatMoney(baseDayFee),
+      holidayFee,
+      holidayFeeText: formatMoney(holidayFee),
       fee,
       feeText: formatMoney(fee)
     });

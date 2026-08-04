@@ -1,0 +1,116 @@
+<view class="merchant-page">
+  <view class="container">
+    <view class="card tip-card">
+      <view class="tip-head">
+        <text class="tip-title">{{year}} 年放假休息日加价</text>
+        <picker
+          wx:if="{{yearOptions.length > 1}}"
+          mode="selector"
+          range="{{yearOptions}}"
+          value="{{yearIndex}}"
+          bindchange="onYearChange"
+        >
+          <view class="year-switch">切换年份</view>
+        </picker>
+      </view>
+      <text class="tip-desc">按国务院放假安排展示休息日（含调休假期，不含补班日）。可在各节日下全选、一键设置，也可添加或删除任意日期；勾选并填写固定加价金额（元/天）后生效。</text>
+      <text class="tip-source" wx:if="{{sourceText}}">{{sourceText}}</text>
+    </view>
+
+    <view class="loading-tip" wx:if="{{loading}}">正在加载休息日…</view>
+
+    <block wx:if="{{!loading}}">
+      <view class="card" wx:for="{{groups}}" wx:key="id" wx:for-item="group" wx:for-index="groupIndex">
+        <view class="card-title-row">
+          <text class="card-title">{{group.name}}</text>
+          <view class="add-date-btn" catchtap="onOpenAddDate" data-group-index="{{groupIndex}}">+ 添加日期</view>
+        </view>
+        <view class="group-toolbar" wx:if="{{group.days.length}}">
+          <view class="toolbar-select-all" catchtap="onToggleSelectAll" data-group-index="{{groupIndex}}">
+            <view class="check-box {{group.allChecked ? 'checked' : ''}}">
+              <text wx:if="{{group.allChecked}}">✓</text>
+            </view>
+            <text class="toolbar-label">{{group.allChecked ? '取消全选' : '全选'}}</text>
+          </view>
+          <view class="toolbar-batch-btn" catchtap="onOpenBatchSet" data-group-index="{{groupIndex}}">一键设置</view>
+        </view>
+        <view
+          class="holiday-row"
+          wx:for="{{group.days}}"
+          wx:key="date"
+          wx:for-index="dayIndex"
+        >
+          <view class="holiday-check" catchtap="onToggleDay" data-group-index="{{groupIndex}}" data-day-index="{{dayIndex}}">
+            <view class="check-box {{item.checked ? 'checked' : ''}}">
+              <text wx:if="{{item.checked}}">✓</text>
+            </view>
+            <view class="holiday-meta">
+              <text class="holiday-date">{{item.label}}</text>
+              <text class="holiday-name">{{item.dayName}}<text wx:if="{{item.custom}}"> · 自定义</text></text>
+            </view>
+          </view>
+          <view class="holiday-amount">
+            <input
+              class="amount-input"
+              type="digit"
+              placeholder="不加价"
+              value="{{item.amountText}}"
+              data-group-index="{{groupIndex}}"
+              data-day-index="{{dayIndex}}"
+              bindinput="onAmountInput"
+            />
+            <text class="amount-unit">元</text>
+            <view
+              class="remove-day"
+              catchtap="onRemoveDay"
+              data-group-index="{{groupIndex}}"
+              data-day-index="{{dayIndex}}"
+            >删除</view>
+          </view>
+        </view>
+        <view class="empty-days" wx:if="{{!group.days.length}}">暂无日期，可点右上角添加</view>
+      </view>
+
+      <view class="empty-card card" wx:if="{{!groups.length}}">
+        <text>暂无该年休息日数据</text>
+      </view>
+
+      <button class="btn-primary" bindtap="onSave" loading="{{saving}}" disabled="{{saving}}">保存</button>
+    </block>
+  </view>
+
+  <view class="add-date-mask" wx:if="{{addDateVisible}}" catchtouchmove="true">
+    <view class="add-date-sheet">
+      <text class="add-date-title">为该节日添加日期</text>
+      <picker mode="date" value="{{addDateValue}}" start="{{addDateStart}}" end="{{addDateEnd}}" bindchange="onAddDatePick">
+        <view class="add-date-picker">{{addDateValue || '选择日期'}}</view>
+      </picker>
+      <view class="add-date-actions">
+        <button class="btn-ghost" bindtap="onCancelAddDate">取消</button>
+        <button class="btn-primary add-date-confirm" bindtap="onConfirmAddDate">确定</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="add-date-mask" wx:if="{{batchSetVisible}}" catchtouchmove="true">
+    <view class="add-date-sheet">
+      <text class="add-date-title">一键设置加价金额</text>
+      <text class="batch-set-desc">将应用到「{{batchSetGroupName}}」下全部日期</text>
+      <view class="batch-set-input-row">
+        <input
+          class="batch-set-input"
+          type="digit"
+          placeholder="请输入加价金额"
+          value="{{batchSetAmount}}"
+          focus="{{batchSetVisible}}"
+          bindinput="onBatchSetAmountInput"
+        />
+        <text class="amount-unit">元/天</text>
+      </view>
+      <view class="add-date-actions">
+        <button class="btn-ghost" bindtap="onCancelBatchSet">取消</button>
+        <button class="btn-primary add-date-confirm" bindtap="onConfirmBatchSet">确定</button>
+      </view>
+    </view>
+  </view>
+</view>

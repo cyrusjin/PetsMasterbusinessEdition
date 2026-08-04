@@ -1,0 +1,54 @@
+<view class="page">
+  <scroll-view
+    scroll-y
+    class="chat-scroll"
+    scroll-into-view="{{scrollToView}}"
+    scroll-top="{{scrollTop}}"
+    scroll-with-animation
+  >
+    <view class="chat-inner">
+      <view
+        class="msg {{item.role === 'user' ? 'msg-user' : 'msg-ai'}}"
+        wx:for="{{messages}}"
+        wx:key="id"
+        id="msg-{{item.id}}"
+      >
+        <view class="bubble {{item.pending ? 'pending' : ''}}">
+          <text class="bubble-text" user-select="{{true}}">{{item.content}}</text>
+        </view>
+        <text class="msg-meta" wx:if="{{!item.pending}}">{{item.time}}{{item.source === 'remote' ? ' · 云端' : (item.role === 'ai' ? ' · 智能助手' : '')}}</text>
+      </view>
+      <view id="chat-bottom" class="chat-bottom-anchor"></view>
+    </view>
+  </scroll-view>
+
+  <view class="quick-wrap">
+    <scroll-view scroll-x class="quick-scroll" enable-flex>
+      <text
+        class="quick-chip"
+        wx:for="{{quick}}"
+        wx:key="*this"
+        bindtap="onQuick"
+        data-q="{{item}}"
+      >{{item}}</text>
+    </scroll-view>
+  </view>
+
+  <view class="input-bar">
+    <input
+      class="input"
+      value="{{inputText}}"
+      maxlength="200"
+      placeholder="描述症状或养宠问题…"
+      confirm-type="send"
+      bindinput="onInput"
+      bindconfirm="onSend"
+      disabled="{{sending}}"
+    />
+    <view class="send-btn {{sending || !inputText ? 'disabled' : ''}}" bindtap="onSend">发送</view>
+  </view>
+  <view class="safe-tip-row">
+    <text class="safe-tip">仅供日常参考，紧急情况请立即就医</text>
+    <text class="clear-link" wx:if="{{hasHistory}}" bindtap="onClearHistory">清空记录</text>
+  </view>
+</view>

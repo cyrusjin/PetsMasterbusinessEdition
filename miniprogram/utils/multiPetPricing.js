@@ -1,6 +1,11 @@
 const { calcStayFeeBreakdown, formatMoney } = require('./billing');
 const { findWeightPrice } = require('./weightPricing');
 const { findRoomPrice } = require('./roomPricing');
+const {
+  normalizeLongTermDiscount,
+  applyLongTermDiscount,
+  buildLongTermDiscountTip
+} = require('./longTermDiscount');
 
 function getDefaultMultiPetDiscount() {
   return {
@@ -17,7 +22,7 @@ function normalizeMultiPetDiscount(raw) {
   let percent = parseFloat(src.percent);
   if (!Number.isFinite(percent) || percent < 0) percent = 0;
   if (percent > 100) percent = 100;
-  percent = Math.round(percent * 100) / 100;
+  percent = Math.round(percent);
   return {
     enabled,
     mode: 'fromSecondPercent',
@@ -64,6 +69,7 @@ function calcMultiPetBoardingFees({
 }) {
   const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
   const discount = normalizeMultiPetDiscount(rules && rules.multiPetDiscount);
+  const longTermDiscount = normalizeLongTermDiscount(rules && rules.longTermDiscount);
   const draft = list.map((pet, sourceIndex) => {
     const petRoomType = resolvePetRoomType(pet, roomType, petRoomTypes);
     const basePrice = getPetBasePrice(rules, pet.weight, petRoomType);
@@ -92,11 +98,16 @@ function calcMultiPetBoardingFees({
       return a.sourceIndex - b.sourceIndex;
     });
 
+  const stayDays = (draft[0] && draft[0].breakdown && draft[0].breakdown.days) || 0;
+
   const items = ranked.map((item, rankIndex) => {
-    const factor = (!discount.enabled || rankIndex === 0)
+    const multiFactor = (!discount.enabled || rankIndex === 0)
       ? 1
       : Math.max(0, 1 - (discount.percent / 100));
-    const boardingFee = roundMoney(item.originalBoardingFee * factor);
+    const afterMultiPet = roundMoney(item.originalBoardingFee * multiFactor);
+    const multiPetDiscountAmount = roundMoney(item.originalBoardingFee - afterMultiPet);
+    const longTerm = applyLongTermDiscount(afterMultiPet, longTermDiscount, stayDays);
+    const boardingFee = longTerm.boardingFee;
     const discountAmount = roundMoney(item.originalBoardingFee - boardingFee);
     return {
       pet: item.pet,
@@ -108,7 +119,11 @@ function calcMultiPetBoardingFees({
       originalBoardingFee: item.originalBoardingFee,
       boardingFee,
       discountAmount,
-      discountFactor: factor,
+      multiPetDiscountAmount,
+      longTermDiscountAmount: longTerm.discountAmount,
+      discountFactor: multiFactor * longTerm.factor,
+      multiPetFactor: multiFactor,
+      longTermFactor: longTerm.factor,
       rankIndex,
       isPrimary: rankIndex === 0
     };
@@ -121,28 +136,53 @@ function calcMultiPetBoardingFees({
     items.reduce((sum, item) => sum + item.boardingFee, 0)
   );
   const discountTotal = roundMoney(originalBoardingTotal - boardingTotal);
+  const multiPetDiscountTotal = roundMoney(
+    items.reduce((sum, item) => sum + (item.multiPetDiscountAmount || 0), 0)
+  );
+  const longTermDiscountTotal = roundMoney(
+    items.reduce((sum, item) => sum + (item.longTermDiscountAmount || 0), 0)
+  );
+  const hasMultiPetDiscount = discount.enabled && multiPetDiscountTotal > 0;
+  const hasLongTermDiscount = longTermDiscount.enabled && longTermDiscountTotal > 0;
+  const tipParts = [];
+  if (hasMultiPetDiscount && discount.percent > 0) {
+    tipParts.push(`多宠优惠：第 2 只起寄养费减 ${formatMoney(discount.percent)}%`);
+  }
+  if (hasLongTermDiscount) {
+    tipParts.push(buildLongTermDiscountTip(longTermDiscount, stayDays));
+  }
 
   return {
     discount,
+    longTermDiscount,
     items,
     petCount: items.length,
     originalBoardingTotal,
     boardingTotal,
     discountTotal,
+    multiPetDiscountTotal,
+    longTermDiscountTotal,
     discountTotalText: formatMoney(discountTotal),
     boardingTotalText: formatMoney(boardingTotal),
     originalBoardingTotalText: formatMoney(originalBoardingTotal),
-    hasDiscount: discount.enabled && discountTotal > 0,
-    discountTip: discount.enabled && discount.percent > 0
-      ? `已开启多宠优惠：第 2 只起寄养费减 ${formatMoney(discount.percent)}%`
-      : ''
+    hasDiscount: discountTotal > 0,
+    hasMultiPetDiscount,
+    hasLongTermDiscount,
+    discountTip: tipParts.join('；'),
+    stayDays
   };
 }
 
 function validateMultiPetDiscount(raw) {
   if (!raw || raw.enabled !== true) return '';
-  const percent = parseFloat(raw.percent);
-  if (!Number.isFinite(percent)) return '请填写多宠折扣比例';
+  const rawPercent = raw.percent;
+  // 开启但未填：非必填，保存时视为未启用
+  if (rawPercent === '' || rawPercent == null) return '';
+  if (typeof rawPercent === 'string' && !/^\d+$/.test(String(rawPercent).trim())) {
+    return '多宠折扣比例须为整数';
+  }
+  const percent = Number(rawPercent);
+  if (!Number.isInteger(percent)) return '多宠折扣比例须为整数';
   if (percent < 0 || percent > 100) return '多宠折扣需在 0–100 之间';
   return '';
 }

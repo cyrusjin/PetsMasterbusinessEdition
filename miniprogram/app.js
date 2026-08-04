@@ -1,6 +1,7 @@
 const { STORAGE_KEYS } = require('./utils/constants');
 const { getDefaultWeightPricing } = require('./utils/weightPricing');
 const { getDefaultRoomPricing } = require('./utils/roomPricing');
+const { getDefaultHolidayPricing } = require('./utils/legalHolidays');
 const auth = require('./utils/auth');
 const storeApi = require('./utils/store');
 const { API_BASE_URL } = require('./config/api');
@@ -105,22 +106,67 @@ App({
   /** 合并 App / 进入参数，兼容 tabBar 分享时 query 只在一侧出现 */
   _normalizeEntryOptions(options) {
     const base = options || {};
-    if (this._extractStoreId(base) || this._parseStaffInviteStoreId(base)) {
+    if (
+      this._extractStoreId(base)
+      || this._parseStaffInviteStoreId(base)
+      || this._isMerchantApplyEntry(base)
+    ) {
       return base;
     }
     try {
       const enter = typeof wx.getEnterOptionsSync === 'function' ? (wx.getEnterOptionsSync() || {}) : {};
-      if (this._extractStoreId(enter) || this._parseStaffInviteStoreId(enter)) {
+      if (
+        this._extractStoreId(enter)
+        || this._parseStaffInviteStoreId(enter)
+        || this._isMerchantApplyEntry(enter)
+      ) {
         return this._mergeEntryOptions(base, enter);
       }
       const launch = typeof wx.getLaunchOptionsSync === 'function' ? (wx.getLaunchOptionsSync() || {}) : {};
-      if (this._extractStoreId(launch) || this._parseStaffInviteStoreId(launch)) {
+      if (
+        this._extractStoreId(launch)
+        || this._parseStaffInviteStoreId(launch)
+        || this._isMerchantApplyEntry(launch)
+      ) {
         return this._mergeEntryOptions(base, launch);
       }
     } catch (err) {
       // ignore
     }
     return base;
+  },
+
+  /** 商家入驻小程序码 / 申请页入口（含 getwxacodeunlimit 的 scene） */
+  _getEntrySceneStr(options) {
+    const query = (options && (options.query || options)) || {};
+    const raw = query.scene != null ? query.scene : '';
+    if (raw === '' || raw == null) return '';
+    try {
+      return decodeURIComponent(String(raw)).trim();
+    } catch (err) {
+      return String(raw).trim();
+    }
+  },
+
+  _isMerchantApplyEntry(options) {
+    const opts = options || {};
+    const path = String(opts.path || opts.route || '').replace(/^\//, '');
+    // 历史入驻页，或门店授权页带入驻 scene
+    if (
+      path === 'pages/merchant/apply/apply'
+      || path.indexOf('pages/merchant/apply/apply?') === 0
+    ) {
+      return true;
+    }
+    const scene = this._getEntrySceneStr(opts).toLowerCase();
+    if (!scene) return false;
+    const isApplyScene = scene === 'merchant_apply'
+      || scene === 'apply'
+      || scene.indexOf('merchant_apply') === 0
+      || scene.indexOf('apply=1') >= 0;
+    if (!isApplyScene) return false;
+    // scene 命中即可（小程序码 page 可为 tab-store / apply）
+    return true;
   },
 
   _mergeEntryOptions(base, extra) {
@@ -203,17 +249,27 @@ App({
     const force = !!(bootOptions && bootOptions.force);
     const entry = this._normalizeEntryOptions(options);
     const staffInviteId = this._parseStaffInviteStoreId(entry);
+    const merchantApplyEntry = this._isMerchantApplyEntry(entry);
     // 员工邀请优先：立刻退出用户版，避免商家页 onShow 把人踢回首页
     if (staffInviteId && !this.shouldIgnoreShareEntry()) {
       this.globalData.pendingStaffInviteStoreId = staffInviteId;
       this.globalData.pendingEntryStoreId = '';
       this._exitUserClientMode();
+    } else if (merchantApplyEntry) {
+      // 入驻小程序码：强制商家壳，避免新用户被踢回用户首页
+      this.globalData.pendingMerchantApplyEntry = true;
+      this._exitUserClientMode();
+      this._enterMerchantShellMode();
     } else {
       // 登录前先记下分享店，避免并行 getUserInfo 回写时冲掉绑店
       this._rememberShareEntryStore(entry);
     }
     return this.ensureCloudAndLogin(force ? { force: true } : {})
       .then(() => {
+        if (this.globalData.pendingMerchantApplyEntry || this._isMerchantApplyEntry(entry)) {
+          this._exitUserClientMode();
+          this._enterMerchantShellMode();
+        }
         this._reconcileClientModeFromCloudUser();
         return this._handleEntryOptions(entry);
       })
@@ -291,6 +347,28 @@ App({
 
     const pages = getCurrentPages();
     const route = pages.length ? pages[pages.length - 1].route : '';
+    const merchantApplyEntry = !!(
+      this.globalData.pendingMerchantApplyEntry
+      || this._isMerchantApplyEntry(options)
+      || route === 'pages/merchant/apply/apply'
+    );
+
+    // 入驻码 / 申请页：留在商家门店授权，不要踢回用户首页
+    if (merchantApplyEntry) {
+      this.globalData.pendingMerchantApplyEntry = false;
+      this._exitUserClientMode();
+      this._enterMerchantShellMode();
+      if (route === 'pages/merchant/apply/apply') {
+        wx.redirectTo({ url: getMerchantLandingUrl() });
+      } else if (
+        route
+        && route.indexOf('pages/merchant/') !== 0
+        && !this.isMerchantApproved()
+      ) {
+        wx.reLaunch({ url: getMerchantLandingUrl() });
+      }
+      return;
+    }
 
     if (this.isUserClientMode()) {
       if (route && route.indexOf('pages/merchant/') === 0) {
@@ -327,6 +405,8 @@ App({
     const user = this.globalData.userInfo;
     if (isMerchantApproved(user)) return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
+    // 入驻小程序码进入：即使线上关闭首页「切换商家版」，仍允许停留在申请页
+    if (this.globalData.pendingMerchantApplyEntry) return true;
     // 线上关闭商家入口时，未入驻不可再进商家壳
     if (this.globalData.merchantSwitchEnabled === false) return false;
     // 主动进入商家壳（未入驻仅门店授权）
@@ -1038,8 +1118,12 @@ App({
         if (res.success && res.store) {
           const merged = mergeMerchantShop(localShop, {
             ...res.store,
-            store_id: res.store.store_id
+            store_id: res.store.store_id,
+            membership: res.store.membership || res.membership || null
           });
+          if (res.membership && !merged.membership) {
+            merged.membership = res.membership;
+          }
           this.saveShop(merged);
           this.globalData.merchantStoreId = merged.store_id;
           this.globalData.merchantAccessRole = res.accessRole || (
@@ -2319,7 +2403,10 @@ App({
           this._setOrdersFetchedAt(0);
           return res.order;
         }
-        throw new Error(res.errMsg || '更新订单失败');
+        const err = new Error((res && res.errMsg) || '更新订单失败');
+        err.errCode = res && res.errCode;
+        err.response = res;
+        throw err;
       });
   },
 
@@ -2662,9 +2749,11 @@ App({
       },
       pricing: { cat: 60, smallDog: 80, midDog: 100, largeDog: 150, other: 50 },
       holidayRate: 1.5,
+      holidayPricing: getDefaultHolidayPricing(),
       overtimeRate: 20,
       extras: { pickup: 30, medicine: 20, wash: 80, extraMeal: 15, walk: 25, specialCare: 50 },
-      multiPetDiscount: { enabled: false, mode: 'fromSecondPercent', percent: 0, applyTo: 'boarding' }
+      multiPetDiscount: { enabled: false, mode: 'fromSecondPercent', percent: 0, applyTo: 'boarding' },
+      longTermDiscount: { enabled: false, tiers: [], applyTo: 'boarding' }
     };
   },
 

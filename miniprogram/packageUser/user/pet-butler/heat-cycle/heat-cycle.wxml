@@ -1,0 +1,76 @@
+<view class="page">
+  <view wx:if="{{!femalePets.length}}" class="empty-card">
+    <text class="empty-title">暂无适用宠物</text>
+    <text class="empty-sub">建议先添加母犬档案，再记录发情周期</text>
+    <button class="btn-primary" bindtap="onGoAddPet">添加宠物</button>
+  </view>
+
+  <block wx:else>
+    <view class="card">
+      <text class="form-label">选择宠物</text>
+      <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
+        <view class="picker-value">{{petNames[petIndex]}} ›</view>
+      </picker>
+      <text class="hint">主要适用于未绝育母犬；其他宠物也可作记录参考</text>
+    </view>
+
+    <view class="card phase-card" wx:if="{{cycle}}">
+      <text class="phase-label">当前阶段</text>
+      <text class="phase-name">{{cycle.phaseLabel}}</text>
+      <view class="phase-grid">
+        <view class="phase-item">
+          <text class="num">{{cycle.dayInCycle !== null ? cycle.dayInCycle : '—'}}</text>
+          <text class="lab">距上次开始（天）</text>
+        </view>
+        <view class="phase-item">
+          <text class="num">{{cycle.daysToNext !== null ? cycle.daysToNext : '—'}}</text>
+          <text class="lab">距下次预估（天）</text>
+        </view>
+      </view>
+      <text class="phase-sub" wx:if="{{cycle.nextStart}}">下次预计开始：{{cycle.nextStart}}</text>
+      <text class="phase-sub" wx:if="{{cycle.endDate}}">本轮大约结束：{{cycle.endDate}}</text>
+    </view>
+
+    <view class="card">
+      <view class="card-title">记录本轮</view>
+      <view class="form-group">
+        <text class="form-label">发情开始日期</text>
+        <picker mode="date" value="{{lastStart}}" end="{{today}}" bindchange="onDateChange">
+          <view class="form-input">{{lastStart || '请选择日期'}}</view>
+        </picker>
+      </view>
+      <view class="form-group">
+        <text class="form-label">周期间隔（天）</text>
+        <input class="form-input" type="number" value="{{cycleDays}}" bindinput="onCycleDays" placeholder="常见 150–210" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">持续天数</text>
+        <input class="form-input" type="number" value="{{duration}}" bindinput="onDuration" placeholder="常见 18–21" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">备注</text>
+        <textarea class="form-textarea" value="{{notes}}" bindinput="onNotes" placeholder="如：出血量、情绪、食欲变化" />
+      </view>
+      <view class="btn-row">
+        <button class="btn-outline half" bindtap="onMarkToday">今天开始</button>
+        <button class="btn-primary half" bindtap="onSave">保存</button>
+      </view>
+    </view>
+
+    <view class="card tips">
+      <view class="card-title">照护小贴士</view>
+      <text class="tip-line">· 发情期避免与公犬接触，防止意外怀孕</text>
+      <text class="tip-line">· 可准备生理裤，保持外阴清洁干燥</text>
+      <text class="tip-line">· 情绪敏感时多陪伴，减少压力源</text>
+      <text class="tip-line">· 周期个体差异大，本工具仅供参考</text>
+      <text class="ask-ai" bindtap="onAskAi">发情期护理还有疑问？问 AI ›</text>
+    </view>
+
+    <view class="card" wx:if="{{cycle && cycle.history.length}}">
+      <view class="card-title">历史记录</view>
+      <view class="history-row" wx:for="{{cycle.history}}" wx:key="start">
+        <text>{{item.start}}</text>
+      </view>
+    </view>
+  </block>
+</view>

@@ -15,6 +15,7 @@ const { validateRoomPricing } = require('./roomPricing');
 const { validatePickupPricing } = require('./pickupPricing');
 const { validateWashService } = require('./washPricing');
 const { validateMultiPetDiscount } = require('./multiPetPricing');
+const { validateLongTermDiscount } = require('./longTermDiscount');
 const { validateValueAddedServices } = require('./valueAddedServices');
 
 const DEFAULT_LOGO = '/images/default-avatar.png';
@@ -93,6 +94,8 @@ function validateStoreForm(payload) {
   if (billingError) return billingError;
   const multiPetError = validateMultiPetDiscount(billingRules.multiPetDiscount);
   if (multiPetError) return multiPetError;
+  const longTermError = validateLongTermDiscount(billingRules.longTermDiscount);
+  if (longTermError) return longTermError;
 
   const pickupService = shop.pickupService === 'yes' ? 'yes' : 'no';
   if (!pickupService) return '请选择接送设置';

@@ -4,14 +4,26 @@
     <view class="greeting">
       <view class="greeting-title-row" wx:if="{{needsNickName}}">
         <text class="greeting-title">Hi，</text>
+        <!-- 仅微信 API，不提供手填；新版键盘上方点选，旧版授权弹窗 -->
         <input
-          class="greeting-nickname-input"
+          wx:if="{{nickCapMode === 'nickname-input'}}"
+          class="greeting-nickname-api"
           type="nickname"
-          placeholder="点击选择微信昵称"
-          value="{{nickNameInput}}"
-          bindinput="onNickNameInput"
-          bindblur="onNickNameBlur"
+          placeholder="获取微信昵称"
+          bindchange="onNickNameFromApi"
+          bindblur="onNickNameFromApi"
+          bindnicknamereview="onNickNameReview"
         />
+        <view
+          wx:elif="{{nickCapMode === 'user-profile'}}"
+          class="greeting-nickname-api"
+          bindtap="onGetNickNameProfile"
+        >获取微信昵称</view>
+        <view
+          wx:else
+          class="greeting-nickname-api"
+          bindtap="onNickNameUnsupported"
+        >获取微信昵称</view>
       </view>
       <text class="greeting-title" wx:else>Hi，{{displayNickName}}</text>
       <text class="greeting-sub">愿每一天都和毛孩子更亲近</text>
@@ -79,14 +91,14 @@
   </view>
 
   <view class="status-grid">
-    <view class="info-card" bindtap="onGoPets">
+    <view class="info-card" bindtap="onGoPetButler">
       <view class="info-card-top">
-        <text class="info-title">健康档案</text>
+        <text class="info-title">AI 宠物管家</text>
         <text class="section-arrow">›</text>
       </view>
-      <text class="info-sub">{{petsCount > 0 ? ('已记录 ' + petsCount + ' 只宠物') : '暂无宠物档案'}}</text>
+      <text class="info-sub">{{butlerSubText}}</text>
       <image class="info-art health" src="/images/home/health-art.png" mode="aspectFit" />
-      <text class="info-foot">{{petsCount > 0 ? '档案已建立' : '添加后可查看'}}</text>
+      <text class="info-foot">{{butlerFootText}}</text>
     </view>
     <view class="info-card points-card" bindtap="onGoOrders">
       <view class="info-card-top">

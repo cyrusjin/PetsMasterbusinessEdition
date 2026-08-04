@@ -31,16 +31,68 @@
         <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后即可使用商家端完整功能。</text>
         <view class="form-group">
           <text class="form-label">微信昵称 <text class="required-star">*</text></text>
-          <input
-            class="form-input"
-            type="nickname"
-            value="{{wxNickName}}"
-            placeholder="点击此处选择微信昵称"
-            disabled="{{applyStatus === 'pending'}}"
-            bindblur="onWxNickChange"
-            bindinput="onWxNickChange"
-          />
-          <text class="store-photos-tip" wx:if="{{!wxNickName}}">提交申请前请先获取微信昵称，便于平台审核识别</text>
+
+          <!-- 新版：type=nickname；未确认前不绑 value，避免截成首字母 -->
+          <block wx:if="{{nickCapMode === 'nickname-input'}}">
+            <input
+              wx:if="{{wxNickName}}"
+              id="applyWxNickInput"
+              class="form-input"
+              type="nickname"
+              value="{{wxNickName}}"
+              disabled="{{applyStatus === 'pending'}}"
+              bindblur="onWxNickChange"
+              bindchange="onWxNickChange"
+              bindnicknamereview="onWxNickReview"
+            />
+            <input
+              wx:else
+              id="applyWxNickInput"
+              class="form-input"
+              type="nickname"
+              placeholder="点击选择微信昵称"
+              disabled="{{applyStatus === 'pending'}}"
+              bindblur="onWxNickChange"
+              bindchange="onWxNickChange"
+              bindnicknamereview="onWxNickReview"
+            />
+          </block>
+
+          <!-- 旧版微信：getUserProfile 弹窗 -->
+          <block wx:elif="{{nickCapMode === 'user-profile'}}">
+            <view class="nick-auth-row">
+              <input
+                id="applyWxNickInput"
+                class="form-input nick-input"
+                type="text"
+                value="{{wxNickName}}"
+                placeholder="微信授权或手动输入"
+                disabled="{{applyStatus === 'pending'}}"
+                bindinput="onWxNickInput"
+                bindblur="onWxNickChange"
+              />
+              <button
+                class="btn-sm btn-green nick-auth-btn"
+                disabled="{{applyStatus === 'pending'}}"
+                hover-class="none"
+                bindtap="onGetWxNickProfile"
+              >微信授权</button>
+            </view>
+          </block>
+
+          <!-- 极旧：只能手输 -->
+          <block wx:else>
+            <input
+              id="applyWxNickInput"
+              class="form-input"
+              type="text"
+              value="{{wxNickName}}"
+              placeholder="请输入微信昵称"
+              disabled="{{applyStatus === 'pending'}}"
+              bindinput="onWxNickInput"
+              bindblur="onWxNickChange"
+            />
+          </block>
         </view>
         <view class="form-group">
           <text class="form-label">店铺名称 <text class="required-star">*</text></text>
@@ -150,6 +202,20 @@
     <view class="incomplete-tip" wx:if="{{businessStatus === '未营业'}}">
       <text class="incomplete-tip-text">店铺当前未营业，请完善以下信息并点击「保存设置」后开始接单</text>
     </view>
+    <!-- 运营会员入口暂隐藏，支付就绪后再打开
+    <view class="card membership-card" bindtap="onGoMembership">
+      <view class="membership-card-header">
+        <text class="membership-card-title">运营会员</text>
+        <text class="membership-badge {{membership.active ? 'pro' : 'free'}}">{{membership.active ? '会员版' : '免费版'}}</text>
+      </view>
+      <view class="membership-card-body">
+        <text class="membership-line">寄养中 {{membership.boardingCount || 0}} / {{membership.active ? '不限' : (membership.freeDogLimit || 5)}}</text>
+        <text class="membership-line" wx:if="{{membership.active}}">有效期至 {{membership.expireAtText}}</text>
+        <text class="membership-line" wx:else>超出免费额度需开通 ¥{{membership.priceYuan || '9.9'}}/月</text>
+      </view>
+      <text class="membership-link">{{membership.active ? '续费管理' : '立即开通'}} ›</text>
+    </view>
+    -->
     <view class="card">
       <view class="store-info-header">
         <text class="store-info-title">店铺信息</text>
@@ -481,15 +547,70 @@
           <switch checked="{{multiPetDiscountEnabled}}" bindchange="onMultiPetDiscountSwitch" color="#E98657" />
         </view>
         <view class="form-group" wx:if="{{multiPetDiscountEnabled}}">
-          <text class="form-label">第 2 只起优惠比例（%） <text class="required-star">*</text></text>
+          <text class="form-label">第 2 只起优惠比例（%）</text>
           <input
             class="form-input"
-            type="digit"
-            placeholder="例如 10 表示减 10%"
+            type="number"
+            placeholder="选填，例如 10 表示减 10%"
             value="{{multiPetDiscountPercent}}"
             bindinput="onMultiPetDiscountPercentInput"
           />
-          <text class="charge-hint">仅作用于寄养费，接送费与押金不参与折扣；原价最高的一只按全价计</text>
+          <text class="charge-hint">选填；仅作用于寄养费，接送费与押金不参与折扣；原价最高的一只按全价计；填则须为整数</text>
+        </view>
+      </view>
+
+      <view class="charge-section mt-20">
+        <view class="section-title">长期寄养折扣</view>
+        <view class="flex-between" style="align-items:flex-start;margin-bottom:16rpx;gap:20rpx;">
+          <view style="flex:1;">
+            <text class="form-label" style="margin:0;">开启长期寄养优惠</text>
+            <text class="charge-hint" style="display:block;margin-top:6rpx;">可设置多档：如 30 天 8 折、40 天 5 折；按已达到的最高档计；默认关闭</text>
+          </view>
+          <switch checked="{{longTermDiscountEnabled}}" bindchange="onLongTermDiscountSwitch" color="#E98657" />
+        </view>
+        <block wx:if="{{longTermDiscountEnabled}}">
+          <view class="weight-range-tip">选填；填写则天数与折扣须为正整数，命中多档时取天数最高的一档</view>
+          <view class="weight-range-row" wx:for="{{longTermDiscountTiers}}" wx:key="index">
+            <input
+              class="weight-input"
+              type="number"
+              placeholder="天数"
+              value="{{item.minDays}}"
+              bindinput="onLongTermTierField"
+              data-index="{{index}}"
+              data-field="minDays"
+            />
+            <text class="weight-unit">天</text>
+            <input
+              class="price-input"
+              type="number"
+              placeholder="折扣"
+              value="{{item.zhe}}"
+              bindinput="onLongTermTierField"
+              data-index="{{index}}"
+              data-field="zhe"
+            />
+            <text class="price-unit">折</text>
+            <view
+              wx:if="{{longTermDiscountTiers.length > 1}}"
+              class="weight-range-delete"
+              catchtap="onRemoveLongTermTier"
+              data-index="{{index}}"
+            >删除</view>
+          </view>
+          <view class="weight-range-add" bindtap="onAddLongTermTier">+ 添加档位</view>
+          <text class="charge-hint">仅作用于寄养费，接送费与押金不参与；8 折即按原价 80% 收取</text>
+        </block>
+      </view>
+
+      <view class="charge-section mt-20 holiday-pricing-entry">
+        <view class="section-title">休息日加价</view>
+        <view class="flex-between tappable" style="align-items:flex-start;gap:20rpx;" bindtap="onGoHolidayPricing">
+          <view style="flex:1;">
+            <text class="form-label" style="margin:0;">按休息日单独加价</text>
+            <text class="charge-hint" style="display:block;margin-top:6rpx;margin-bottom:0;">{{holidayPricingSummary}}</text>
+          </view>
+          <text class="contract-link">设置</text>
         </view>
       </view>
     </view>

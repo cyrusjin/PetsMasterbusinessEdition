@@ -1286,8 +1286,11 @@ Page({
           chargeSummary: item.breakdown.chargeSummary,
           daysText: item.breakdown.daysText,
           multiPetDiscount: multiResult.discount,
+          longTermDiscount: multiResult.longTermDiscount,
           originalBoardingFee: item.originalBoardingFee,
           discountAmount: item.discountAmount,
+          multiPetDiscountAmount: item.multiPetDiscountAmount,
+          longTermDiscountAmount: item.longTermDiscountAmount,
           petIndex: index,
           petCount: petCountInGroup,
           pickupDistanceKm: isPrimary && this.data.pickupDrivingDistanceKm != null

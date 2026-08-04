@@ -1,0 +1,60 @@
+<view class="page">
+  <view wx:if="{{!pets.length}}" class="empty-card">
+    <text class="empty-title">先添加一只宝贝吧</text>
+    <text class="empty-sub">打卡后可以累计连续遛弯天数</text>
+    <button class="btn-primary" bindtap="onGoAddPet">添加宠物</button>
+  </view>
+
+  <block wx:else>
+    <view class="card">
+      <text class="form-label">选择宠物</text>
+      <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
+        <view class="picker-value">{{petNames[petIndex]}} ›</view>
+      </picker>
+    </view>
+
+    <view class="stats-card">
+      <view class="stat">
+        <text class="num">{{streak}}</text>
+        <text class="lab">连续天数</text>
+      </view>
+      <view class="stat">
+        <text class="num">{{weekMinutes}}</text>
+        <text class="lab">近7天分钟</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">今日打卡</view>
+      <view class="quick-row">
+        <text class="quick" bindtap="onQuick" data-min="15">15分</text>
+        <text class="quick" bindtap="onQuick" data-min="30">30分</text>
+        <text class="quick" bindtap="onQuick" data-min="45">45分</text>
+        <text class="quick" bindtap="onQuick" data-min="60">60分</text>
+      </view>
+      <view class="form-group">
+        <text class="form-label">时长（分钟）</text>
+        <input class="form-input" type="number" value="{{minutes}}" bindinput="onMinutes" />
+      </view>
+      <view class="form-group">
+        <text class="form-label">备注（可选）</text>
+        <input class="form-input" placeholder="公园 / 小区 / 下雨改室内玩" value="{{note}}" bindinput="onNote" />
+      </view>
+      <button class="btn-primary" bindtap="onCheckIn">完成遛弯打卡</button>
+    </view>
+
+    <view class="card" wx:if="{{records.length}}">
+      <view class="card-title">最近记录</view>
+      <view class="record" wx:for="{{records}}" wx:key="id">
+        <view class="record-main">
+          <text class="record-date">{{item.date}}</text>
+          <text class="record-note" wx:if="{{item.note}}">{{item.note}}</text>
+        </view>
+        <text class="record-min">{{item.minutes}} 分</text>
+      </view>
+    </view>
+    <view class="card soft-empty" wx:else>
+      <text class="soft-empty-text">还没有打卡记录，选个时长开始第一次吧</text>
+    </view>
+  </block>
+</view>

@@ -19,6 +19,16 @@
         "user/pet-form/pet-form",
         "user/pet-invite/pet-invite",
         "user/pet-members/pet-members",
+        "user/pet-butler/pet-butler",
+        "user/pet-butler/ai-consult/ai-consult",
+        "user/pet-butler/reminders/reminders",
+        "user/pet-butler/heat-cycle/heat-cycle",
+        "user/pet-butler/care-guide/care-guide",
+        "user/pet-butler/food-check/food-check",
+        "user/pet-butler/age-calc/age-calc",
+        "user/pet-butler/weight-check/weight-check",
+        "user/pet-butler/walk/walk",
+        "user/pet-butler/milestones/milestones",
         "user/reserve/reserve",
         "user/boarding-contract/boarding-contract",
         "user/order-detail/order-detail",
@@ -37,7 +47,8 @@
         "order-price/order-price",
         "daily-check/daily-check",
         "daily-logs/daily-logs",
-        "pickup-manage/pickup-manage"
+        "pickup-manage/pickup-manage",
+        "holiday-pricing/holiday-pricing"
       ]
     },
     {
@@ -64,7 +75,8 @@
         "customers/customers",
         "customer-detail/customer-detail",
         "ledger/ledger",
-        "ledger/ledger-edit"
+        "ledger/ledger-edit",
+        "membership/membership"
       ]
     }
   ],

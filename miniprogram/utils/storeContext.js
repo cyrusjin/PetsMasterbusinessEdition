@@ -7,12 +7,19 @@ const { normalizeWeightPricing } = require('./weightPricing');
 const { normalizeRoomPricing } = require('./roomPricing');
 const { attachStoreDisplayNo } = require('./displayNo');
 const { normalizeMultiPetDiscount, getDefaultMultiPetDiscount } = require('./multiPetPricing');
+const { normalizeLongTermDiscount, getDefaultLongTermDiscount } = require('./longTermDiscount');
+const {
+  getDefaultHolidayPricing,
+  normalizeHolidayPricing
+} = require('./legalHolidays');
 const { normalizeWashPricing, normalizeWashFreeMinDays } = require('./washPricing');
 const { resolveStoreValueAddedServices } = require('./valueAddedServices');
 
 function mergeBillingRules(store, defaults) {
   const fromStore = (store && store.billingRules) || {};
   const defaultDiscount = (defaults && defaults.multiPetDiscount) || getDefaultMultiPetDiscount();
+  const defaultLongTerm = (defaults && defaults.longTermDiscount) || getDefaultLongTermDiscount();
+  const defaultHolidayPricing = (defaults && defaults.holidayPricing) || getDefaultHolidayPricing();
   const valueAddedServices = resolveStoreValueAddedServices(store);
   return {
     ...defaults,
@@ -41,8 +48,14 @@ function mergeBillingRules(store, defaults) {
       ...(fromStore.extras || {})
     },
     valueAddedServices,
+    holidayPricing: normalizeHolidayPricing(
+      fromStore.holidayPricing != null ? fromStore.holidayPricing : defaultHolidayPricing
+    ),
     multiPetDiscount: normalizeMultiPetDiscount(
       fromStore.multiPetDiscount != null ? fromStore.multiPetDiscount : defaultDiscount
+    ),
+    longTermDiscount: normalizeLongTermDiscount(
+      fromStore.longTermDiscount != null ? fromStore.longTermDiscount : defaultLongTerm
     )
   };
 }

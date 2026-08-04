@@ -22,46 +22,10 @@ function isOccupyingStatus(status) {
 function orderMatchesPet(order, pet) {
   if (!order || !pet) return false;
   const petId = String(pet.id || pet.petId || '').trim();
-  const orderPetId = String(order.petId || '').trim();
-  // 双方都有 petId 时只按 id 匹配，避免同名宠物误判冲突
-  if (petId && orderPetId) return petId === orderPetId;
+  if (petId && String(order.petId || '').trim() === petId) return true;
   const name = String(pet.name || pet.petName || '').trim();
   if (name && String(order.petName || '').trim() === name) return true;
   return false;
-}
-
-function collectExcludeOrderIds(options = {}) {
-  const ids = new Set();
-  const push = (value) => {
-    const id = String(value || '').trim();
-    if (id) ids.add(id);
-  };
-  push(options.excludeOrderId);
-  const list = Array.isArray(options.excludeOrderIds) ? options.excludeOrderIds : [];
-  list.forEach(push);
-  return ids;
-}
-
-function isExcludedOrder(order, excludeIds) {
-  if (!excludeIds || !excludeIds.size) return false;
-  const oid = String(order.id || '').trim();
-  const orderIdAlt = String(order.order_id || '').trim();
-  return (oid && excludeIds.has(oid)) || (orderIdAlt && excludeIds.has(orderIdAlt));
-}
-
-function isSameStayOrder(order, sameStay) {
-  if (!order || !sameStay) return false;
-  const startDate = String(sameStay.startDate || '').trim();
-  const startTime = String(sameStay.startTime || '').trim();
-  if (!startDate) return false;
-  if (String(order.startDate || '').trim() !== startDate) return false;
-  if (startTime && String(order.startTime || '').trim() !== startTime) return false;
-  const petId = String(sameStay.petId || sameStay.id || '').trim();
-  const orderPetId = String(order.petId || '').trim();
-  if (petId && orderPetId) return petId === orderPetId;
-  const name = String(sameStay.petName || sameStay.name || '').trim();
-  if (name && String(order.petName || '').trim() === name) return true;
-  return !petId && !name;
 }
 
 /**
@@ -74,9 +38,8 @@ function findPetBookingConflict(orders, pet, range, options = {}) {
   const endDate = range && range.endDate;
   const startTime = range && range.startTime;
   const endTime = range && range.endTime;
-  const excludeIds = collectExcludeOrderIds(options);
+  const excludeOrderId = options.excludeOrderId ? String(options.excludeOrderId) : '';
   const excludeGroupId = options.excludeGroupId ? String(options.excludeGroupId) : '';
-  const excludeSameStayAs = options.excludeSameStayAs || null;
 
   const newStart = toRangeMs(startDate, startTime, '00:00');
   const newEnd = toRangeMs(endDate, endTime, '23:59');
@@ -87,10 +50,10 @@ function findPetBookingConflict(orders, pet, range, options = {}) {
   for (let i = 0; i < list.length; i += 1) {
     const order = list[i];
     if (!order || !isOccupyingStatus(order.status)) continue;
-    if (isExcludedOrder(order, excludeIds)) continue;
+    const oid = String(order.id || order.order_id || '');
+    if (excludeOrderId && oid === excludeOrderId) continue;
     const gid = String(order.orderGroupId || '');
     if (excludeGroupId && gid && gid === excludeGroupId) continue;
-    if (excludeSameStayAs && isSameStayOrder(order, excludeSameStayAs)) continue;
     if (!orderMatchesPet(order, pet)) continue;
 
     const oldStart = toRangeMs(order.startDate, order.startTime, '00:00');

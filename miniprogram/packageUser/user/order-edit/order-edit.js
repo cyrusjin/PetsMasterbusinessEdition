@@ -11,6 +11,7 @@ const { choosePickupLocation, formatLocationAddress, getPickupLocationValidation
 const { isOrderEditTimeOnly } = require('../../utils/orderActions');
 const { showValidationAlert } = require('../../../utils/formAlert');
 const { getPetBookingConflictMessage, toRangeMs } = require('../../utils/bookingOverlap');
+const { applyLongTermDiscount } = require('../../../utils/longTermDiscount');
 
 function getTodayStr() {
   const today = new Date();
@@ -277,6 +278,12 @@ Page({
     const breakdown = calcStayFeeBreakdown(
       useStartDate, endDate, useStartTime, endTime, rules, basePrice
     );
+    const longTerm = applyLongTermDiscount(
+      breakdown.baseFee,
+      rules && rules.longTermDiscount,
+      breakdown.days
+    );
+    const boardingFee = longTerm.boardingFee;
     const storeView = store || {};
     const pickupFlags = this._getPickupFlags();
     const isDistanceMode = storeView.pickupPricingMode === 'distance';
@@ -342,7 +349,7 @@ Page({
           };
         }
       }
-      const totalFee = breakdown.baseFee + pickupFee + washFee;
+      const totalFee = boardingFee + pickupFee + washFee;
       const feeReady = breakdown.ready && (!needPickup || pickupReady);
 
       this.setData({
@@ -353,7 +360,7 @@ Page({
         pickupDistanceError: distanceError || '',
         _feePayload: {
           days: breakdown.days,
-          boardingFee: breakdown.baseFee,
+          boardingFee,
           shippingFee: pickupFee,
           washFee,
           needWash: orderNeedWash,
@@ -363,6 +370,10 @@ Page({
             dailyBreakdown: breakdown.dailyBreakdown,
             chargeSummary: breakdown.chargeSummary,
             daysText: breakdown.daysText,
+            longTermDiscount: longTerm.discount,
+            originalBoardingFee: breakdown.baseFee,
+            longTermDiscountAmount: longTerm.discountAmount,
+            discountAmount: longTerm.discountAmount,
             pickupDistanceKm: distanceKm != null ? distanceKm : undefined,
             pickupDistanceMode: isDistanceMode ? (resolvedMode || 'driving') : undefined,
             wash: washSnap || undefined

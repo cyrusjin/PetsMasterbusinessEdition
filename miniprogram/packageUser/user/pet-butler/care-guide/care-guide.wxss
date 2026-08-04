@@ -1,0 +1,71 @@
+.page { padding: 20rpx 20rpx 60rpx; }
+.card {
+  background: #FFFDF8;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 8rpx 22rpx rgba(132, 90, 58, 0.07);
+}
+.search-bar { display: flex; gap: 12rpx; align-items: center; }
+.search-input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 20rpx;
+  background: #FFF7EF;
+  border-radius: 16rpx;
+  border: 2rpx solid #F2DEC9;
+  font-size: 26rpx;
+}
+.type-chip {
+  padding: 14rpx 18rpx;
+  border-radius: 999rpx;
+  background: #FFF1E7;
+  color: #E98657;
+  font-size: 24rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.guide-top { display: flex; justify-content: space-between; align-items: center; }
+.guide-name { font-size: 30rpx; font-weight: 750; color: #4E3729; }
+.guide-type {
+  font-size: 20rpx;
+  color: #6FA462;
+  background: #F3F7F1;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+}
+.guide-summary { display: block; margin-top: 12rpx; font-size: 24rpx; color: #8C6A52; line-height: 1.5; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 16rpx; }
+.tag {
+  font-size: 20rpx;
+  color: #A98972;
+  background: #FFF4E9;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+}
+.empty { text-align: center; color: #A98972; padding: 40rpx 0 12rpx; }
+.ai-banner {
+  margin: 12rpx 0 24rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, rgba(111, 164, 98, 0.1), #FFFDF8);
+  border: 1rpx dashed rgba(111, 164, 98, 0.4);
+}
+.ai-banner-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #4E3729;
+}
+.ai-banner-sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #6FA462;
+}
+.back { padding: 8rpx 4rpx 18rpx; color: #E98657; font-size: 28rpx; }
+.detail-name { display: block; font-size: 38rpx; font-weight: 800; color: #4E3729; }
+.detail-summary { display: block; margin-top: 12rpx; font-size: 26rpx; color: #8C6A52; line-height: 1.5; }
+.line { display: block; margin-top: 12rpx; font-size: 26rpx; color: #5B4535; line-height: 1.55; }
+.line.caution { color: #C86E42; }
+.disclaimer { text-align: center; color: #C8AA92; font-size: 22rpx; padding: 12rpx 8rpx 40rpx; }

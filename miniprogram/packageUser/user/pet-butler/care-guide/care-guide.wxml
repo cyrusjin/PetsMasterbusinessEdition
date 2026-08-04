@@ -1,0 +1,59 @@
+<view class="page" wx:if="{{!detail}}">
+  <view class="search-bar card">
+    <input class="search-input" placeholder="搜索品种，如柯基、英短" value="{{keyword}}" bindinput="onKeyword" />
+    <picker mode="selector" range="{{typeOptions}}" value="{{typeIndex}}" bindchange="onTypeChange">
+      <view class="type-chip">{{typeOptions[typeIndex]}} ▾</view>
+    </picker>
+  </view>
+
+  <view
+    class="guide-card card"
+    wx:for="{{list}}"
+    wx:key="id"
+    bindtap="onOpen"
+    data-id="{{item.id}}"
+  >
+    <view class="guide-top">
+      <text class="guide-name">{{item.name}}</text>
+      <text class="guide-type">{{item.type}}</text>
+    </view>
+    <text class="guide-summary">{{item.summary}}</text>
+    <view class="tag-row">
+      <text class="tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{!list.length}}" class="empty">没有匹配的品种，试试「通用」或去 AI 问诊</view>
+  <view class="ai-banner" bindtap="onAskAi">
+    <text class="ai-banner-title">品种不在列表？</text>
+    <text class="ai-banner-sub">让 AI 助手按你的描述给养护建议 ›</text>
+  </view>
+</view>
+
+<view class="page detail" wx:else>
+  <view class="back" bindtap="onBackList">‹ 返回列表</view>
+  <view class="card">
+    <text class="detail-name">{{detail.name}}</text>
+    <text class="detail-summary">{{detail.summary}}</text>
+    <view class="tag-row">
+      <text class="tag" wx:for="{{detail.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+    </view>
+  </view>
+  <view class="card">
+    <view class="card-title">日常护理</view>
+    <text class="line" wx:for="{{detail.care}}" wx:key="*this">· {{item}}</text>
+  </view>
+  <view class="card">
+    <view class="card-title">饮食建议</view>
+    <text class="line">{{detail.food}}</text>
+  </view>
+  <view class="card">
+    <view class="card-title">特别注意</view>
+    <text class="line caution">{{detail.caution}}</text>
+  </view>
+  <view class="ai-banner" bindtap="onAskAiDetail">
+    <text class="ai-banner-title">想问得更细？</text>
+    <text class="ai-banner-sub">关于「{{detail.name}}」继续问 AI ›</text>
+  </view>
+  <view class="disclaimer">内容为常见养护参考，个体差异请遵医嘱。</view>
+</view>

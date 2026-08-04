@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="card">
+    <view class="form-group">
+      <text class="form-label">关联宠物（可选）</text>
+      <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
+        <view class="form-input">{{petNames[petIndex]}}</view>
+      </picker>
+    </view>
+    <view class="form-group">
+      <text class="form-label">类型</text>
+      <picker mode="selector" range="{{typeOptions}}" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="form-input">{{typeOptions[typeIndex]}}</view>
+      </picker>
+    </view>
+    <view class="form-group">
+      <text class="form-label">实际年龄（岁）</text>
+      <input class="form-input" type="digit" placeholder="例如 3.5" value="{{age}}" bindinput="onAge" />
+    </view>
+  </view>
+
+  <view class="result-card" wx:if="{{result}}">
+    <text class="result-label">AI 趣味换算 · 相当于人类</text>
+    <text class="result-age">{{result.human}} <text class="unit">岁</text></text>
+    <text class="result-stage">正处在「{{result.stage}}」阶段</text>
+    <text class="result-tip">这是趣味换算，不同体型衰老速度不同，仅供娱乐参考～</text>
+    <text class="ask-ai" bindtap="onAskAi">想了解这个阶段的护理要点？问 AI ›</text>
+  </view>
+
+  <view class="card tips">
+    <view class="card-title">小知识</view>
+    <text class="line">· 犬猫第一年大约相当于人类 15 岁</text>
+    <text class="line">· 第二年大约再加 9 岁</text>
+    <text class="line">· 之后狗大约每年 +5，猫大约每年 +4</text>
+    <text class="line">· 大型犬通常比小型犬更早进入老年</text>
+  </view>
+</view>

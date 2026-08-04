@@ -1,0 +1,43 @@
+.page { padding: 20rpx 20rpx 60rpx; }
+.card {
+  background: #FFFDF8;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 18rpx;
+  box-shadow: 0 8rpx 22rpx rgba(132, 90, 58, 0.07);
+}
+.result-card {
+  padding: 40rpx 28rpx;
+  margin-bottom: 18rpx;
+  border-radius: 28rpx;
+  text-align: center;
+  background: #FFFDF8;
+  box-shadow: 0 10rpx 26rpx rgba(132, 90, 58, 0.08);
+}
+.result-card.ideal, .result-card.light, .result-card.heavy {
+  background: linear-gradient(160deg, #EEF7EC, #FFFDF8);
+}
+.result-card.under {
+  background: linear-gradient(160deg, #FFF1E7, #FFFDF8);
+}
+.result-card.over {
+  background: linear-gradient(160deg, #FFECE8, #FFFDF8);
+}
+.result-label { display: block; font-size: 24rpx; color: #A98972; }
+.result-status {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 52rpx;
+  font-weight: 800;
+  color: #4E3729;
+}
+.result-range { display: block; margin-top: 12rpx; font-size: 24rpx; color: #8C6A52; }
+.result-tip { display: block; margin-top: 16rpx; font-size: 24rpx; color: #5B4535; line-height: 1.5; }
+.ask-ai {
+  display: inline-block;
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  font-weight: 650;
+  color: #6FA462;
+}
+.tips .line { display: block; margin-top: 10rpx; font-size: 24rpx; color: #5B4535; line-height: 1.5; }

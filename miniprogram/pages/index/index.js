@@ -5,9 +5,14 @@ const storeDebug = require('../../utils/storeDebug');
 const { refreshUserOrders } = require('../../utils/orderRefresh');
 const { resolveEntryStoreId, enterStoreAndRefresh } = require('../../utils/storeEntry');
 const { formatOrderCreateTime } = require('../../utils/util');
-const { isAuthorizedNickName, getDisplayNickName } = require('../../utils/userAuth');
+const {
+  isAuthorizedNickName,
+  getDisplayNickName,
+  getNickNameCapability
+} = require('../../utils/userAuth');
 const { copyText } = require('../../utils/clipboard');
 const petApi = require('../../utils/pet');
+const butler = require('../../utils/petButler');
 const {
   getMiniProgramMeta,
   fetchMerchantSwitchEnabled,
@@ -29,13 +34,16 @@ Page({
     userInfo: {},
     displayNickName: '小主',
     needsNickName: false,
-    nickNameInput: '',
+    nickCapMode: 'nickname-input',
     currentStore: null,
     boardingPets: [],
     petsCount: 0,
     previewPets: [],
     petsMoreCount: 0,
     petPreviewSize: 'single',
+    butlerDueCount: 0,
+    butlerSubText: 'AI 问诊 · 提醒 · 小工具',
+    butlerFootText: '点开看看',
     showMerchantSwitch: false,
     introExpandable: false,
     introPreviewVisible: false,
@@ -137,6 +145,7 @@ Page({
     });
 
     // 先用缓存铺屏，避免等网络时白屏
+    this._syncNickNameCapability();
     this._refreshPageFromCache();
     this._syncMerchantSwitch();
 
@@ -232,15 +241,35 @@ Page({
       .finally(() => wx.stopPullDownRefresh());
   },
 
+  _syncNickNameCapability() {
+    const cap = getNickNameCapability();
+    this.setData({ nickCapMode: cap.mode });
+  },
+
   _buildUserViewState(userInfo) {
     const user = userInfo || {};
     const needsNickName = !isAuthorizedNickName(user.nickName);
     return {
       userInfo: user,
       displayNickName: getDisplayNickName(user),
-      needsNickName,
-      nickNameInput: needsNickName ? '' : user.nickName
+      needsNickName
     };
+  },
+
+  _saveNickNameFromApi(nickName) {
+    const name = (nickName || '').trim();
+    if (!isAuthorizedNickName(name)) return;
+    if (name === (this.data.userInfo.nickName || '')) {
+      this.setData(this._buildUserViewState({ ...this.data.userInfo, nickName: name }));
+      return;
+    }
+    app.updateProfile({ nickName: name })
+      .then(() => {
+        this._refreshPageFromCache();
+      })
+      .catch((err) => {
+        console.error('[首页] 保存昵称失败', err);
+      });
   },
 
   _hashSeed(value) {
@@ -297,11 +326,29 @@ Page({
       };
     });
 
+    const upcoming = butler.collectUpcoming(list, 7);
+    const dueCount = upcoming.length;
+    let butlerSubText = 'AI 问诊 · 提醒 · 小工具';
+    let butlerFootText = '点开看看';
+    if (list.length === 0) {
+      butlerSubText = 'AI 问诊 · 指南 · 趣味工具';
+      butlerFootText = '养宠小帮手';
+    } else if (dueCount > 0) {
+      butlerSubText = `${dueCount} 项近期待办`;
+      butlerFootText = upcoming[0].status === 'overdue' ? '有逾期事项' : '记得打卡哦';
+    } else {
+      butlerSubText = `${list.length} 只宝贝的 AI 管家`;
+      butlerFootText = '一切安好';
+    }
+
     return {
       petsCount: list.length,
       previewPets,
       petsMoreCount: Math.max(0, list.length - maxShow),
-      petPreviewSize: sizeMap[count] || 'triple'
+      petPreviewSize: sizeMap[count] || 'triple',
+      butlerDueCount: dueCount,
+      butlerSubText,
+      butlerFootText
     };
   },
 
@@ -315,6 +362,9 @@ Page({
       previewPets: payload.previewPets || [],
       petsMoreCount: payload.petsMoreCount || 0,
       petPreviewSize: payload.petPreviewSize || 'single',
+      butlerDueCount: payload.butlerDueCount || 0,
+      butlerSubText: payload.butlerSubText || 'AI 问诊 · 提醒 · 小工具',
+      butlerFootText: payload.butlerFootText || '点开看看',
       introExpandable: isIntroExpandable(currentStore && currentStore.intro)
     });
     this._syncNavTitle(currentStore);
@@ -378,24 +428,48 @@ Page({
       });
   },
 
-  onNickNameInput(e) {
-    this.setData({ nickNameInput: (e.detail.value || '').trim() });
+  onNickNameFromApi(e) {
+    // type=nickname 即微信官方昵称 API（键盘上方点选）；不提供普通手填入口
+    const nickName = ((e.detail && e.detail.value) || '').trim();
+    if (!isAuthorizedNickName(nickName)) return;
+    this._saveNickNameFromApi(nickName);
   },
 
-  onNickNameBlur(e) {
-    const nickName = ((e.detail && e.detail.value) || this.data.nickNameInput || '').trim();
-    if (!isAuthorizedNickName(nickName)) return;
-    if (nickName === (this.data.userInfo.nickName || '')) {
-      this.setData(this._buildUserViewState({ ...this.data.userInfo, nickName }));
+  onNickNameReview(e) {
+    if (e && e.detail && e.detail.pass === false) {
+      wx.showToast({ title: '昵称未通过安全检测', icon: 'none' });
+    }
+  },
+
+  onGetNickNameProfile() {
+    if (typeof wx.getUserProfile !== 'function') {
+      this.onNickNameUnsupported();
       return;
     }
-    app.updateProfile({ nickName })
-      .then(() => {
-        this._refreshPageFromCache();
-      })
-      .catch((err) => {
-        console.error('[首页] 保存昵称失败', err);
-      });
+    wx.getUserProfile({
+      desc: '用于展示你的昵称',
+      success: (res) => {
+        const nickName = ((res && res.userInfo && res.userInfo.nickName) || '').trim();
+        if (!isAuthorizedNickName(nickName)) {
+          wx.showToast({
+            title: '请升级微信后重试',
+            icon: 'none'
+          });
+          return;
+        }
+        this._saveNickNameFromApi(nickName);
+      },
+      fail: () => {
+        wx.showToast({ title: '需要授权微信昵称', icon: 'none' });
+      }
+    });
+  },
+
+  onNickNameUnsupported() {
+    wx.showToast({
+      title: '请升级微信后获取昵称',
+      icon: 'none'
+    });
   },
 
   onPreviewStorePhoto(e) {
@@ -491,6 +565,7 @@ Page({
     wx.navigateTo({ url: '/packageUser/user/reserve/reserve' });
   },
   onGoPets() { wx.navigateTo({ url: '/packageUser/user/pets/pets' }); },
+  onGoPetButler() { wx.navigateTo({ url: '/packageUser/user/pet-butler/pet-butler' }); },
   onGoOrders() { wx.switchTab({ url: '/pages/orders/orders' }); },
   onGoDaily(e) { wx.navigateTo({ url: '/packageUser/user/pet-daily/pet-daily?id=' + e.currentTarget.dataset.id }); },
 

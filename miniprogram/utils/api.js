@@ -9,7 +9,9 @@ const API_ROUTES = {
   orderService: '/api/order',
   petService: '/api/pet',
   dailyService: '/api/daily',
-  ledgerService: '/api/ledger'
+  ledgerService: '/api/ledger',
+  /** AI 问诊代理：服务端实现 action=petConsult 后可返回大模型回复 */
+  aiService: '/api/ai'
 };
 
 function getToken() {

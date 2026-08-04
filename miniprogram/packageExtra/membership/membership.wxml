@@ -1,0 +1,41 @@
+<view class="merchant-page">
+  <view class="container">
+    <view class="card hero-card">
+      <text class="hero-title">运营会员</text>
+      <text class="hero-desc">免费版可同时接待 {{membership.freeDogLimit || 5}} 只寄养中宠物；开通后当月不限数量。</text>
+      <view class="price-row">
+        <text class="price-symbol">¥</text>
+        <text class="price-num">{{membership.priceYuan || '9.9'}}</text>
+        <text class="price-unit">/ {{membership.periodDays || 30}} 天</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">当前状态</view>
+      <view class="status-row">
+        <text class="status-label">套餐</text>
+        <text class="status-value {{membership.active ? 'pro' : ''}}">{{membership.active ? '会员版' : '免费版'}}</text>
+      </view>
+      <view class="status-row">
+        <text class="status-label">寄养中</text>
+        <text class="status-value">{{membership.boardingCount || 0}} / {{membership.active ? '不限' : (membership.freeDogLimit || 5)}}</text>
+      </view>
+      <view class="status-row" wx:if="{{membership.active}}">
+        <text class="status-label">有效期至</text>
+        <text class="status-value">{{membership.expireAtText}}</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">会员权益</view>
+      <view class="benefit-item">同时寄养中宠物数量不限</view>
+      <view class="benefit-item">确认接单与确认到店不再受免费额度限制</view>
+      <view class="benefit-item">到期后自动回免费档，已在住宠物不受影响</view>
+    </view>
+
+    <button class="btn-primary" bindtap="onPay" loading="{{paying}}" disabled="{{paying || !membership.enabled}}">
+      {{membership.active ? '续费会员' : '立即开通'}}
+    </button>
+    <text class="pay-tip" wx:if="{{!membership.payConfigured}}">若支付暂不可用，请联系平台管理员开通</text>
+  </view>
+</view>

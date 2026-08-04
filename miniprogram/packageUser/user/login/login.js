@@ -3,6 +3,7 @@ const auth = require('../../../utils/auth');
 const { uploadLocalImage } = require('../../../utils/upload');
 const { resolveStoreDisplayNo } = require('../../../utils/displayNo');
 const { copyText } = require('../../../utils/clipboard');
+const { isAuthorizedNickName } = require('../../../utils/userAuth');
 
 Page({
   data: {
@@ -48,7 +49,7 @@ Page({
 
       this.setData({
         avatarUrl: u.avatarUrl || '',
-        nickName: u.nickName || '',
+        nickName: isAuthorizedNickName(u.nickName) ? String(u.nickName).trim() : '',
         realName: u.realName || '',
         idCard: u.idCard || '',
         phone: u.phone || '',
@@ -104,7 +105,11 @@ Page({
     }
   },
 
-  onNickInput(e) { this.setData({ nickName: e.detail.value }); },
+  onNickInput(e) {
+    const nickName = ((e.detail && e.detail.value) || '').trim();
+    if (!nickName || nickName === '微信用户' || /^[A-Za-z0-9]$/.test(nickName)) return;
+    this.setData({ nickName });
+  },
   onRealNameInput(e) { this.setData({ realName: e.detail.value }); },
   onIdCardInput(e) { this.setData({ idCard: e.detail.value }); },
   onPhoneInput(e) { this.setData({ phone: e.detail.value }); },
@@ -147,7 +152,7 @@ Page({
 
   onSave() {
     const { avatarUrl, nickName, realName, idCard, phone, address } = this.data;
-    if (!nickName) {
+    if (!isAuthorizedNickName(nickName)) {
       wx.showToast({ title: '请授权或输入昵称', icon: 'none' });
       return;
     }

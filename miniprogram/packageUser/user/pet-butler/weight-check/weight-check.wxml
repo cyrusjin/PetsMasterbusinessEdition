@@ -1,0 +1,40 @@
+<view class="page">
+  <view class="card">
+    <view class="form-group">
+      <text class="form-label">关联宠物（可选）</text>
+      <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
+        <view class="form-input">{{petNames[petIndex]}}</view>
+      </picker>
+    </view>
+    <view class="form-group">
+      <text class="form-label">类型</text>
+      <picker mode="selector" range="{{typeOptions}}" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="form-input">{{typeOptions[typeIndex]}}</view>
+      </picker>
+    </view>
+    <view class="form-group">
+      <text class="form-label">品种</text>
+      <input class="form-input" placeholder="如柯基、英短（可空）" value="{{breed}}" bindinput="onBreed" />
+    </view>
+    <view class="form-group">
+      <text class="form-label">当前体重（kg）</text>
+      <input class="form-input" type="digit" placeholder="例如 12.5" value="{{weight}}" bindinput="onWeight" />
+    </view>
+  </view>
+
+  <view class="result-card {{result.status}}" wx:if="{{result}}">
+    <text class="result-label">AI 粗评结果</text>
+    <text class="result-status">{{result.label}}</text>
+    <text class="result-range">参考区间 {{result.min}}–{{result.max}} kg（{{result.size}}）</text>
+    <text class="result-tip">{{result.tip}}</text>
+    <text class="ask-ai" bindtap="onAskAi">体重管理怎么做？问 AI ›</text>
+  </view>
+
+  <view class="card tips">
+    <view class="card-title">怎么摸才准？</view>
+    <text class="line">· 理想：肋骨可轻易摸到但不明显外露</text>
+    <text class="line">· 偏瘦：肋骨、脊椎骨突出明显</text>
+    <text class="line">· 偏重：腰线消失，腹部圆滚</text>
+    <text class="line">· 品种区间为常见参考，个体差异请咨询医生</text>
+  </view>
+</view>

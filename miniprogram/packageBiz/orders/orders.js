@@ -189,6 +189,8 @@ Page({
             this.load();
           })
           .catch((err) => {
+            const membershipUtil = require('../utils/membership');
+            if (membershipUtil.handleMembershipRequiredError(err)) return;
             wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
           });
       }
@@ -210,6 +212,8 @@ Page({
             this.load();
           })
           .catch((err) => {
+            const membershipUtil = require('../utils/membership');
+            if (membershipUtil.handleMembershipRequiredError(err)) return;
             wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
           });
       }

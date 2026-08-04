@@ -1,0 +1,55 @@
+<view class="page">
+  <view wx:if="{{!pets.length}}" class="empty-card">
+    <text class="empty-title">还没有宠物档案</text>
+    <text class="empty-sub">添加后可以记录生日与成长瞬间</text>
+    <button class="btn-primary" bindtap="onGoAddPet">添加宠物</button>
+  </view>
+
+  <block wx:else>
+    <view class="card">
+      <text class="form-label">选择宠物</text>
+      <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
+        <view class="picker-value">{{petNames[petIndex]}} ›</view>
+      </picker>
+    </view>
+
+    <view class="birthday-card" wx:if="{{birthdayInfo}}">
+      <text class="b-label">距离下次生日</text>
+      <text class="b-num">{{birthdayInfo.remain}} <text class="unit">天</text></text>
+      <text class="b-sub">现在大约 {{birthdayInfo.ageYears}} 岁啦</text>
+    </view>
+
+    <view class="card">
+      <view class="card-title">重要日子</view>
+      <view class="form-group">
+        <text class="form-label">生日</text>
+        <picker mode="date" value="{{birthday}}" end="{{today}}" bindchange="onBirthday">
+          <view class="form-input">{{birthday || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="form-group">
+        <text class="form-label">到家日</text>
+        <picker mode="date" value="{{adoptDate}}" end="{{today}}" bindchange="onAdopt">
+          <view class="form-input">{{adoptDate || '请选择'}}</view>
+        </picker>
+      </view>
+      <button class="btn-primary" bindtap="onSaveDates">保存日子</button>
+    </view>
+
+    <view class="card">
+      <view class="card-title">写下此刻</view>
+      <textarea class="form-textarea" placeholder="第一次学会握手、换牙、打疫苗……" value="{{noteText}}" bindinput="onNoteText" />
+      <button class="btn-outline" bindtap="onAddNote" style="margin-top:16rpx;">添加足迹</button>
+      <view class="note" wx:for="{{notes}}" wx:key="id">
+        <view class="note-main">
+          <text class="note-date">{{item.date}}</text>
+          <text class="note-text">{{item.text}}</text>
+        </view>
+        <text class="note-del" bindtap="onRemoveNote" data-id="{{item.id}}">删除</text>
+      </view>
+      <view class="soft-empty" wx:if="{{!notes.length}}">
+        <text class="soft-empty-text">还没有足迹，记下今天的小瞬间吧</text>
+      </view>
+    </view>
+  </block>
+</view>

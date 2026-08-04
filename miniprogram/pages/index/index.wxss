@@ -56,15 +56,17 @@
   gap: 4rpx;
 }
 
-.greeting-nickname-input {
-  min-width: 220rpx;
+.greeting-nickname-api {
+  min-width: 200rpx;
   max-width: 360rpx;
   height: 48rpx;
-  padding: 0 8rpx;
-  color: #5B4535;
+  padding: 0 4rpx;
+  color: #C87A4B;
   font-size: 32rpx;
   font-weight: 900;
-  line-height: 1.3;
+  line-height: 48rpx;
+  text-decoration: underline;
+  text-underline-offset: 6rpx;
 }
 
 .points-empty {

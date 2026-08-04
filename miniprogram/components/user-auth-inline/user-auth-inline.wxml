@@ -4,11 +4,20 @@
   <view class="form-group">
     <text class="form-label">微信昵称</text>
     <input
+      wx:if="{{nickName}}"
+      class="form-input auth-nickname-input"
+      type="nickname"
+      value="{{nickName}}"
+      placeholder="点击选择微信昵称"
+      bindchange="onNickNameInput"
+      bindblur="onNickNameInput"
+    />
+    <input
+      wx:else
       class="form-input auth-nickname-input"
       type="nickname"
       placeholder="点击选择微信昵称"
-      value="{{nickName}}"
-      bindinput="onNickNameInput"
+      bindchange="onNickNameInput"
       bindblur="onNickNameInput"
     />
   </view>

@@ -6,7 +6,8 @@
     </button>
     <view class="form-group">
       <text class="form-label">昵称 <text class="required-star">*</text></text>
-      <input class="form-input" type="nickname" placeholder="点击授权或输入昵称" value="{{nickName}}" bindinput="onNickInput" bindblur="onNickInput" />
+      <input wx:if="{{nickName}}" class="form-input" type="nickname" value="{{nickName}}" placeholder="点击授权或输入昵称" bindchange="onNickInput" bindblur="onNickInput" />
+      <input wx:else class="form-input" type="nickname" placeholder="点击授权或输入昵称" bindchange="onNickInput" bindblur="onNickInput" />
     </view>
     <view class="form-group">
       <text class="form-label">真实姓名</text>

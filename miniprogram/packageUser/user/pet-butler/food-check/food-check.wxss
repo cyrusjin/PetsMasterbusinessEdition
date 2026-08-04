@@ -1,0 +1,78 @@
+.page { padding: 20rpx 20rpx 60rpx; }
+.card {
+  background: #FFFDF8;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 8rpx 22rpx rgba(132, 90, 58, 0.07);
+}
+.hero {
+  background: linear-gradient(145deg, #EAF6EA, #FFFDF8);
+}
+.hero-title { display: block; font-size: 34rpx; font-weight: 800; color: #4E3729; }
+.hero-sub { display: block; margin-top: 8rpx; font-size: 24rpx; color: #A98972; }
+.search-row { display: flex; align-items: center; gap: 12rpx; margin-top: 22rpx; }
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 80rpx;
+  padding: 0 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  border: 2rpx solid #F2DEC9;
+  font-size: 28rpx;
+}
+.search-btn {
+  flex-shrink: 0;
+  height: 80rpx;
+  line-height: 80rpx;
+  padding: 0 26rpx;
+  border-radius: 16rpx;
+  background: #5B8C5A;
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 650;
+}
+.clear { color: #E98657; font-size: 24rpx; }
+.hot-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 20rpx; }
+.hot-chip {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.9);
+  color: #5B8C5A;
+  font-size: 22rpx;
+}
+.section-title {
+  margin: 8rpx 6rpx 14rpx;
+  font-size: 28rpx;
+  font-weight: 750;
+  color: #4E3729;
+}
+.result-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; }
+.result-name { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 750; color: #4E3729; }
+.level-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 20rpx;
+  font-weight: 650;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: #F3F7F1;
+  color: #6FA462;
+}
+.result.danger { border-left: 8rpx solid #D96F55; }
+.result.danger .level-badge { background: #FFE8E2; color: #D96F55; }
+.result.caution { border-left: 8rpx solid #E98657; }
+.result.caution .level-badge { background: #FFF1E7; color: #E98657; }
+.result.safe { border-left: 8rpx solid #6FA462; }
+.result-tip { display: block; margin-top: 12rpx; font-size: 24rpx; color: #8C6A52; line-height: 1.5; }
+.empty { color: #A98972; font-size: 24rpx; line-height: 1.5; }
+.empty-line { display: block; }
+.ask-ai {
+  display: inline-block;
+  margin-top: 16rpx;
+  color: #6FA462;
+  font-weight: 650;
+  font-size: 26rpx;
+}
+.disclaimer { text-align: center; color: #C8AA92; font-size: 22rpx; padding: 8rpx 0 40rpx; }

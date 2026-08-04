@@ -1,6 +1,6 @@
 const app = getApp();
 const auth = require('../../utils/auth');
-const { hasUserAuthProfile } = require('../../utils/userAuth');
+const { hasUserAuthProfile, isAuthorizedNickName } = require('../../utils/userAuth');
 
 Component({
   properties: {
@@ -25,7 +25,7 @@ Component({
       if (!visible) return;
       const user = (app.globalData && app.globalData.userInfo) || {};
       this.setData({
-        nickName: user.nickName && user.nickName !== '微信用户' ? user.nickName : '',
+        nickName: isAuthorizedNickName(user.nickName) ? String(user.nickName).trim() : '',
         phone: user.phone || ''
       });
     }
@@ -39,7 +39,10 @@ Component({
     },
 
     onNickNameInput(e) {
-      this.setData({ nickName: (e.detail.value || '').trim() });
+      const nickName = ((e.detail && e.detail.value) || '').trim();
+      // 忽略选昵称过程中可能出现的单字母脏数据
+      if (!nickName || nickName === '微信用户' || /^[A-Za-z0-9]$/.test(nickName)) return;
+      this.setData({ nickName });
     },
 
     onGetPhoneNumber(e) {
@@ -80,7 +83,7 @@ Component({
     onConfirm() {
       const nickName = (this.data.nickName || '').trim();
       const phone = (this.data.phone || '').trim();
-      if (!nickName || nickName === '微信用户') {
+      if (!isAuthorizedNickName(nickName)) {
         wx.showToast({ title: '请点击输入框授权微信昵称', icon: 'none' });
         return;
       }

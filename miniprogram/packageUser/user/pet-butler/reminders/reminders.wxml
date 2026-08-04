@@ -1,0 +1,58 @@
+<view class="page">
+  <view wx:if="{{!pets.length}}" class="empty-card">
+    <text class="empty-title">还没有宠物</text>
+    <text class="empty-sub">添加档案后，就能按宝贝设置提醒</text>
+    <button class="btn-primary" bindtap="onGoAddPet">去添加</button>
+  </view>
+
+  <block wx:else>
+    <view class="pet-picker card">
+      <text class="form-label">选择宠物</text>
+      <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
+        <view class="picker-value">{{petNames[petIndex]}} ›</view>
+      </picker>
+    </view>
+
+    <view class="card item" wx:for="{{items}}" wx:key="key">
+      <view class="item-top">
+        <text class="item-icon">{{item.icon}}</text>
+        <view class="item-main">
+          <text class="item-title">{{item.label}}</text>
+          <text class="item-tip">{{item.tip}}</text>
+        </view>
+        <text class="status {{item.status}}">{{item.statusLabel}}</text>
+      </view>
+      <view class="item-meta">
+        <text>上次：{{item.lastDate || '—'}}</text>
+        <text>周期：每 {{item.interval}} 天</text>
+        <text>下次：{{item.nextDate || '—'}}</text>
+      </view>
+      <view class="item-actions">
+        <text class="link" bindtap="onEdit" data-key="{{item.key}}">设置周期</text>
+        <text class="btn-done" bindtap="onDone" data-key="{{item.key}}">今天已完成</text>
+      </view>
+    </view>
+
+    <view class="ai-hint card" bindtap="onAskAi">
+      <text class="ai-hint-title">不确定周期？问问 AI</text>
+      <text class="ai-hint-sub">驱虫、疫苗间隔可咨询智能助手 ›</text>
+    </view>
+  </block>
+</view>
+
+<view class="sheet-mask" wx:if="{{editingKey}}" bindtap="onCloseEdit">
+  <view class="sheet" catchtap="">
+    <view class="sheet-title">设置提醒</view>
+    <view class="form-group">
+      <text class="form-label">上次完成日期</text>
+      <picker mode="date" value="{{editLastDate}}" end="{{today}}" bindchange="onEditDate">
+        <view class="form-input">{{editLastDate || '请选择'}}</view>
+      </picker>
+    </view>
+    <view class="form-group">
+      <text class="form-label">提醒周期（天）</text>
+      <input class="form-input" type="number" value="{{editInterval}}" bindinput="onEditInterval" placeholder="例如 30" />
+    </view>
+    <button class="btn-primary" bindtap="onSaveEdit">保存</button>
+  </view>
+</view>

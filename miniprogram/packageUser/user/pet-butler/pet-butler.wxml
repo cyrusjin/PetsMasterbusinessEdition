@@ -1,0 +1,95 @@
+<view class="butler-page">
+  <view class="hero-card">
+    <view class="hero-copy">
+      <view class="hero-title-row">
+        <text class="hero-badge">AI</text>
+        <text class="hero-title">宠物管家</text>
+      </view>
+      <text class="hero-sub">{{tip}}</text>
+      <view class="hero-stats">
+        <view class="stat-chip">
+          <text class="stat-num">{{pets.length}}</text>
+          <text class="stat-label">只宝贝</text>
+        </view>
+        <view class="stat-chip">
+          <text class="stat-num">{{upcoming.length}}</text>
+          <text class="stat-label">近期待办</text>
+        </view>
+        <view class="stat-chip" wx:if="{{walkStreak > 0}}">
+          <text class="stat-num">{{walkStreak}}</text>
+          <text class="stat-label">连遛天</text>
+        </view>
+      </view>
+      <view class="ai-entry" bindtap="onOpenAi">
+        <view class="ai-entry-copy">
+          <text class="ai-entry-title">AI 问诊</text>
+          <text class="ai-entry-sub">描述症状，获取养护建议</text>
+        </view>
+        <text class="ai-entry-arrow">去问问 ›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-head">
+      <text class="section-title">近期提醒</text>
+      <text class="section-more" bindtap="onOpenReminders">管理 ›</text>
+    </view>
+    <view class="upcoming-list" wx:if="{{upcoming.length}}">
+      <view class="upcoming-item {{item.status}}" wx:for="{{upcoming}}" wx:key="key" bindtap="onOpenReminders">
+        <text class="upcoming-icon">{{item.icon}}</text>
+        <view class="upcoming-body">
+          <text class="upcoming-title">{{item.petName}} · {{item.label}}</text>
+          <text class="upcoming-sub" wx:if="{{item.remain < 0}}">已逾期 {{0 - item.remain}} 天</text>
+          <text class="upcoming-sub" wx:elif="{{item.remain === 0}}">今天到期</text>
+          <text class="upcoming-sub" wx:else>{{item.remain}} 天后 · {{item.nextDate}}</text>
+        </view>
+        <text class="upcoming-badge {{item.status}}">{{item.status === 'overdue' ? '逾期' : (item.status === 'soon' ? '临近' : '待办')}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty-block soft">
+      <text class="empty-text">近两周暂无待办，一切安好</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-head">
+      <text class="section-title">智能小工具</text>
+    </view>
+    <view class="tool-grid">
+      <view
+        class="tool-card {{item.featured ? 'featured' : ''}}"
+        wx:for="{{tools}}"
+        wx:key="id"
+        bindtap="onOpenTool"
+        data-path="{{item.path}}"
+        style="--accent: {{item.color}};"
+      >
+        <text class="tool-emoji">{{item.emoji}}</text>
+        <text class="tool-title">{{item.title}}</text>
+        <text class="tool-desc">{{item.desc}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="section soft">
+    <view class="section-head">
+      <text class="section-title">宠物档案</text>
+      <text class="section-more" bindtap="onGoPets">查看 ›</text>
+    </view>
+    <view wx:if="{{pets.length}}" class="pet-row-list">
+      <view class="pet-row" wx:for="{{pets}}" wx:key="id" bindtap="onGoPets">
+        <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-avatar" />
+        <view wx:else class="pet-avatar fallback">{{item.name[0] || '宠'}}</view>
+        <view class="pet-meta">
+          <text class="pet-name">{{item.name}}</text>
+          <text class="pet-sub">{{item.breed || item.type || '宝贝'}} · {{item.gender || ''}} · {{item.age || '?'}}岁</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-block">
+      <text class="empty-text">还没有宠物档案，添加入口后提醒更贴心</text>
+      <button class="btn-primary empty-btn" bindtap="onAddPet">添加宠物</button>
+    </view>
+  </view>
+</view>

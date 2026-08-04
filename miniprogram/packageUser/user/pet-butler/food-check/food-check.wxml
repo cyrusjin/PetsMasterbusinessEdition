@@ -1,0 +1,51 @@
+<view class="page">
+  <view class="hero card">
+    <text class="hero-title">这能给毛孩子吃吗？</text>
+    <text class="hero-sub">AI 速查 · 做饭前查一下更安心</text>
+    <view class="search-row">
+      <input
+        class="search-input"
+        placeholder="输入食物名，如巧克力、葡萄"
+        value="{{keyword}}"
+        bindinput="onInput"
+        confirm-type="search"
+        bindconfirm="onSearch"
+        focus="{{autoFocus}}"
+      />
+      <text class="search-btn" bindtap="onSearch">查询</text>
+    </view>
+    <view class="hot-row">
+      <text class="hot-chip" wx:for="{{hot}}" wx:key="*this" bindtap="onHot" data-name="{{item}}">{{item}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{keyword}}" class="section">
+    <view class="section-title">查询结果</view>
+    <view wx:if="{{results.length}}">
+      <view class="result card {{item.level}}" wx:for="{{results}}" wx:key="name">
+        <view class="result-top">
+          <text class="result-name">{{item.name}}</text>
+          <text class="level-badge">{{item.levelLabel}}</text>
+        </view>
+        <text class="result-tip">{{item.tip}}</text>
+      </view>
+    </view>
+    <view wx:else class="empty card">
+      <text class="empty-line">暂未收录「{{keyword}}」。拿不准时请勿投喂。</text>
+      <text class="ask-ai" bindtap="onAskAi">去 AI 问诊问问 ›</text>
+    </view>
+  </view>
+
+  <view class="section" wx:else>
+    <view class="section-title">常见速查</view>
+    <view class="result card {{item.level}}" wx:for="{{browsed}}" wx:key="name">
+      <view class="result-top">
+        <text class="result-name">{{item.name}}</text>
+        <text class="level-badge">{{item.levelLabel}}</text>
+      </view>
+      <text class="result-tip">{{item.tip}}</text>
+    </view>
+  </view>
+
+  <view class="disclaimer">仅供日常参考，不构成诊疗建议。</view>
+</view>

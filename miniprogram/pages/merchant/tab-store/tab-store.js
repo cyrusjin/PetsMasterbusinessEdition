@@ -33,7 +33,7 @@ const { showValidationAlert } = require('../../../utils/formAlert');
 const { copyText } = require('../../../utils/clipboard');
 const { buildMerchantCoopContract } = require('../../../utils/merchantCoopContract');
 const { isMerchantRejected, isMerchantDisabled } = require('../../../utils/role');
-const { isAuthorizedNickName } = require('../../../utils/userAuth');
+const { isAuthorizedNickName, getNickNameCapability } = require('../../../utils/userAuth');
 const { isOaBound } = require('../../../utils/officialAccount');
 const { normalizePhone, validateMobilePhone } = require('../../../utils/phone');
 const {
@@ -102,6 +102,18 @@ const {
   getStoredClauseEditText,
   isCustomContractSettings
 } = require('../../../utils/boardingContract');
+const {
+  formatHolidayPricingSummary,
+  getDefaultHolidayPricing,
+  normalizeHolidayPricing
+} = require('../../../utils/legalHolidays');
+const {
+  normalizeLongTermDiscount,
+  normalizeLongTermTiersForEdit,
+  addLongTermTier,
+  removeLongTermTier,
+  updateLongTermTierField
+} = require('../../../utils/longTermDiscount');
 
 function pickReceptionRangeState(shop) {
   const receptionRange = normalizeReceptionRange(shop.receptionRange || shop.range);
@@ -137,11 +149,16 @@ function pickBillingState(rules) {
   const multiPetDiscount = (rules && rules.multiPetDiscount) || {};
   const multiPetDiscountEnabled = multiPetDiscount.enabled === true;
   const multiPetPercent = multiPetDiscount.percent;
+  const longTermDiscount = (rules && rules.longTermDiscount) || {};
+  const longTermDiscountEnabled = longTermDiscount.enabled === true;
   const billingState = {
     checkInDayCharge,
     departureDayCharge,
     departureCharge
   };
+  const holidayPricing = normalizeHolidayPricing(
+    (rules && rules.holidayPricing) || getDefaultHolidayPricing()
+  );
   return {
     billingMode: (rules && rules.billingMode) || 'weight',
     weightPricing: normalizeWeightPricing((rules && rules.weightPricing) || []),
@@ -150,8 +167,11 @@ function pickBillingState(rules) {
     multiPetDiscountPercent: multiPetDiscountEnabled && multiPetPercent != null && multiPetPercent !== ''
       ? String(multiPetPercent)
       : (multiPetPercent != null && multiPetPercent !== '' ? String(multiPetPercent) : ''),
+    longTermDiscountEnabled,
+    longTermDiscountTiers: normalizeLongTermTiersForEdit(longTermDiscount),
     ...billingState,
-    chargeSummary: buildChargeSummary({ ...rules, ...billingState })
+    chargeSummary: buildChargeSummary({ ...rules, ...billingState }),
+    holidayPricingSummary: formatHolidayPricingSummary(holidayPricing)
   };
 }
 
@@ -166,6 +186,7 @@ Page({
     applyStatus: '',
     applyRejectReason: '',
     wxNickName: '',
+    nickCapMode: 'nickname-input',
     agreedToCoopContract: false,
     signedCoopContractDraft: null,
     submitting: false,
@@ -215,19 +236,35 @@ Page({
     washFreeMode: 'none',
     multiPetDiscountEnabled: false,
     multiPetDiscountPercent: '',
+    longTermDiscountEnabled: false,
+    longTermDiscountTiers: [{ minDays: '', zhe: '' }],
+    holidayPricingSummary: '默认不加价',
     showContractModal: false,
     showCoopContractModal: false,
     coopContractMode: 'preview',
     coopContractDoc: null,
     contractClauseDraft: '',
     contractClauseCustomized: false,
+    membership: {
+      active: false,
+      freeDogLimit: 5,
+      boardingCount: 0,
+      priceYuan: '9.9',
+      expireAtText: ''
+    },
     savingContractClause: false
   },
 
   onLoad() {
     this._applyFormDirty = false;
     this._formDirty = false;
+    this._syncNickNameCapability();
     this._hydrateFromCache();
+  },
+
+  _syncNickNameCapability() {
+    const cap = getNickNameCapability();
+    this.setData({ nickCapMode: cap.mode });
   },
 
   _shouldShowApplyFlow() {
@@ -402,6 +439,7 @@ Page({
       .then(() => {
         this._syncApplyShellChrome();
         this._syncTabBar();
+        this._refreshHolidayPricingSummary();
       });
   },
 
@@ -522,12 +560,75 @@ Page({
     });
   },
 
+  onWxNickInput(e) {
+    if (this.data.applyStatus === 'pending') return;
+    // 仅旧版/手输模式使用；新版 nickname 不要绑 input，否则会截成首字母
+    this.setData({ wxNickName: ((e.detail && e.detail.value) || '').trim() });
+  },
+
   onWxNickChange(e) {
     if (this.data.applyStatus === 'pending') return;
-    const wxNickName = ((e.detail && e.detail.value) || '').trim();
-    this.setData({ wxNickName });
+    // 新版仅在 change/blur 取完整值
+    const wxNickName = ((e.detail && e.detail.value) || this.data.wxNickName || '').trim();
     if (!isAuthorizedNickName(wxNickName)) return;
+    if (wxNickName !== (this.data.wxNickName || '')) {
+      this.setData({ wxNickName });
+    }
     app.updateProfile({ nickName: wxNickName }).catch(() => {});
+  },
+
+  onWxNickReview(e) {
+    if (e && e.detail && e.detail.pass === false) {
+      this.setData({ wxNickName: '' });
+    }
+  },
+
+  /** 旧版微信：getUserProfile 弹窗（新版会返回「微信用户」，不可用） */
+  onGetWxNickProfile() {
+    if (this.data.applyStatus === 'pending') return;
+    if (typeof wx.getUserProfile !== 'function') {
+      wx.showToast({ title: '当前微信过旧，请升级或手动输入昵称', icon: 'none' });
+      return;
+    }
+    wx.getUserProfile({
+      desc: '用于商家入驻审核识别申请人',
+      success: (res) => {
+        const wxNickName = ((res && res.userInfo && res.userInfo.nickName) || '').trim();
+        if (!isAuthorizedNickName(wxNickName)) {
+          wx.showToast({
+            title: '当前微信已不返回真实昵称，请升级微信后使用输入框点选，或手动输入',
+            icon: 'none',
+            duration: 3500
+          });
+          return;
+        }
+        this.setData({ wxNickName });
+        app.updateProfile({ nickName: wxNickName }).catch(() => {});
+        wx.showToast({ title: '昵称已获取', icon: 'success' });
+      },
+      fail: () => {
+        wx.showToast({ title: '未授权昵称，可手动输入', icon: 'none' });
+      }
+    });
+  },
+
+  /** 从原生 input 回读昵称（选微信昵称时 data 可能未及时同步） */
+  _readWxNickNameFromInput() {
+    return new Promise((resolve) => {
+      try {
+        wx.createSelectorQuery()
+          .in(this)
+          .select('#applyWxNickInput')
+          .fields({ properties: ['value'], dataset: true })
+          .exec((res) => {
+            const fromDom = res && res[0] && res[0].value;
+            const nick = String(fromDom != null ? fromDom : (this.data.wxNickName || '')).trim();
+            resolve(nick);
+          });
+      } catch (err) {
+        resolve(String(this.data.wxNickName || '').trim());
+      }
+    });
   },
 
   _saveApplyDraft() {
@@ -905,12 +1006,6 @@ Page({
       return;
     }
 
-    const wxNickName = (this.data.wxNickName || '').trim();
-    if (!isAuthorizedNickName(wxNickName)) {
-      showValidationAlert('请先获取微信昵称，便于平台审核识别申请人', '需要微信昵称');
-      return;
-    }
-
     if (!this.data.agreedToCoopContract || !this.data.signedCoopContractDraft) {
       showValidationAlert('请先阅读并签署《商家入驻平台合作协议》', '需要签署协议');
       return;
@@ -920,21 +1015,31 @@ Page({
     this.setData({ submitting: true });
     wx.showLoading({ title: '提交中', mask: true });
 
-    Promise.resolve()
-      .then(() => app.updateProfile({ nickName: wxNickName }))
-      .then(() => Promise.all([
+    this._readWxNickNameFromInput()
+      .then((nick) => {
+        const wxNickName = nick;
+        if (!isAuthorizedNickName(wxNickName)) {
+          const err = new Error('请先获取微信昵称，便于平台审核识别申请人');
+          err.__validation = true;
+          err.title = '需要微信昵称';
+          throw err;
+        }
+        this.setData({ wxNickName });
+        return app.updateProfile({ nickName: wxNickName }).then(() => wxNickName);
+      })
+      .then((wxNickName) => Promise.all([
         uploadStorePhotos(storePhotos),
         uploadBusinessLicense(this.data.applyBusinessLicense)
-      ]))
-      .then(([uploadedPhotos, businessLicense]) => storeApi.submitMerchantApply({
+      ]).then(([uploadedPhotos, businessLicense]) => ({ wxNickName, uploadedPhotos, businessLicense })))
+      .then(({ wxNickName, uploadedPhotos, businessLicense }) => storeApi.submitMerchantApply({
         ...shop,
         storePhotos: uploadedPhotos,
         businessLicense: businessLicense || '',
         coopContractSigned: true,
         coopContractSignTime: signedCoopContractDraft.signTime,
         coopContractSnapshot: signedCoopContractDraft
-      }).then((res) => ({ res, uploadedPhotos, businessLicense })))
-      .then(({ res, uploadedPhotos, businessLicense }) => {
+      }).then((res) => ({ res, wxNickName, uploadedPhotos, businessLicense })))
+      .then(({ res, wxNickName, uploadedPhotos, businessLicense }) => {
         if (!res || !res.success || !res.store) {
           throw new Error((res && res.errMsg) || '提交失败');
         }
@@ -978,6 +1083,10 @@ Page({
       })
       .catch((err) => {
         wx.hideLoading();
+        if (err && err.__validation) {
+          showValidationAlert(err.message, err.title || '提示');
+          return;
+        }
         wx.showToast({
           title: (err && err.message) || '提交失败',
           icon: 'none',
@@ -1101,10 +1210,30 @@ Page({
       washPricing: normalizeWashPricing(normalizedShop.washPricing || []),
       washFreeMode: parseWashFreeMinDays(normalizedShop.washFreeMinDays) > 0 ? 'minDays' : 'none',
       valueAddedServices: resolveStoreValueAddedServices(normalizedShop),
+      membership: normalizedShop.membership || this.data.membership,
       ...pickBillingState(rules),
       ...pickBusinessHoursState(normalizedShop),
       ...pickReceptionRangeState(normalizedShop),
       ...this._pickContractClauseState(normalizedShop)
+    });
+  },
+
+  onGoMembership() {
+    wx.navigateTo({ url: '/packageExtra/membership/membership' });
+  },
+
+  onGoHolidayPricing() {
+    wx.navigateTo({ url: '/packageBiz/holiday-pricing/holiday-pricing' });
+  },
+
+  _refreshHolidayPricingSummary() {
+    const shop = app.getShop() || {};
+    const rules = {
+      ...app.getBillingRules(),
+      ...(shop.billingRules || {})
+    };
+    this.setData({
+      holidayPricingSummary: formatHolidayPricingSummary(rules.holidayPricing)
     });
   },
 
@@ -1283,10 +1412,16 @@ Page({
   },
 
   _getBillingRulesPayload() {
-    const percent = parseFloat(this.data.multiPetDiscountPercent);
+    const percentRaw = String(this.data.multiPetDiscountPercent || '').trim();
+    const percent = /^\d+$/.test(percentRaw) ? Number(percentRaw) : NaN;
+    const existing = app.getBillingRules() || {};
+    const shopRules = (this.data.shop && this.data.shop.billingRules) || {};
+    const holidayPricing = normalizeHolidayPricing(
+      shopRules.holidayPricing || existing.holidayPricing || getDefaultHolidayPricing()
+    );
     const valueAddedServices = normalizeValueAddedServices(this.data.valueAddedServices);
     return {
-      ...app.getBillingRules(),
+      ...existing,
       billingMode: this.data.billingMode,
       weightPricing: normalizeWeightPricing(this.data.weightPricing),
       roomPricing: normalizeRoomPricing(this.data.roomPricing),
@@ -1294,12 +1429,30 @@ Page({
       checkInDayCharge: this.data.checkInDayCharge,
       departureDayCharge: this.data.departureDayCharge,
       departureCharge: normalizeDepartureCharge(this.data.departureCharge),
-      multiPetDiscount: {
-        enabled: !!this.data.multiPetDiscountEnabled,
-        mode: 'fromSecondPercent',
-        percent: Number.isFinite(percent) ? percent : 0,
-        applyTo: 'boarding'
-      }
+      holidayPricing,
+      multiPetDiscount: (() => {
+        const enabled = !!this.data.multiPetDiscountEnabled && Number.isInteger(percent);
+        return {
+          enabled,
+          mode: 'fromSecondPercent',
+          percent: enabled ? percent : 0,
+          applyTo: 'boarding'
+        };
+      })(),
+      longTermDiscount: (() => {
+        const draft = {
+          enabled: !!this.data.longTermDiscountEnabled,
+          tiers: this.data.longTermDiscountTiers || [],
+          applyTo: 'boarding'
+        };
+        if (!draft.enabled) return { enabled: false, tiers: [], applyTo: 'boarding' };
+        const normalized = normalizeLongTermDiscount(draft);
+        // 开启但未填有效档位：按未启用保存
+        if (!normalized.tiers.length) {
+          return { enabled: false, tiers: [], applyTo: 'boarding' };
+        }
+        return normalized;
+      })()
     };
   },
 
@@ -1314,7 +1467,51 @@ Page({
 
   onMultiPetDiscountPercentInput(e) {
     this._markDirty();
-    this.setData({ multiPetDiscountPercent: e.detail.value });
+    const value = String((e.detail && e.detail.value) || '').replace(/[^\d]/g, '');
+    this.setData({ multiPetDiscountPercent: value });
+  },
+
+  onLongTermDiscountSwitch(e) {
+    this._markDirty();
+    const enabled = !!(e.detail && e.detail.value);
+    const tiers = (this.data.longTermDiscountTiers && this.data.longTermDiscountTiers.length)
+      ? this.data.longTermDiscountTiers
+      : [{ minDays: '', zhe: '' }];
+    this.setData({
+      longTermDiscountEnabled: enabled,
+      longTermDiscountTiers: tiers
+    });
+  },
+
+  onLongTermTierField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    if (!Number.isInteger(index) || (field !== 'minDays' && field !== 'zhe')) return;
+    this.setData({
+      longTermDiscountTiers: updateLongTermTierField(
+        this.data.longTermDiscountTiers,
+        index,
+        field,
+        e.detail.value
+      )
+    });
+  },
+
+  onAddLongTermTier() {
+    this._markDirty();
+    this.setData({
+      longTermDiscountTiers: addLongTermTier(this.data.longTermDiscountTiers)
+    });
+  },
+
+  onRemoveLongTermTier(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index)) return;
+    this.setData({
+      longTermDiscountTiers: removeLongTermTier(this.data.longTermDiscountTiers, index)
+    });
   },
 
   onField(e) {
