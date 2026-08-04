@@ -1,0 +1,21 @@
+<view class="cs-entry" bindtap="onOpen" wx:if="{{showEntry}}">
+  <text class="cs-entry-text">联系系统客服</text>
+</view>
+
+<view class="cs-modal" wx:if="{{visible}}" catchtouchmove="preventMove">
+  <view class="cs-mask" bindtap="onClose"></view>
+  <view class="cs-panel" catchtap="preventMove">
+    <text class="cs-close" bindtap="onClose">×</text>
+    <text class="cs-title">联系系统客服</text>
+    <text class="cs-desc">添加下方微信，与系统客服沟通入驻与使用问题</text>
+    <image
+      class="cs-qr"
+      src="/images/cs-wechat-qr.png"
+      mode="widthFix"
+      show-menu-by-longpress="{{true}}"
+      bindtap="onPreviewQr"
+    />
+    <text class="cs-hint">长按识别二维码，添加系统客服微信</text>
+    <view class="cs-btn" bindtap="onClose">我知道了</view>
+  </view>
+</view>

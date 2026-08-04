@@ -1,3 +1,6 @@
+const ADMIN_REGION_RE =
+  /(北京市|天津市|上海市|重庆市)|(?:河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|台湾|内蒙古|广西|西藏|宁夏|新疆)(?:省|维吾尔自治区|壮族自治区|回族自治区|自治区)?|[\u4e00-\u9fa5]{2,10}(?:市|州|盟|地区)/;
+
 function chooseStoreLocation(current = {}) {
   return chooseMapLocation(current, '请允许使用位置信息，以便在地图上选择地址');
 }
@@ -39,6 +42,11 @@ function chooseMapLocation(current = {}, authTip = '请允许使用位置信息�
   });
 }
 
+function hasAdminRegion(text) {
+  const value = String(text || '').replace(/\s+/g, '');
+  return !!value && ADMIN_REGION_RE.test(value);
+}
+
 function isVagueAddress(text) {
   const value = (text || '').trim();
   if (!value) return true;
@@ -60,6 +68,14 @@ function formatLocationAddress(res) {
   if (name === address) return name;
   if (address.includes(name)) return address;
   if (name.includes(address)) return name;
+
+  // 地址含行政区时必须保留，避免 POI 名（…店）把省市丢掉
+  if (hasAdminRegion(address) && !hasAdminRegion(name)) {
+    return `${name} ${address}`;
+  }
+  if (hasAdminRegion(name) && !hasAdminRegion(address)) {
+    return name;
+  }
 
   const nameVague = isVagueAddress(name);
   const addressVague = isVagueAddress(address);
@@ -124,6 +140,7 @@ module.exports = {
   choosePickupLocation,
   formatLocationAddress,
   getLocationDisplayLines,
+  hasAdminRegion,
   isVagueAddress,
   isValidLocationResult,
   getLocationValidationMessage,

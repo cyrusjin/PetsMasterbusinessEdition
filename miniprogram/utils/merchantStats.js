@@ -104,6 +104,34 @@ function isInRange(ts, range) {
   return ts >= range.start.getTime() && ts <= range.end.getTime();
 }
 
+function getLedgerEntryTimestamp(entry) {
+  if (!entry) return 0;
+  if (entry.date) {
+    const d = parseDateYmd(entry.date);
+    if (d) return d.getTime();
+  }
+  return Number(entry.createTime) || 0;
+}
+
+function filterLedgerByPeriod(entries, range) {
+  return (entries || []).filter((entry) => isInRange(getLedgerEntryTimestamp(entry), range));
+}
+
+function sumLedger(entries) {
+  let expense = 0;
+  let income = 0;
+  (entries || []).forEach((entry) => {
+    const amount = roundMoney(entry && entry.amount);
+    if (!(amount > 0)) return;
+    if (entry.type === 'income') income += amount;
+    else expense += amount;
+  });
+  return {
+    expense: roundMoney(expense),
+    income: roundMoney(income)
+  };
+}
+
 function roundMoney(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
@@ -161,13 +189,16 @@ function buildStatusLabel(status) {
   return map[status] || status || '--';
 }
 
-function buildMerchantStatistics(orders, periodKey = 'month', now = new Date()) {
+function buildMerchantStatistics(orders, periodKey = 'month', ledgerEntries = [], now = new Date()) {
   const list = Array.isArray(orders) ? orders : [];
+  const ledgerList = Array.isArray(ledgerEntries) ? ledgerEntries : [];
   const range = getPeriodRange(periodKey, now);
   const prevRange = getPreviousPeriodRange(periodKey, now);
 
   const inPeriod = filterByPeriod(list, range);
   const prevPeriod = prevRange ? filterByPeriod(list, prevRange) : [];
+  const ledgerInPeriod = filterLedgerByPeriod(ledgerList, range);
+  const prevLedger = prevRange ? filterLedgerByPeriod(ledgerList, prevRange) : [];
 
   const completedInPeriod = inPeriod.filter((o) => o.status === 'completed');
   const boardingAll = list.filter((o) => o.status === 'boarding');
@@ -181,6 +212,10 @@ function buildMerchantStatistics(orders, periodKey = 'month', now = new Date()) 
   const periodPipeline = sumFees(
     inPeriod.filter((o) => o.status === 'boarding' || o.status === 'completed')
   );
+  const ledgerSums = sumLedger(ledgerInPeriod);
+  const prevLedgerSums = sumLedger(prevLedger);
+  const netProfit = roundMoney(recognized.totalFee + ledgerSums.income - ledgerSums.expense);
+  const prevNetProfit = roundMoney(prevRecognized.totalFee + prevLedgerSums.income - prevLedgerSums.expense);
 
   const completedCount = completedInPeriod.length;
   const avgOrderValue = completedCount
@@ -200,11 +235,14 @@ function buildMerchantStatistics(orders, periodKey = 'month', now = new Date()) 
     else if (o.petId) petSet.add(o.petId);
   });
 
-  const compositionTotal = recognized.boardingFee + recognized.shippingFee;
+  const compositionTotal = recognized.boardingFee + recognized.shippingFee + ledgerSums.income;
   const boardingPct = compositionTotal
     ? Math.round((recognized.boardingFee / compositionTotal) * 100)
     : 0;
-  const shippingPct = compositionTotal ? 100 - boardingPct : 0;
+  const shippingPct = compositionTotal
+    ? Math.round((recognized.shippingFee / compositionTotal) * 100)
+    : 0;
+  const extraIncomePct = compositionTotal ? Math.max(0, 100 - boardingPct - shippingPct) : 0;
 
   const orderStats = {
     pending: list.filter((o) => o.status === 'pending').length,
@@ -245,7 +283,14 @@ function buildMerchantStatistics(orders, periodKey = 'month', now = new Date()) 
       compareText: prevRange ? formatCompareText(recognized.totalFee, prevRecognized.totalFee, prevLabel) : '',
       pipeline: formatMoneyDisplay(periodPipeline.totalFee),
       inTransit: formatMoneyDisplay(inTransit.totalFee),
-      pending: formatMoneyDisplay(pendingAmount.totalFee)
+      pending: formatMoneyDisplay(pendingAmount.totalFee),
+      expense: formatMoneyDisplay(ledgerSums.expense),
+      expenseRaw: ledgerSums.expense,
+      extraIncome: formatMoneyDisplay(ledgerSums.income),
+      extraIncomeRaw: ledgerSums.income,
+      netProfit: formatMoneyDisplay(netProfit),
+      netProfitRaw: netProfit,
+      netCompareText: prevRange ? formatCompareText(netProfit, prevNetProfit, prevLabel) : ''
     },
     kpis: [
       { key: 'inTransit', label: '在途金额', value: `¥${formatMoneyDisplay(inTransit.totalFee)}`, hint: '寄养中订单' },
@@ -256,9 +301,18 @@ function buildMerchantStatistics(orders, periodKey = 'month', now = new Date()) 
     composition: {
       boardingFee: formatMoneyDisplay(recognized.boardingFee),
       shippingFee: formatMoneyDisplay(recognized.shippingFee),
+      extraIncome: formatMoneyDisplay(ledgerSums.income),
       boardingPct,
       shippingPct,
+      extraIncomePct,
       hasData: compositionTotal > 0
+    },
+    ledger: {
+      expense: formatMoneyDisplay(ledgerSums.expense),
+      income: formatMoneyDisplay(ledgerSums.income),
+      netProfit: formatMoneyDisplay(netProfit),
+      entryCount: ledgerInPeriod.length,
+      hasData: ledgerInPeriod.length > 0 || ledgerSums.expense > 0 || ledgerSums.income > 0
     },
     orderStats,
     recentOrders,

@@ -19,6 +19,11 @@ const {
   buildPickupFeeQuote,
   parseStoreCoords
 } = require('../../../utils/pickupPricing');
+const {
+  formatWashPricingSummary,
+  calcWashFee,
+  calcWashFeeForPets
+} = require('../../../utils/washPricing');
 const { resolveStorePickupDrivingDistance } = require('../../utils/mapDistance');
 const {
   choosePickupLocation,
@@ -27,7 +32,14 @@ const {
 } = require('../../../utils/location');
 const { isOaBound } = require('../../../utils/officialAccount');
 const { calcMultiPetBoardingFees } = require('../../../utils/multiPetPricing');
-const { findFirstPetsBookingConflict } = require('../../../utils/bookingOverlap');
+const { findFirstPetsBookingConflict } = require('../../utils/bookingOverlap');
+const {
+  buildValueAddedSelectList,
+  calcValueAddedFee,
+  snapshotValueAddedServices,
+  resolveValueAddedSelectPhotos,
+  resolveStoreValueAddedServices
+} = require('../../../utils/valueAddedServices');
 
 /** 超过该字数时预览截断，点击查看完整 */
 const NOTICE_EXPAND_CHARS = 90;
@@ -177,10 +189,19 @@ Page({
     petRoomTypes: {},
     petRoomSections: [],
     roomsReady: false,
-    extraList: [],
+    valueAddedList: [],
     specialNeeds: '',
     specialNeedGuides: buildSpecialNeedGuides(''),
     needPickup: false,
+    needWash: false,
+    washFee: 0,
+    washFeeText: '0',
+    washFeeReady: false,
+    washFeeCalcText: '',
+    washPricingSummary: '',
+    valueAddedFee: 0,
+    valueAddedFeeText: '0',
+    hasValueAddedSelected: false,
     pickupAddress: '',
     pickupLocationName: '',
     pickupLatitude: '',
@@ -200,6 +221,7 @@ Page({
     contractModalSignable: false,
     contractDoc: {},
     pickupNoticeExpandable: false,
+    washNoticeExpandable: false,
     boardingNoticeExpandable: false,
     noticePreviewVisible: false,
     noticePreviewTitle: '',
@@ -297,7 +319,7 @@ Page({
     const userInfo = app.globalData.userInfo || {};
     const storeId = app.getStoreId();
     const loadStore = storeId && app.globalData.env
-      ? app.bindStore(storeId, { force: !preserveForm, syncUser: false })
+      ? app.bindStore(storeId, { force: true, syncUser: false })
       : Promise.resolve();
 
     return loadStore.then(() => {
@@ -317,7 +339,10 @@ Page({
       }
 
       const rules = app.getStoreBillingRules();
-      const extraList = preserveForm ? this.data.extraList : [];
+      const valueAddedList = buildValueAddedSelectList(
+        resolveStoreValueAddedServices(store) || rules.valueAddedServices,
+        preserveForm ? this.data.valueAddedList : []
+      );
       const chargeSummary = buildChargeSummary(rules);
 
       return app.loadPets().then((pets) => {
@@ -343,10 +368,12 @@ Page({
         const patch = {
           store,
           pets,
-          extraList,
+          valueAddedList,
           billingMode: rules.billingMode || 'weight',
           pickupPricingSummary: formatPickupPricingSummary(store),
+          washPricingSummary: formatWashPricingSummary(store),
           pickupNoticeExpandable: isNoticeExpandable(store.pickupNotice),
+          washNoticeExpandable: isNoticeExpandable(store.washNotice),
           boardingNoticeExpandable: isNoticeExpandable(store.notice),
           chargeSummary,
           minDate: getTodayStr(),
@@ -386,8 +413,18 @@ Page({
         this.setData(patch);
         this._pageReady = true;
         this.calcFee();
-        return this._refreshPetRoomSectionPhotos(petRoomSections);
+        return Promise.all([
+          this._refreshPetRoomSectionPhotos(petRoomSections),
+          this._refreshValueAddedPhotos(valueAddedList)
+        ]);
       });
+    });
+  },
+
+  _refreshValueAddedPhotos(list) {
+    return resolveValueAddedSelectPhotos(list).then((resolved) => {
+      if (!resolved || !resolved.length) return;
+      this.setData({ valueAddedList: resolved });
     });
   },
 
@@ -530,12 +567,12 @@ Page({
 
   onTimePanelTap() {},
 
-  onExtraChange(e) {
-    const key = e.currentTarget.dataset.key;
-    const list = this.data.extraList.map((item) => (
-      item.key === key ? { ...item, checked: !item.checked } : item
+  onValueAddedChange(e) {
+    const id = e.currentTarget.dataset.id;
+    const list = this.data.valueAddedList.map((item) => (
+      item.id === id ? { ...item, checked: !!e.detail.value } : item
     ));
-    this.setData({ extraList: list });
+    this.setData({ valueAddedList: list });
     this.calcFee();
   },
 
@@ -586,6 +623,11 @@ Page({
       this._pickupTimeTouched = false;
     }
     this.setData(patch);
+    this.calcFee();
+  },
+
+  onWashChange(e) {
+    this.setData({ needWash: !!e.detail.value });
     this.calcFee();
   },
 
@@ -699,6 +741,13 @@ Page({
       pickupFeePendingText: '',
       pickupFeeStoreLocationMissing: false,
       pickupFeeReady: false,
+      washFee: 0,
+      washFeeText: '0',
+      washFeeReady: false,
+      washFeeCalcText: '',
+      valueAddedFee: 0,
+      valueAddedFeeText: '0',
+      hasValueAddedSelected: false,
       pickupDrivingDistanceKm: null,
       pickupDistanceMode: '',
       pickupDistanceError: '',
@@ -722,7 +771,7 @@ Page({
 
   calcFee() {
     const {
-      selectedPets, startDate, endDate, startTime, endTime, extraList, needPickup,
+      selectedPets, startDate, endDate, startTime, endTime, valueAddedList, needPickup, needWash,
       petRoomTypes, billingMode, store, pickupLatitude, pickupLongitude,
       pickupDrivingDistanceKm, pickupDistanceMode
     } = this.data;
@@ -743,9 +792,6 @@ Page({
     }
 
     let extrasFeePerDay = 0;
-    extraList.filter((e) => e.checked).forEach((e) => {
-      extrasFeePerDay += e.price;
-    });
 
     const multiResult = calcMultiPetBoardingFees({
       pets,
@@ -824,7 +870,22 @@ Page({
           ))
       );
       const pickupFee = pickupFeeReady && pickupQuote && pickupQuote.ready ? pickupQuote.fee : 0;
-      const grandTotalFee = boardingTotalFee + (pickupFeeReady ? pickupFee : 0);
+      const washQuote = calcWashFeeForPets({
+        store: storeView,
+        pets,
+        stayDays: breakdown.days,
+        needWash: !!(needWash && storeView.hasWash)
+      });
+      const washFee = washQuote.ready ? washQuote.fee : 0;
+      const washFeeReady = !!(needWash && storeView.hasWash && washQuote.ready);
+      const washFeeCalcText = washFeeReady ? (washQuote.text || '') : '';
+      const valueAddedQuote = calcValueAddedFee(valueAddedList);
+      const valueAddedFee = valueAddedQuote.fee;
+      const hasValueAddedSelected = valueAddedQuote.items.length > 0;
+      const grandTotalFee = boardingTotalFee
+        + (pickupFeeReady ? pickupFee : 0)
+        + (washFeeReady ? washFee : 0)
+        + valueAddedFee;
       const totalDisplayReady = breakdown.ready && (!needPickup || pickupFeeReady);
 
       let pickupFeeStandard = '';
@@ -899,6 +960,13 @@ Page({
         pickupDistanceText,
         pickupFeeCalcText,
         pickupFeePendingText,
+        washFee,
+        washFeeText: formatMoney(washFee),
+        washFeeReady,
+        washFeeCalcText,
+        valueAddedFee,
+        valueAddedFeeText: formatMoney(valueAddedFee),
+        hasValueAddedSelected,
         grandTotalFee,
         grandTotalFeeText: formatMoney(grandTotalFee),
         totalFee: grandTotalFee,
@@ -1078,17 +1146,13 @@ Page({
     const {
       store,
       selectedPets, startDate, endDate, startTime, endTime, days,
-      extraList, specialNeeds, needPickup, petRoomTypes, billingMode,
+      valueAddedList, specialNeeds, needPickup, needWash, petRoomTypes, billingMode,
       signedContractDraft, contactName, contactPhone, contactIdCard, emergencyPhone
     } = this.data;
 
     const rules = app.getStoreBillingRules();
     let multiResult = this._multiPetFeeResult;
     if (!multiResult) {
-      let extrasFeePerDay = 0;
-      extraList.filter((e) => e.checked).forEach((e) => {
-        extrasFeePerDay += e.price;
-      });
       multiResult = calcMultiPetBoardingFees({
         pets: selectedPets,
         rules,
@@ -1097,7 +1161,7 @@ Page({
         startTime,
         endTime,
         petRoomTypes,
-        extrasFeePerDay
+        extrasFeePerDay: 0
       });
       this._multiPetFeeResult = multiResult;
     }
@@ -1119,14 +1183,26 @@ Page({
       })
       : 0;
     const signTime = signedContractDraft.signTime || new Date().toLocaleString('zh-CN');
-    const checkedExtras = extraList.filter((e) => e.checked).map((e) => e.key);
+    const valueAddedQuote = calcValueAddedFee(valueAddedList);
+    const valueAddedSnapshot = snapshotValueAddedServices(valueAddedList);
+    const valueAddedFeeTotal = valueAddedQuote.fee;
 
     const buildOrderForItem = (item, index) => {
       const pet = item.pet;
       const isPrimary = item.isPrimary;
       const shippingFee = isPrimary ? pickupFee : 0;
+      const orderNeedWash = !!(storeView.hasWash && needWash);
+      const washQuote = calcWashFee({
+        store: storeView,
+        petWeight: pet.weight,
+        stayDays: days,
+        needWash: orderNeedWash
+      });
+      const washFee = orderNeedWash ? washQuote.fee : 0;
+      const valueAddedFee = isPrimary ? valueAddedFeeTotal : 0;
+      const orderValueAddedServices = isPrimary ? valueAddedSnapshot : [];
       const orderBoardingFee = item.boardingFee;
-      const orderTotalFee = orderBoardingFee + shippingFee;
+      const orderTotalFee = orderBoardingFee + shippingFee + washFee + valueAddedFee;
       const contractId = `ctr_${Date.now()}_${index}`;
       const roomType = item.roomType || (petRoomTypes && petRoomTypes[pet.id]) || '';
       const roomName = (findRoom(rules.roomPricing, roomType) || {}).name || '';
@@ -1197,6 +1273,10 @@ Page({
         days,
         boardingFee: orderBoardingFee,
         shippingFee,
+        washFee,
+        needWash: orderNeedWash,
+        valueAddedFee,
+        valueAddedServices: orderValueAddedServices,
         totalFee: orderTotalFee,
         basePrice: item.basePrice,
         deposit,
@@ -1215,9 +1295,21 @@ Page({
             : undefined,
           pickupDistanceMode: isPrimary && storeView.pickupPricingMode === 'distance'
             ? (this.data.pickupDistanceMode || 'driving')
+            : undefined,
+          wash: orderNeedWash
+            ? {
+              unitPrice: washQuote.unitPrice,
+              fee: washFee,
+              freeByStay: washQuote.freeByStay,
+              freeMinDays: washQuote.freeMinDays,
+              text: washQuote.text
+            }
+            : undefined,
+          valueAdded: orderValueAddedServices.length
+            ? { fee: valueAddedFee, items: orderValueAddedServices }
             : undefined
         },
-        extras: checkedExtras,
+        extras: [],
         needPickup: store.hasPickup ? (isPrimary && needPickup) : false,
         specialNeeds,
         billingMode,
@@ -1367,9 +1459,28 @@ Page({
     });
   },
 
+  onPreviewValueAddedPhoto(e) {
+    const url = e.currentTarget.dataset.url;
+    if (!url) return;
+    const urls = (this.data.valueAddedList || [])
+      .map((item) => item && item.photo)
+      .filter(Boolean);
+    wx.previewImage({
+      current: url,
+      urls: urls.length ? urls : [url]
+    });
+  },
+
   onPreviewNoticePhoto(e) {
     const url = e.currentTarget.dataset.url;
     const urls = (this.data.store && this.data.store.noticePhotos) || [];
+    if (!url || !urls.length) return;
+    wx.previewImage({ current: url, urls });
+  },
+
+  onPreviewWashNoticePhoto(e) {
+    const url = e.currentTarget.dataset.url;
+    const urls = (this.data.store && this.data.store.washNoticePhotos) || [];
     if (!url || !urls.length) return;
     wx.previewImage({ current: url, urls });
   },
@@ -1379,7 +1490,10 @@ Page({
     if (!(expandable === true || expandable === 'true')) return;
     const title = e.currentTarget.dataset.title || '须知';
     const store = this.data.store || {};
-    const content = title === '接送须知' ? (store.pickupNotice || '') : (store.notice || '');
+    let content = '';
+    if (title === '接送须知') content = store.pickupNotice || '';
+    else if (title === '洗护须知') content = store.washNotice || '';
+    else content = store.notice || '';
     if (!String(content).trim()) return;
     this.setData({
       noticePreviewVisible: true,

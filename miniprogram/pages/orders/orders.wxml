@@ -41,9 +41,8 @@
         </view>
         <text class="fee-highlight" style="font-size:28rpx;">¥{{item.totalFee}}</text>
       </view>
-      <view class="order-actions" wx:if="{{item.pricePendingConfirm || item.hasUnread}}">
-        <button wx:if="{{item.pricePendingConfirm}}" class="btn-sm btn-orange" catchtap="onConfirmPrice" data-id="{{item.id}}">待确认</button>
-        <text wx:elif="{{item.hasUnread}}" class="unread-hint">商家已更新订单</text>
+      <view class="order-actions" wx:if="{{item.pricePendingConfirm}}">
+        <button class="btn-sm btn-orange" catchtap="onConfirmPrice" data-id="{{item.id}}">待确认</button>
       </view>
     </view>
   </view>

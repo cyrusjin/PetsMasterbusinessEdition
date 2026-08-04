@@ -141,6 +141,62 @@
           </view>
         </view>
 
+        <view class="pickup-inline" wx:if="{{store.hasWash}}">
+          <view class="pickup-inline-head">
+            <text class="pickup-inline-title">洗护服务</text>
+            <switch checked="{{needWash}}" bindchange="onWashChange" color="#E98657" />
+          </view>
+          <view class="pickup-notice-box pickup-notice-inline" wx:if="{{needWash && (store.washNotice || washPricingSummary || (store.washNoticePhotos && store.washNoticePhotos.length))}}">
+            <text class="pickup-notice-title" wx:if="{{store.washNotice || (store.washNoticePhotos && store.washNoticePhotos.length)}}">洗护须知</text>
+            <view
+              wx:if="{{store.washNotice}}"
+              class="notice-preview {{washNoticeExpandable ? 'notice-preview-expandable' : ''}}"
+              bindtap="onOpenNoticePreview"
+              data-title="洗护须知"
+              data-expandable="{{washNoticeExpandable}}"
+            >
+              <text class="pickup-notice-text {{washNoticeExpandable ? 'notice-text-clamped' : ''}}">{{store.washNotice}}</text>
+              <text class="notice-more-link" wx:if="{{washNoticeExpandable}}">查看完整</text>
+            </view>
+            <view class="boarding-notice-photos" wx:if="{{store.washNoticePhotos && store.washNoticePhotos.length}}">
+              <view
+                class="boarding-notice-photo-item"
+                wx:for="{{store.washNoticePhotos}}"
+                wx:key="*this"
+                bindtap="onPreviewWashNoticePhoto"
+                data-url="{{item}}"
+              >
+                <cached-image custom-class="boarding-notice-photo" src="{{item}}" mode="aspectFill" />
+              </view>
+            </view>
+            <text class="pickup-pricing-summary" wx:if="{{washPricingSummary}}">{{washPricingSummary}}</text>
+          </view>
+        </view>
+
+        <view class="pickup-inline" wx:if="{{valueAddedList.length}}">
+          <view class="pickup-inline-head">
+            <text class="pickup-inline-title">增值服务</text>
+          </view>
+          <view class="extra-item" wx:for="{{valueAddedList}}" wx:key="id">
+            <view
+              class="extra-item-photo"
+              wx:if="{{item.photo}}"
+              catchtap="onPreviewValueAddedPhoto"
+              data-url="{{item.photo}}"
+            >
+              <cached-image custom-class="extra-item-photo-img" src="{{item.photo}}" mode="aspectFill" />
+            </view>
+            <view class="extra-item-main">
+              <view class="flex-between">
+                <text>{{item.name}}</text>
+                <text class="text-gray">¥{{item.priceText}}</text>
+              </view>
+              <text class="extra-item-desc" wx:if="{{item.description}}">{{item.description}}</text>
+            </view>
+            <switch checked="{{item.checked}}" bindchange="onValueAddedChange" data-id="{{item.id}}" color="#E98657" />
+          </view>
+        </view>
+
         <block wx:if="{{feeReady}}">
           <view class="fee-breakdown">
             <view class="fee-breakdown-title">{{feeBreakdownTitle}}</view>
@@ -177,6 +233,25 @@
                 <text class="pickup-fee-meta-line pickup-fee-meta-calc">{{pickupFeeCalcText}}</text>
               </view>
             </view>
+            <view class="fee-pickup-block" wx:if="{{needWash && washFeeReady}}">
+              <view class="fee-day-row fee-pickup-row">
+                <text class="fee-day-date">洗护</text>
+                <text class="fee-day-label">洗护服务费</text>
+                <text class="fee-day-factor"></text>
+                <text class="fee-day-amount">¥{{washFeeText}}</text>
+              </view>
+              <view class="pickup-fee-meta" wx:if="{{washFeeCalcText}}">
+                <text class="pickup-fee-meta-line pickup-fee-meta-calc">{{washFeeCalcText}}</text>
+              </view>
+            </view>
+            <view class="fee-pickup-block" wx:if="{{hasValueAddedSelected}}">
+              <view class="fee-day-row fee-pickup-row" wx:for="{{valueAddedList}}" wx:key="id" wx:if="{{item.checked}}">
+                <text class="fee-day-date">增值</text>
+                <text class="fee-day-label">{{item.name}}</text>
+                <text class="fee-day-factor"></text>
+                <text class="fee-day-amount">¥{{item.priceText}}</text>
+              </view>
+            </view>
           </view>
           <view class="fee-pending-tip fee-pickup-pending" wx:if="{{needPickup && pickupFeePending}}">
             <text wx:if="{{pickupFeeStandard}}">{{pickupFeeStandard}}</text>
@@ -192,14 +267,6 @@
           <text wx:if="{{!startTime || !endTime}}">请选择入住时间和离店时间后查看费用</text>
           <text wx:elif="{{billingMode === 'room' && !roomsReady}}">请为每只宠物选择房间后查看费用</text>
         </view>
-      </view>
-    </view>
-
-    <view class="card" wx:if="{{false}}">
-      <view class="card-title">增值服务</view>
-      <view class="extra-item" wx:for="{{extraList}}" wx:key="key">
-        <view class="flex-between"><text>{{item.label}}</text><text class="text-gray">¥{{item.price}}/天</text></view>
-        <switch checked="{{item.checked}}" bindchange="onExtraChange" data-key="{{item.key}}" color="#4CAF50" />
       </view>
     </view>
 

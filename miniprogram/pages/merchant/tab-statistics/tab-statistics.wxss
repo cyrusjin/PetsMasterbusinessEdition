@@ -102,6 +102,12 @@
   font-size: 22rpx;
   opacity: 0.75;
 }
+.hero-metrics-3 .hero-metric-value {
+  font-size: 26rpx;
+}
+.hero-metrics-3 .hero-metric-label {
+  font-size: 20rpx;
+}
 .hero-divider {
   width: 1rpx;
   height: 48rpx;
@@ -196,6 +202,48 @@
 }
 .composition-fill.shipping {
   background: #F7AA78;
+}
+.composition-fill.extra {
+  background: #81C784;
+}
+
+.ledger-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12rpx;
+}
+.ledger-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 8rpx;
+  background: #F7F8FA;
+  border-radius: 16rpx;
+  min-width: 0;
+}
+.ledger-kpi-value {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #E98657;
+  line-height: 1.2;
+}
+.ledger-kpi-value.expense {
+  color: #E53935;
+}
+.ledger-kpi-value.income {
+  color: #2E7D32;
+}
+.ledger-kpi-label {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  color: #666666;
+  text-align: center;
+  line-height: 1.35;
+}
+.ledger-tip {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
 }
 
 .status-grid {

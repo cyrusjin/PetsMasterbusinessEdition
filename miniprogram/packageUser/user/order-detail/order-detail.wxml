@@ -14,6 +14,13 @@
     <copyable-detail-row label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
     <copyable-detail-row label="寄养天数" value="{{order.days}}天" />
     <copyable-detail-row wx:if="{{order.needPickup}}" label="接送服务" value="需要" />
+    <copyable-detail-row wx:if="{{order.needWash}}" label="洗护服务" value="需要" />
+    <copyable-detail-row
+      wx:if="{{order.valueAddedServices && order.valueAddedServices.length}}"
+      label="增值服务"
+      value="{{valueAddedServicesText}}"
+      stack="{{true}}"
+    />
     <copyable-detail-row wx:if="{{order.specialNeeds}}" label="特殊需求" value="{{order.specialNeeds}}" stack="{{true}}" />
   </view>
 
@@ -21,6 +28,13 @@
     <view class="card-title">商家改价待确认</view>
     <text class="text-gray" style="display:block;margin-bottom:16rpx;">商家已调整订单金额，请确认后继续</text>
     <button class="btn-primary" bindtap="onConfirmPrice">确认新价格 ¥{{feeSummary.totalFee}}</button>
+  </view>
+
+  <view class="card" wx:if="{{order.editPendingConfirm}}">
+    <view class="card-title">改单待商家确认</view>
+    <text class="text-gray" style="display:block;margin-bottom:12rpx;">修改已提交，当前订单仍按原信息执行，待商家确认后生效。</text>
+    <view wx:for="{{pendingEditLines}}" wx:key="*this" class="text-gray" style="display:block;margin-bottom:8rpx;">{{item}}</view>
+    <text wx:if="{{pendingEditTotalFee != null}}" class="fee-highlight" style="display:block;margin-top:8rpx;">确认后费用 ¥{{pendingEditTotalFee}}</text>
   </view>
 
   <view class="card">

@@ -1,5 +1,8 @@
 <view class="merchant-page">
   <view class="container">
+    <view class="mode-switch-row">
+      <cs-contact />
+    </view>
     <view class="card apply-pending-card" wx:if="{{applyStatus === 'pending'}}">
       <view class="card-title">审核中</view>
       <text class="apply-tip">您的入驻申请已提交，请等待管理员审核。审核通过后即可使用商家端功能。</text>

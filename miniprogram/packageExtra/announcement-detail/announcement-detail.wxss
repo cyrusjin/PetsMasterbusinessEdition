@@ -1,0 +1,57 @@
+.page {
+  min-height: 100vh;
+  padding: 24rpx;
+  box-sizing: border-box;
+  background: #FFF8F0;
+}
+
+.loading,
+.empty {
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
+  padding: 80rpx 24rpx;
+}
+
+.detail {
+  padding: 28rpx;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.pin-tag {
+  font-size: 20rpx;
+  color: #C45C3E;
+  background: #FFE8D6;
+  padding: 2rpx 10rpx;
+  border-radius: 999rpx;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.4;
+}
+
+.time {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #B08A6A;
+}
+
+.content {
+  display: block;
+  margin-top: 28rpx;
+  font-size: 28rpx;
+  color: #444;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

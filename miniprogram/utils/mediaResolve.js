@@ -21,8 +21,11 @@ function resolveStoreDisplayUrls(store) {
   const storePhotos = Array.isArray(store.storePhotos) ? store.storePhotos.filter(Boolean) : [];
   const introPhotos = Array.isArray(store.introPhotos) ? store.introPhotos.filter(Boolean) : [];
   const noticePhotos = Array.isArray(store.noticePhotos) ? store.noticePhotos.filter(Boolean) : [];
+  const washNoticePhotos = Array.isArray(store.washNoticePhotos)
+    ? store.washNoticePhotos.filter(Boolean)
+    : [];
   const logo = store.logo || '';
-  const remoteList = [logo, ...storePhotos, ...introPhotos, ...noticePhotos]
+  const remoteList = [logo, ...storePhotos, ...introPhotos, ...noticePhotos, ...washNoticePhotos]
     .filter((url) => url && (isCloudFileId(url) || isHttpUrl(url)));
 
   if (!remoteList.length) {
@@ -31,6 +34,7 @@ function resolveStoreDisplayUrls(store) {
       storePhotos,
       introPhotos,
       noticePhotos,
+      washNoticePhotos,
       logo: logo || ''
     });
   }
@@ -39,12 +43,20 @@ function resolveStoreDisplayUrls(store) {
     resolveMediaUrls(storePhotos),
     resolveMediaUrls(introPhotos),
     resolveMediaUrls(noticePhotos),
+    resolveMediaUrls(washNoticePhotos),
     logo ? resolveImageUrl(logo) : Promise.resolve('')
-  ]).then(([resolvedPhotos, resolvedIntroPhotos, resolvedNoticePhotos, resolvedLogo]) => ({
+  ]).then(([
+    resolvedPhotos,
+    resolvedIntroPhotos,
+    resolvedNoticePhotos,
+    resolvedWashNoticePhotos,
+    resolvedLogo
+  ]) => ({
     ...store,
     storePhotos: resolvedPhotos.filter(Boolean),
     introPhotos: resolvedIntroPhotos.filter(Boolean),
     noticePhotos: resolvedNoticePhotos.filter(Boolean),
+    washNoticePhotos: resolvedWashNoticePhotos.filter(Boolean),
     logo: resolvedLogo || logo || ''
   }));
 }

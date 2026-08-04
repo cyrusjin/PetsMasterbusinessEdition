@@ -25,7 +25,7 @@
       </view>
       <text class="hero-amount">¥{{summary.revenue}}</text>
       <text class="hero-compare" wx:if="{{summary.compareText}}">{{summary.compareText}}</text>
-      <view class="hero-metrics">
+      <view class="hero-metrics hero-metrics-3">
         <view class="hero-metric">
           <text class="hero-metric-value">¥{{summary.pipeline}}</text>
           <text class="hero-metric-label">本期流水</text>
@@ -35,7 +35,34 @@
           <text class="hero-metric-value">¥{{summary.inTransit}}</text>
           <text class="hero-metric-label">在途总额</text>
         </view>
+        <view class="hero-divider"></view>
+        <view class="hero-metric">
+          <text class="hero-metric-value">¥{{summary.netProfit}}</text>
+          <text class="hero-metric-label">经营净利</text>
+        </view>
       </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title-row">
+        <text class="card-title inline">记账概况</text>
+        <text class="card-link" bindtap="onGoLedger">记账本 ›</text>
+      </view>
+      <view class="ledger-grid">
+        <view class="ledger-kpi">
+          <text class="ledger-kpi-value expense">¥{{summary.expense}}</text>
+          <text class="ledger-kpi-label">本期支出</text>
+        </view>
+        <view class="ledger-kpi">
+          <text class="ledger-kpi-value income">¥{{summary.extraIncome}}</text>
+          <text class="ledger-kpi-label">额外收入</text>
+        </view>
+        <view class="ledger-kpi">
+          <text class="ledger-kpi-value">¥{{summary.netProfit}}</text>
+          <text class="ledger-kpi-label">订单营收 − 支出 + 额外收入</text>
+        </view>
+      </view>
+      <text class="ledger-tip text-gray" wx:if="{{summary.netCompareText}}">{{summary.netCompareText}}</text>
     </view>
 
     <view class="card">
@@ -52,7 +79,7 @@
     <view class="card">
       <view class="card-title">营收构成</view>
       <view class="composition-empty" wx:if="{{!composition.hasData}}">
-        <text class="text-gray">本期暂无已完成订单，完成寄养后将显示费用构成</text>
+        <text class="text-gray">本期暂无已完成订单或额外收入，完成后将显示费用构成</text>
       </view>
       <block wx:else>
         <view class="composition-row">
@@ -71,6 +98,15 @@
           </view>
           <view class="composition-bar">
             <view class="composition-fill shipping" style="width: {{composition.shippingPct}}%;"></view>
+          </view>
+        </view>
+        <view class="composition-row" wx:if="{{composition.extraIncomePct > 0 || composition.extraIncome !== '0'}}">
+          <view class="composition-head">
+            <text class="composition-name">额外收入</text>
+            <text class="composition-amount">¥{{composition.extraIncome}}</text>
+          </view>
+          <view class="composition-bar">
+            <view class="composition-fill extra" style="width: {{composition.extraIncomePct}}%;"></view>
           </view>
         </view>
       </block>

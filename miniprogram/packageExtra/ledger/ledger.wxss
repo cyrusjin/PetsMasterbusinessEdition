@@ -1,0 +1,282 @@
+.page {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 180rpx;
+  box-sizing: border-box;
+  background: #FFF8F0;
+}
+
+.demo-banner {
+  background: #FFF1E7;
+  border: 1rpx solid #F2C39E;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.demo-banner-text {
+  font-size: 24rpx;
+  color: #F57C00;
+  line-height: 1.6;
+}
+
+.month-bar {
+  margin-bottom: 16rpx;
+}
+
+.month-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 24rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+
+.month-label {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333;
+}
+
+.month-hint {
+  font-size: 24rpx;
+  color: #E98657;
+}
+
+.summary-card {
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(135deg, #E98657 0%, #F7AA78 100%);
+  border-radius: 24rpx;
+  padding: 28rpx 12rpx;
+  margin-bottom: 20rpx;
+  color: #fff;
+}
+
+.summary-item {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+.summary-label {
+  display: block;
+  font-size: 22rpx;
+  opacity: 0.9;
+}
+
+.summary-value {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.summary-value.expense {
+  color: #FFE8E0;
+}
+
+.summary-value.income {
+  color: #E8FFE8;
+}
+
+.summary-divider {
+  width: 1rpx;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 4rpx 0;
+}
+
+.type-tabs {
+  display: flex;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 8rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+}
+
+.type-tab {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 26rpx;
+  color: #666666;
+  border-radius: 12rpx;
+}
+
+.type-tab.active {
+  background: #E98657;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.card {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.empty-card {
+  text-align: center;
+  padding: 80rpx 24rpx;
+}
+
+.empty-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  line-height: 1.6;
+}
+
+.text-gray {
+  color: #999;
+  font-size: 26rpx;
+}
+
+.ledger-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #F2DEC9;
+}
+
+.ledger-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.ledger-item:first-of-type {
+  padding-top: 16rpx;
+}
+
+.ledger-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ledger-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.ledger-category {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.ledger-amount {
+  font-size: 28rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ledger-amount.expense {
+  color: #E53935;
+}
+
+.ledger-amount.income {
+  color: #2E7D32;
+}
+
+.ledger-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+
+.ledger-type,
+.ledger-date {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.ledger-note {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #888;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ledger-delete {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #E53935;
+  padding: 12rpx 8rpx;
+}
+
+.bottom-spacer {
+  height: 24rpx;
+}
+
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 253, 248, 0.96);
+  border-top: 1rpx solid #F2DEC9;
+  box-sizing: border-box;
+}
+
+.btn-expense,
+.btn-income {
+  flex: 1;
+  width: 0;
+  margin: 0;
+  padding: 0 24rpx;
+  height: 84rpx;
+  border-radius: 42rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.btn-expense {
+  background: #E53935;
+}
+
+.btn-income {
+  background: #E98657;
+}
+
+.btn-expense:active,
+.btn-income:active {
+  opacity: 0.88;
+}

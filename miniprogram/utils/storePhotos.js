@@ -93,6 +93,10 @@ function uploadNoticePhotos(photos, fallbackPhotos) {
   return uploadPhotoList(photos, fallbackPhotos, 'notice-photos', MAX_NOTICE_PHOTOS);
 }
 
+function uploadWashNoticePhotos(photos, fallbackPhotos) {
+  return uploadPhotoList(photos, fallbackPhotos, 'wash-notice-photos', MAX_NOTICE_PHOTOS);
+}
+
 function uploadStoreLogo(logo, fallbackLogo) {
   if (!logo) return Promise.resolve(logo || '');
   if (isRemotePhoto(logo) && !isLocalTempPath(logo)) return Promise.resolve(logo);
@@ -154,6 +158,7 @@ module.exports = {
   uploadStorePhotos,
   uploadIntroPhotos,
   uploadNoticePhotos,
+  uploadWashNoticePhotos,
   uploadStoreLogo,
   normalizeBusinessLicense,
   uploadBusinessLicense

@@ -8,11 +8,12 @@ const {
 const badgeUtil = require('../../../utils/badge');
 const merchantDemo = require('../../../utils/merchantDemo');
 const { countPendingPickupTasks } = require('../../../utils/pickupManage');
-const { hideHomeButton } = require('../../../utils/navBar');
+const { hideHomeButton, getCustomNavMetrics } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
 const { startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../../utils/orderRefresh');
 const { isMerchantRejected } = require('../../../utils/role');
 const { redirectToStoreAuthIfNeeded } = require('../../../utils/shell');
+const announcementApi = require('../../../utils/announcements');
 
 const STAFF_COUNT_TTL = 60 * 1000;
 const DAILY_POLL_MS = 60 * 1000;
@@ -38,11 +39,17 @@ Page({
     staffCount: 0,
     pendingOrderCount: 0,
     pickupPendingCount: 0,
-    uncheckedPetCount: 0
+    uncheckedPetCount: 0,
+    hasUnreadAnnouncement: false,
+    statusBarHeight: 20,
+    navBarHeight: 44,
+    navTotalHeight: 64,
+    navTitle: '日常管理'
   },
 
   onLoad(options) {
     hideHomeButton();
+    this._initCustomNav();
     enableStoreShareMenu();
     this._pendingOpenOrders = options.openOrders === '1';
     this._pendingOrdersTab = (options.tab || 'pending').trim() || 'pending';
@@ -64,12 +71,28 @@ Page({
     if (shop && shop.store_id) {
       app.globalData.merchantStoreId = shop.store_id;
       this.setData({ shop });
+      this._syncNavTitle(shop);
     }
+  },
+
+  _initCustomNav() {
+    const metrics = getCustomNavMetrics();
+    this.setData({
+      statusBarHeight: metrics.statusBarHeight,
+      navBarHeight: metrics.navBarHeight,
+      navTotalHeight: metrics.totalHeight
+    });
+  },
+
+  _syncNavTitle(shop) {
+    const name = (shop && String(shop.name || '').trim()) || '';
+    this.setData({ navTitle: name || '日常管理' });
   },
 
   onShow() {
     hideHomeButton();
     this._syncTabBar();
+    this._refreshAnnouncements();
 
     const inviteId = this._staffInviteStoreId
       || app.globalData.pendingStaffInviteStoreId
@@ -160,6 +183,20 @@ Page({
       return;
     }
     wx.switchTab({ url: '/pages/index/index' });
+  },
+
+  onGoAnnouncements() {
+    wx.navigateTo({ url: '/packageExtra/announcements/announcements' });
+  },
+
+  _refreshAnnouncements() {
+    return announcementApi.fetchMerchantAnnouncements({ force: true })
+      .then((res) => {
+        this.setData({ hasUnreadAnnouncement: !!(res && res.unread) });
+      })
+      .catch(() => {
+        this.setData({ hasUnreadAnnouncement: false });
+      });
   },
 
   _getPageEntryQuery() {
@@ -389,6 +426,7 @@ Page({
         pickupPendingCount,
         uncheckedPetCount: countUncheckedBoardingPets(boardingList)
       });
+      this._syncNavTitle(storeShop);
     };
 
     if (app.isMerchantDemoMode()) {
@@ -525,6 +563,14 @@ Page({
   onGoDailyLogs() {
     if (!this._guardMerchantFeature()) return;
     wx.navigateTo({ url: '/packageBiz/daily-logs/daily-logs' });
+  },
+  onGoCustomers() {
+    if (!this._guardMerchantFeature()) return;
+    wx.navigateTo({ url: '/packageExtra/customers/customers' });
+  },
+  onGoLedger() {
+    if (!this._guardMerchantFeature()) return;
+    wx.navigateTo({ url: '/packageExtra/ledger/ledger' });
   },
   onGoDetail(e) {
     if (!this._guardMerchantFeature()) return;

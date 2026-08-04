@@ -2,8 +2,9 @@
   <view class="card">
     <view class="flex-between mb-20">
       <text class="card-title" style="border:none;padding:0;margin:0;">订单详情</text>
-      <view class="status-badge {{order.pricePendingConfirm ? 'status-price-pending' : 'status-' + order.status}}">
-        <text wx:if="{{order.pricePendingConfirm}}">待确认价格</text>
+      <view class="status-badge {{order.editPendingConfirm || order.pricePendingConfirm ? 'status-price-pending' : 'status-' + order.status}}">
+        <text wx:if="{{order.editPendingConfirm}}">改单待确认</text>
+        <text wx:elif="{{order.pricePendingConfirm}}">待确认价格</text>
         <text wx:else>{{statusLabel}}</text>
       </view>
     </view>
@@ -25,9 +26,27 @@
       <copyable-detail-row label="接送范围" value="{{pickupLegsText}}" />
       <copyable-detail-row label="接送进度" value="{{pickupProgressText}}" />
     </block>
+    <copyable-detail-row label="洗护服务" value="{{order.needWash ? '需要' : '不需要'}}" />
+    <copyable-detail-row
+      wx:if="{{order.valueAddedServices && order.valueAddedServices.length}}"
+      label="增值服务"
+      value="{{valueAddedServicesText}}"
+      stack="{{true}}"
+    />
     <copyable-detail-row label="天数" value="{{order.days}}天" />
     <copyable-detail-row label="特殊需求" value="{{order.specialNeeds}}" stack="{{true}}" />
     <copyable-detail-row wx:if="{{order.contractSigned || order.contractSnapshot || order.contractId}}" label="协议状态" value="{{order.contractSigned ? '已签署' : '待签署'}}" />
+  </view>
+
+  <view class="card" wx:if="{{order.editPendingConfirm}}">
+    <view class="card-title">用户改单待确认</view>
+    <text class="price-pending-desc">宠主申请修改订单，确认后才会生效；拒绝则保持原信息。</text>
+    <view wx:for="{{pendingEditLines}}" wx:key="*this" class="price-pending-desc" style="margin-top:8rpx;">{{item}}</view>
+    <text wx:if="{{pendingEditTotalFee != null}}" class="fee-highlight" style="display:block;margin-top:12rpx;">确认后费用 ¥{{pendingEditTotalFee}}</text>
+    <view class="detail-action-row" style="margin-top:20rpx;">
+      <view class="detail-action-btn detail-action-blue" bindtap="onConfirmUserEdit">确认改单</view>
+      <view class="detail-action-btn detail-action-danger" bindtap="onRejectUserEdit">拒绝改单</view>
+    </view>
   </view>
 
   <view class="card" wx:if="{{order.pricePendingConfirm}}">
@@ -90,14 +109,14 @@
           bindtap="onGoContract"
         >查看寄养协议</view>
       </view>
-      <view class="detail-action-row" wx:if="{{canMerchantOperate && (order.status === 'boarding' || order.status === 'pending' || order.status === 'awaiting_arrival')}}">
+      <view class="detail-action-row" wx:if="{{(canMerchantOperate || order.editPendingConfirm) && (order.status === 'boarding' || order.status === 'pending' || order.status === 'awaiting_arrival')}}">
         <view
           wx:if="{{canMerchantOperate && order.status === 'boarding'}}"
           class="detail-action-btn detail-action-danger"
           bindtap="onComplete"
         >结束寄养</view>
         <view
-          wx:if="{{canMerchantOperate && (order.status === 'pending' || order.status === 'awaiting_arrival' || order.status === 'boarding')}}"
+          wx:if="{{!order.pricePendingConfirm && (order.status === 'pending' || order.status === 'awaiting_arrival' || order.status === 'boarding')}}"
           class="detail-action-btn detail-action-warning"
           bindtap="onEditPrice"
         >修改价格</view>

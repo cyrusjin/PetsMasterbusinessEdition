@@ -5,6 +5,66 @@
   box-sizing: border-box;
 }
 
+.custom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 1000;
+  background: #E98657;
+  box-sizing: border-box;
+}
+
+.custom-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.nav-announce,
+.nav-announce-placeholder {
+  width: 64rpx;
+  height: 64rpx;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-announce-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+.nav-announce-dot {
+  position: absolute;
+  top: 8rpx;
+  right: 6rpx;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #E54D42;
+  border: 2rpx solid #E98657;
+  box-sizing: border-box;
+}
+
+.custom-nav-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  color: #ffffff;
+  font-size: 34rpx;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 12rpx;
+}
+
 .demo-banner {
   background: #FFF1E7;
   border: 1rpx solid #F2C39E;
@@ -119,6 +179,7 @@
 .go-check-btn::after { border: none; }
 .expiring-tag { font-size: 20rpx; color: #E53935; background: #FFEBEE; padding: 2rpx 10rpx; border-radius: 8rpx; }
 
+.quick-entry-row,
 .share-staff-row {
   display: flex;
   align-items: center;
@@ -128,24 +189,29 @@
   background: #F7F8FA;
   border-radius: 16rpx;
 }
+.quick-entry-row:active,
 .share-staff-row:active {
   opacity: 0.85;
 }
+.quick-entry-icon,
 .share-staff-icon {
   width: 72rpx;
   height: 72rpx;
   flex-shrink: 0;
 }
+.quick-entry-body,
 .share-staff-body {
   flex: 1;
   min-width: 0;
 }
+.quick-entry-title,
 .share-staff-title {
   display: block;
   font-size: 28rpx;
   font-weight: 600;
   color: #333333;
 }
+.quick-entry-desc,
 .share-staff-desc {
   display: block;
   margin-top: 4rpx;
@@ -160,6 +226,7 @@
   border-radius: 999rpx;
   flex-shrink: 0;
 }
+.quick-entry-arrow,
 .share-staff-arrow {
   font-size: 32rpx;
   color: #CCCCCC;

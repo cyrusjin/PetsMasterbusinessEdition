@@ -36,8 +36,16 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
     ['寄养时间', boardingTime],
     ['房间', displayText(order.roomName)],
     ['接送服务', pickupText],
+    ['洗护服务', order.needWash ? '需要' : '不需要'],
     ['天数', order.days != null && order.days !== '' ? `${order.days}天` : '--']
   );
+
+  if (Array.isArray(order.valueAddedServices) && order.valueAddedServices.length) {
+    orderRows.push([
+      '增值服务',
+      order.valueAddedServices.map((item) => item.name || '增值服务').join('、')
+    ]);
+  }
 
   if (feeDetail && feeDetail.ready && Array.isArray(feeDetail.dailyBreakdown) && feeDetail.dailyBreakdown.length) {
     orderRows.push(['单价', `¥${feeDetail.basePriceText}/天`]);
@@ -52,8 +60,13 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
 
   orderRows.push(
     ['寄养费用', `¥${feeSummary.boardingFee}`],
-    ['接送运费', order.needPickup ? `¥${feeSummary.shippingFee}` : '--']
+    ['接送运费', order.needPickup ? `¥${feeSummary.shippingFee}` : '--'],
+    ['洗护服务费', order.needWash ? `¥${feeSummary.washFee != null ? feeSummary.washFee : 0}` : '--']
   );
+
+  if (feeSummary.hasValueAdded) {
+    orderRows.push(['增值服务费', `¥${feeSummary.valueAddedFee != null ? feeSummary.valueAddedFee : 0}`]);
+  }
 
   if (feeDetail && feeDetail.showDeposit) {
     orderRows.push(['押金', `¥${feeDetail.depositText}`]);

@@ -1,0 +1,99 @@
+.page {
+  min-height: 100vh;
+  padding: 24rpx 24rpx 48rpx;
+  box-sizing: border-box;
+  background: #FFF8F0;
+}
+
+.tip {
+  font-size: 22rpx;
+  color: #A07858;
+  margin-bottom: 16rpx;
+  padding: 0 8rpx;
+}
+
+.loading,
+.empty {
+  text-align: center;
+  color: #999;
+  font-size: 26rpx;
+  padding: 80rpx 24rpx;
+}
+
+.empty-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.empty-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.ann-card {
+  margin-bottom: 16rpx;
+  padding: 24rpx;
+}
+
+.ann-card.pinned {
+  border: 1rpx solid #F2C39E;
+  background: linear-gradient(145deg, #FFFCF8 0%, #FFF1E7 100%);
+}
+
+.ann-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.ann-title-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.pin-tag {
+  font-size: 20rpx;
+  color: #C45C3E;
+  background: #FFE8D6;
+  padding: 2rpx 10rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.ann-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.35;
+}
+
+.ann-arrow {
+  font-size: 36rpx;
+  color: #D0B49A;
+  line-height: 1;
+  margin-top: 2rpx;
+}
+
+.ann-preview {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #888;
+  line-height: 1.5;
+}
+
+.ann-time {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #B08A6A;
+}

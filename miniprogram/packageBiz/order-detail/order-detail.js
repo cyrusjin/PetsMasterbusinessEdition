@@ -11,6 +11,7 @@ const { refreshSingleOrder } = require('../../utils/orderRefresh');
 const { canMerchantModifyOrder } = require('../utils/orderActions');
 const { attachOrderDisplayNo } = require('../../utils/displayNo');
 const { formatOrderCreateTime } = require('../../utils/util');
+const { buildPendingEditLines, getPendingEditTotalFee } = require('../utils/pendingEdit');
 
 Page({
   data: {
@@ -25,6 +26,8 @@ Page({
     pickupLegsText: '',
     pickupProgressText: '',
     feeDetail: {},
+    pendingEditLines: [],
+    pendingEditTotalFee: null,
     exporting: false,
     refreshing: false,
     canMerchantOperate: true
@@ -73,8 +76,17 @@ Page({
       statusLabel,
       pickupLegsText: formatPickupLegs(order),
       pickupProgressText: formatPickupProgress(order),
+      valueAddedServicesText: Array.isArray(order.valueAddedServices) && order.valueAddedServices.length
+        ? order.valueAddedServices.map((item) => {
+          const name = (item && item.name) || '增值服务';
+          const price = item && item.price != null ? item.price : '';
+          return price !== '' ? `${name}（¥${price}）` : name;
+        }).join('、')
+        : '',
       feeSummary: fees,
       feeDetail,
+      pendingEditLines: order.editPendingConfirm ? buildPendingEditLines(order) : [],
+      pendingEditTotalFee: order.editPendingConfirm ? getPendingEditTotalFee(order) : null,
       canMerchantOperate: canMerchantModifyOrder(order)
     });
     this._resolvePetPhoto(petView.photo);
@@ -112,18 +124,63 @@ Page({
   onEditPrice() {
     const order = this.data.order;
     if (!order || !order.id) return;
-    if (!canMerchantModifyOrder(order)) {
+    if (order.pricePendingConfirm) {
       wx.showToast({ title: '价格待用户确认，暂不可改价', icon: 'none' });
       return;
     }
     wx.navigateTo({ url: `/packageBiz/order-price/order-price?id=${order.id}` });
   },
 
+  onConfirmUserEdit() {
+    const order = this.data.order;
+    if (!order || !order.id || !order.editPendingConfirm) return;
+    const fee = this.data.pendingEditTotalFee;
+    const feeTip = fee != null ? `，确认后费用为 ¥${fee}` : '';
+    wx.showModal({
+      title: '确认用户改单',
+      content: `确认接受宠主的订单修改吗${feeTip}？确认后修改将立即生效。`,
+      success: (r) => {
+        if (!r.confirm) return;
+        app.updateOrder(order.id, { editPendingConfirm: false })
+          .then(() => {
+            wx.showToast({ title: '已确认修改', icon: 'success' });
+            this._refreshOrder({ force: true });
+          })
+          .catch((err) => {
+            wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
+          });
+      }
+    });
+  },
+
+  onRejectUserEdit() {
+    const order = this.data.order;
+    if (!order || !order.id || !order.editPendingConfirm) return;
+    wx.showModal({
+      title: '拒绝用户改单',
+      content: '拒绝后订单将保持原信息不变，确定拒绝吗？',
+      success: (r) => {
+        if (!r.confirm) return;
+        app.updateOrder(order.id, { rejectUserEdit: true })
+          .then(() => {
+            wx.showToast({ title: '已拒绝修改', icon: 'success' });
+            this._refreshOrder({ force: true });
+          })
+          .catch((err) => {
+            wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
+          });
+      }
+    });
+  },
+
   onComplete() {
     const order = this.data.order;
     if (!order || !order.id) return;
     if (!canMerchantModifyOrder(order)) {
-      wx.showToast({ title: '价格待用户确认，暂不可操作', icon: 'none' });
+      wx.showToast({
+        title: order.editPendingConfirm ? '请先确认或拒绝用户改单' : '价格待用户确认，暂不可操作',
+        icon: 'none'
+      });
       return;
     }
     wx.showModal({

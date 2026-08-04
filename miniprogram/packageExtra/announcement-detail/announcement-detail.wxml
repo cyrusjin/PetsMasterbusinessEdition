@@ -1,0 +1,16 @@
+<view class="page">
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+
+  <view class="empty card" wx:elif="{{!announcement}}">
+    <text>公告不存在或已下架</text>
+  </view>
+
+  <view class="card detail" wx:else>
+    <view class="title-row">
+      <text class="pin-tag" wx:if="{{announcement.pinned}}">置顶</text>
+      <text class="title">{{announcement.title}}</text>
+    </view>
+    <text class="time" wx:if="{{announcement.timeText}}">{{announcement.timeText}}</text>
+    <text class="content">{{announcement.content}}</text>
+  </view>
+</view>

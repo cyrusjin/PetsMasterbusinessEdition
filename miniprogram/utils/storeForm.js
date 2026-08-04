@@ -13,7 +13,9 @@ const { isVagueAddress } = require('./location');
 const { validateWeightPricing } = require('./weightPricing');
 const { validateRoomPricing } = require('./roomPricing');
 const { validatePickupPricing } = require('./pickupPricing');
+const { validateWashService } = require('./washPricing');
 const { validateMultiPetDiscount } = require('./multiPetPricing');
+const { validateValueAddedServices } = require('./valueAddedServices');
 
 const DEFAULT_LOGO = '/images/default-avatar.png';
 
@@ -103,6 +105,25 @@ function validateStoreForm(payload) {
     const pickupPricingError = validatePickupPricing(shop);
     if (pickupPricingError) return pickupPricingError;
   }
+
+  const washService = shop.washService === 'yes' ? 'yes' : 'no';
+  if (washService === 'yes') {
+    const washError = validateWashService(shop);
+    if (washError) return washError;
+    const washNotice = (shop.washNotice || '').trim();
+    const washNoticePhotos = normalizeNoticePhotos(
+      payload.washNoticePhotos || shop.washNoticePhotos
+    );
+    if (washNotice.length > MAX_NOTICE_TEXT) return `洗护须知不超过${MAX_NOTICE_TEXT}字`;
+    if (!washNotice && !washNoticePhotos.length) return '请填写洗护须知或上传须知图片';
+  }
+
+  const valueAddedError = validateValueAddedServices(
+    payload.valueAddedServices != null
+      ? payload.valueAddedServices
+      : shop.valueAddedServices
+  );
+  if (valueAddedError) return valueAddedError;
 
   const notice = (shop.notice || '').trim();
   if (notice.length > MAX_NOTICE_TEXT) return `寄养须知不超过${MAX_NOTICE_TEXT}字`;

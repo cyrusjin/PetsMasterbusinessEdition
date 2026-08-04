@@ -58,7 +58,13 @@
         "settings/settings",
         "staff-manage/staff-manage",
         "statistics/statistics",
-        "merchant-auth/merchant-auth"
+        "merchant-auth/merchant-auth",
+        "announcements/announcements",
+        "announcement-detail/announcement-detail",
+        "customers/customers",
+        "customer-detail/customer-detail",
+        "ledger/ledger",
+        "ledger/ledger-edit"
       ]
     }
   ],

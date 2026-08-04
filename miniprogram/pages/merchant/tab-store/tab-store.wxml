@@ -1,6 +1,7 @@
 <view class="merchant-page {{hideMerchantTabBar ? 'apply-only' : 'has-tab-bar'}}" style="{{hideMerchantTabBar ? '' : 'padding-bottom: 160rpx;'}}">
   <view class="container">
     <view class="mode-switch-row">
+      <cs-contact />
       <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
     </view>
     <oa-follow-banner scene="merchant" />
@@ -559,6 +560,162 @@
           <text class="store-photos-tip">最多 {{maxPickupNoticeText}} 字</text>
         </view>
       </block>
+    </view>
+    <view class="card">
+      <view class="card-title"><text>洗护设置 <text class="required-star">*</text></text></view>
+      <radio-group class="day-charge-group" bindchange="onWashServiceChange">
+        <label class="day-charge-item {{shop.washService === 'yes' ? 'mode-active' : ''}}">
+          <radio value="yes" checked="{{shop.washService === 'yes'}}" color="#E98657" />
+          <text>有洗护</text>
+        </label>
+        <label class="day-charge-item {{shop.washService !== 'yes' ? 'mode-active' : ''}}">
+          <radio value="no" checked="{{shop.washService !== 'yes'}}" color="#E98657" />
+          <text>无洗护</text>
+        </label>
+      </radio-group>
+      <block wx:if="{{shop.washService === 'yes'}}">
+        <view class="pricing-section mt-20">
+          <view class="section-title"><text>洗护公斤区间价格（元/次） <text class="required-star">*</text></text></view>
+          <view class="weight-range-tip">按宠物体重匹配价格，每次洗护收一次；可自定义区间，最后一行为「以上」</view>
+          <view class="weight-range-row" wx:for="{{washPricing}}" wx:key="index">
+            <block wx:if="{{item.isAbove}}">
+              <input class="weight-input" type="digit" placeholder="体重" value="{{item.min}}" bindinput="onWashRangeField" data-index="{{index}}" data-field="min" />
+              <text class="weight-unit">kg以上</text>
+              <input class="price-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onWashRangeField" data-index="{{index}}" data-field="price" />
+              <text class="price-unit">元</text>
+            </block>
+            <block wx:else>
+              <input class="weight-input" type="digit" placeholder="起" value="{{item.min}}" bindinput="onWashRangeField" data-index="{{index}}" data-field="min" />
+              <text class="weight-sep">-</text>
+              <input class="weight-input" type="digit" placeholder="止" value="{{item.max}}" bindinput="onWashRangeField" data-index="{{index}}" data-field="max" />
+              <text class="weight-unit">kg</text>
+              <input class="price-input" type="digit" placeholder="价格" value="{{item.price}}" bindinput="onWashRangeField" data-index="{{index}}" data-field="price" />
+              <text class="price-unit">元</text>
+              <view
+                wx:if="{{washPricing.length > 2}}"
+                class="weight-range-delete"
+                catchtap="onRemoveWashRange"
+                data-index="{{index}}"
+              >删除</view>
+            </block>
+          </view>
+          <view class="weight-range-add" bindtap="onAddWashRange">+ 添加区间</view>
+        </view>
+        <view class="form-group pickup-pricing-group mt-20">
+          <text class="form-label">满天免费洗护</text>
+          <radio-group class="day-charge-group" bindchange="onWashFreeModeChange">
+            <label class="day-charge-item {{washFreeMode !== 'minDays' ? 'mode-active' : ''}}">
+              <radio value="none" checked="{{washFreeMode !== 'minDays'}}" color="#E98657" />
+              <text>不免费</text>
+            </label>
+            <label class="day-charge-item {{washFreeMode === 'minDays' ? 'mode-active' : ''}}">
+              <radio value="minDays" checked="{{washFreeMode === 'minDays'}}" color="#E98657" />
+              <text>住满以上免费</text>
+            </label>
+          </radio-group>
+          <text class="charge-hint">默认不免费；开启后可设置寄养满几天及以上免费送一次洗护</text>
+        </view>
+        <view class="form-group" wx:if="{{washFreeMode === 'minDays'}}">
+          <text class="form-label">住几天及以上免费 <text class="required-star">*</text></text>
+          <input class="form-input" type="number" placeholder="例如 7" value="{{shop.washFreeMinDays}}" bindinput="onField" data-field="washFreeMinDays" />
+          <text class="charge-hint">寄养天数达到该天数及以上时，洗护费用为 0</text>
+        </view>
+        <view class="form-group mt-20">
+          <text class="form-label">洗护须知 <text class="required-star">*</text></text>
+          <textarea
+            class="form-textarea"
+            placeholder="洗护须知..."
+            maxlength="{{maxNoticeText}}"
+            value="{{shop.washNotice}}"
+            bindinput="onField"
+            data-field="washNotice"
+          />
+          <text class="store-photos-tip">文字或图片至少填一项；最多 {{maxNoticeText}} 字，可附带最多 {{maxNoticePhotos}} 张图片；长按可拖拽排序</text>
+          <view class="store-photos-grid">
+            <view
+              class="store-photo-item store-photo-item-washNotice {{photoDrag.active && photoDrag.listKey === 'washNotice' && photoDrag.fromIndex === index ? 'drag-source' : ''}} {{photoDrag.active && photoDrag.listKey === 'washNotice' && photoDrag.targetIndex === index ? 'drop-target' : ''}}"
+              id="store-photo-washNotice-{{index}}"
+              wx:for="{{washNoticePhotos}}"
+              wx:key="*this"
+              data-list="washNotice"
+              data-index="{{index}}"
+              bindtouchstart="onPhotoTouchStart"
+              bindlongpress="onPhotoLongPress"
+              catchtouchmove="onPhotoTouchMove"
+              bindtouchend="onPhotoTouchEnd"
+              bindtouchcancel="onPhotoTouchEnd"
+            >
+              <cached-image custom-class="store-photo" src="{{item}}" mode="aspectFill" bindtap="onPreviewWashNoticePhoto" data-url="{{item}}" />
+              <view class="store-photo-delete" catchtap="onDeleteWashNoticePhoto" data-index="{{index}}">×</view>
+            </view>
+            <view class="store-photo-add" wx:if="{{washNoticePhotos.length < maxNoticePhotos}}" bindtap="onChooseWashNoticePhotos">
+              <text class="store-photo-add-icon">+</text>
+              <text class="store-photo-add-text">上传</text>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+    <view class="card">
+      <view class="card-title">增值服务</view>
+      <view class="weight-range-tip">可添加额外收费服务项目（如加餐、遛弯等）；描述或图片至少填一项；预约时用户可自选是否购买，按次计费</view>
+      <view class="room-config-card" wx:for="{{valueAddedServices}}" wx:key="id">
+        <view class="room-config-row">
+          <input
+            class="room-name-input"
+            placeholder="服务名称"
+            maxlength="{{maxValueAddedName}}"
+            value="{{item.name}}"
+            bindinput="onValueAddedField"
+            data-index="{{index}}"
+            data-field="name"
+          />
+          <input
+            class="price-input"
+            type="digit"
+            placeholder="金额"
+            value="{{item.price}}"
+            bindinput="onValueAddedField"
+            data-index="{{index}}"
+            data-field="price"
+          />
+          <text class="price-unit">元</text>
+          <view
+            class="weight-range-delete"
+            catchtap="onRemoveValueAddedService"
+            data-index="{{index}}"
+          >删除</view>
+        </view>
+        <view class="room-extra-row">
+          <textarea
+            class="room-desc-input"
+            placeholder="服务描述（与图片至少填一项）"
+            value="{{item.description}}"
+            maxlength="{{maxValueAddedDescription}}"
+            auto-height
+            bindinput="onValueAddedField"
+            data-index="{{index}}"
+            data-field="description"
+          />
+          <view class="room-photo-picker">
+            <view wx:if="{{item.photo}}" class="room-photo-wrap">
+              <cached-image
+                custom-class="room-photo-preview"
+                src="{{item.photo}}"
+                mode="aspectFill"
+                bindtap="onPreviewValueAddedPhoto"
+                data-index="{{index}}"
+              />
+              <view class="store-photo-delete" catchtap="onDeleteValueAddedPhoto" data-index="{{index}}">×</view>
+            </view>
+            <view wx:else class="store-photo-add room-photo-add" bindtap="onChooseValueAddedPhoto" data-index="{{index}}">
+              <text class="store-photo-add-icon">+</text>
+              <text class="store-photo-add-text">照片</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="weight-range-add" bindtap="onAddValueAddedService">+ 添加服务项目</view>
     </view>
     <view class="card">
       <view class="card-title"><text>寄养须知 <text class="required-star">*</text></text></view>

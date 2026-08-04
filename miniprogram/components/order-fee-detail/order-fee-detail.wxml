@@ -19,6 +19,16 @@
       <text class="text-gray">接送运费</text>
       <text>¥{{detail.shippingFeeText}}</text>
     </view>
+    <view class="fee-extra-row copyable-fee" wx:if="{{detail.needWash}}" bindtap="onCopyValue" data-value="洗护 ¥{{detail.washFeeText}}">
+      <text class="text-gray">洗护服务</text>
+      <text>¥{{detail.washFeeText}}</text>
+    </view>
+    <block wx:if="{{detail.hasValueAdded}}">
+      <view class="fee-extra-row copyable-fee" wx:for="{{detail.valueAddedItems}}" wx:key="id" bindtap="onCopyValue" data-value="{{item.name}} ¥{{item.priceText}}">
+        <text class="text-gray">{{item.name}}</text>
+        <text>¥{{item.priceText}}</text>
+      </view>
+    </block>
     <view class="fee-extra-row copyable-fee" wx:if="{{detail.showDeposit}}" bindtap="onCopyValue" data-value="押金 ¥{{detail.depositText}}">
       <text class="text-gray">押金</text>
       <text>¥{{detail.depositText}}</text>
@@ -38,6 +48,16 @@
       <text class="text-gray">接送运费</text>
       <text>¥{{detail.shippingFeeText}}</text>
     </view>
+    <view class="fee-extra-row copyable-fee" wx:if="{{detail.needWash}}" bindtap="onCopyValue" data-value="洗护 ¥{{detail.washFeeText}}">
+      <text class="text-gray">洗护服务</text>
+      <text>¥{{detail.washFeeText}}</text>
+    </view>
+    <block wx:if="{{detail.hasValueAdded}}">
+      <view class="fee-extra-row copyable-fee" wx:for="{{detail.valueAddedItems}}" wx:key="id" bindtap="onCopyValue" data-value="{{item.name}} ¥{{item.priceText}}">
+        <text class="text-gray">{{item.name}}</text>
+        <text>¥{{item.priceText}}</text>
+      </view>
+    </block>
     <view class="fee-extra-row copyable-fee" wx:if="{{detail.showDeposit}}" bindtap="onCopyValue" data-value="押金 ¥{{detail.depositText}}">
       <text class="text-gray">押金</text>
       <text>¥{{detail.depositText}}</text>

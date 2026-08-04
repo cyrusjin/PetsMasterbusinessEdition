@@ -1,0 +1,83 @@
+<view class="page">
+  <view class="demo-banner" wx:if="{{isDemoMode}}">
+    <text class="demo-banner-text">体验模式 · 记账仅保存在本地，入驻后将同步到服务器</text>
+  </view>
+
+  <view class="month-bar">
+    <picker mode="date" fields="month" value="{{monthKey}}" bindchange="onMonthChange">
+      <view class="month-picker">
+        <text class="month-label">{{monthLabel}}</text>
+        <text class="month-hint">切换月份 ›</text>
+      </view>
+    </picker>
+  </view>
+
+  <view class="summary-card">
+    <view class="summary-item">
+      <text class="summary-label">支出</text>
+      <text class="summary-value expense">¥{{summary.expense}}</text>
+    </view>
+    <view class="summary-divider"></view>
+    <view class="summary-item">
+      <text class="summary-label">额外收入</text>
+      <text class="summary-value income">¥{{summary.income}}</text>
+    </view>
+    <view class="summary-divider"></view>
+    <view class="summary-item">
+      <text class="summary-label">净值</text>
+      <text class="summary-value">¥{{summary.net}}</text>
+    </view>
+  </view>
+
+  <view class="type-tabs">
+    <view
+      class="type-tab {{typeFilter === item.key ? 'active' : ''}}"
+      wx:for="{{typeTabs}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="onTypeTab"
+    >{{item.label}}</view>
+  </view>
+
+  <view class="card" wx:if="{{loading}}">
+    <text class="text-gray">加载中...</text>
+  </view>
+
+  <view class="card empty-card" wx:elif="{{!entries.length}}">
+    <text class="empty-title">{{monthLabel}}暂无记账</text>
+    <text class="empty-desc">记录房租、粮水、耗材等常见支出，或商品零售等额外收入</text>
+  </view>
+
+  <view class="card" wx:else>
+    <view class="card-title">{{monthLabel}}明细 ({{entries.length}})</view>
+    <view
+      class="ledger-item"
+      wx:for="{{entries}}"
+      wx:key="id"
+    >
+      <view class="ledger-main" bindtap="onOpenEdit" data-id="{{item.id}}">
+        <view class="ledger-top">
+          <text class="ledger-category">{{item.categoryLabel}}</text>
+          <text class="ledger-amount {{item.type}}">{{item.amountText}}</text>
+        </view>
+        <view class="ledger-meta">
+          <text class="ledger-type">{{item.typeLabel}}</text>
+          <text class="ledger-date">{{item.date}}</text>
+        </view>
+        <text class="ledger-note" wx:if="{{item.note}}">{{item.note}}</text>
+      </view>
+      <view
+        class="ledger-delete"
+        catchtap="onDelete"
+        data-id="{{item.id}}"
+        data-label="{{item.categoryLabel}}"
+      >删除</view>
+    </view>
+  </view>
+
+  <view class="bottom-spacer"></view>
+  <view class="bottom-bar">
+    <view class="btn-expense" bindtap="onAddExpense">记支出</view>
+    <view class="btn-income" bindtap="onAddIncome">记额外收入</view>
+  </view>
+</view>

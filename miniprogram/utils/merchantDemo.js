@@ -31,6 +31,9 @@ function clearDemoRuntimeData() {
     wx.removeStorageSync(STORAGE_KEYS.DEMO_DAILY_LOGS);
     wx.removeStorageSync(STORAGE_KEYS.DEMO_SHOP);
     wx.removeStorageSync(STORAGE_KEYS.DEMO_CONTRACTS);
+    if (STORAGE_KEYS.DEMO_LEDGER) {
+      wx.removeStorageSync(STORAGE_KEYS.DEMO_LEDGER);
+    }
   } catch (err) {
     // ignore
   }

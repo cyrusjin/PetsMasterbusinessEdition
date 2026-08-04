@@ -6,6 +6,7 @@ const MERGE_TEXT_FIELDS = [
   'intro',
   'notice',
   'pickupNotice',
+  'washNotice',
   'address',
   'locationName',
   'addressRegion',
@@ -20,7 +21,8 @@ const MERGE_TEXT_FIELDS = [
 const MERGE_PHOTO_LIST_FIELDS = [
   'storePhotos',
   'introPhotos',
-  'noticePhotos'
+  'noticePhotos',
+  'washNoticePhotos'
 ];
 
 function hasOwn(shop, key) {
@@ -109,9 +111,47 @@ function mergeMerchantShop(local, remote) {
     merged.pickupService = local.pickupService;
   }
 
+  if (remote.washService == null && local.washService != null) {
+    merged.washService = local.washService;
+  }
+
+  if ((!Array.isArray(remote.valueAddedServices) || !remote.valueAddedServices.length)
+    && Array.isArray(local.valueAddedServices) && local.valueAddedServices.length) {
+    merged.valueAddedServices = local.valueAddedServices;
+  }
+
+  // billingRules 整包覆盖时，保留本地已有的增值服务列表
+  if (merged.billingRules || local.billingRules || remote.billingRules) {
+    const localRules = local.billingRules || {};
+    const remoteRules = remote.billingRules || {};
+    const mergedRules = merged.billingRules || { ...localRules, ...remoteRules };
+    const localVas = Array.isArray(localRules.valueAddedServices) ? localRules.valueAddedServices : [];
+    const remoteVas = Array.isArray(remoteRules.valueAddedServices) ? remoteRules.valueAddedServices : [];
+    const topVas = Array.isArray(merged.valueAddedServices) ? merged.valueAddedServices : [];
+    if ((!remoteVas.length && (localVas.length || topVas.length))) {
+      merged.billingRules = {
+        ...mergedRules,
+        valueAddedServices: topVas.length ? topVas : localVas
+      };
+    } else if (remoteVas.length && !topVas.length) {
+      merged.valueAddedServices = remoteVas;
+      merged.billingRules = mergedRules;
+    } else if (topVas.length) {
+      merged.billingRules = {
+        ...mergedRules,
+        valueAddedServices: topVas
+      };
+    }
+  }
+
   if ((remote.pickupFreeMinDays == null || remote.pickupFreeMinDays === '')
     && local.pickupFreeMinDays != null && local.pickupFreeMinDays !== '') {
     merged.pickupFreeMinDays = local.pickupFreeMinDays;
+  }
+
+  if ((remote.washFreeMinDays == null || remote.washFreeMinDays === '')
+    && local.washFreeMinDays != null && local.washFreeMinDays !== '') {
+    merged.washFreeMinDays = local.washFreeMinDays;
   }
 
   if (remote.deposit == null && local.deposit != null) {

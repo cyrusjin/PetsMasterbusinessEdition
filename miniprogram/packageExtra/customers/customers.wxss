@@ -1,0 +1,101 @@
+.tip-card {
+  margin-bottom: 20rpx;
+}
+.tip-text {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: #666666;
+}
+.search-card {
+  margin-bottom: 20rpx;
+  padding-top: 24rpx;
+  padding-bottom: 24rpx;
+}
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.search-input {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  height: 72rpx;
+  min-height: 72rpx;
+  line-height: 72rpx;
+  background: #F7F8FA;
+}
+.search-clear {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: #E98657;
+  padding: 8rpx 4rpx;
+}
+.empty-card {
+  text-align: center;
+  padding: 48rpx 32rpx;
+}
+.empty-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 12rpx;
+}
+.empty-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #999999;
+  line-height: 1.6;
+}
+.customer-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #F2DEC9;
+}
+.customer-item:last-child {
+  border-bottom: none;
+}
+.customer-item:active {
+  opacity: 0.85;
+}
+.customer-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: #FFF1E7;
+  color: #E98657;
+  font-size: 28rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.customer-info {
+  flex: 1;
+  min-width: 0;
+}
+.customer-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333333;
+}
+.customer-meta {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #999999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-arrow {
+  font-size: 32rpx;
+  color: #CCCCCC;
+  flex-shrink: 0;
+  line-height: 1;
+}

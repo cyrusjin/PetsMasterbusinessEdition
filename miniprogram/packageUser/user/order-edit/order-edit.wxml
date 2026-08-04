@@ -7,31 +7,35 @@
 
   <view class="card" wx:if="{{order.id}}">
     <view class="card-title">{{timeOnly ? '修改离店时间' : '寄养时间与信息'}}</view>
-    <text class="tip-text" wx:if="{{timeOnly}}">寄养中仅可修改离店日期与时间，其他信息请联系商家。</text>
+    <text class="tip-text" wx:if="{{timeOnly}}">寄养中可修改离店时间，并可补选或取消洗护增值服务。入住时间不可更改。提交后需商家确认才会生效。</text>
 
     <block wx:if="{{!timeOnly}}">
       <calendar startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
+      <view class="time-pickers" wx:if="{{startDate && endDate}}">
+        <view class="time-row">
+          <text class="time-label">入住时间</text>
+          <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
+        </view>
+        <view class="time-row">
+          <text class="time-label">离店时间</text>
+          <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
+        </view>
+      </view>
     </block>
     <block wx:else>
-      <calendar startDate="{{order.startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
+      <view class="time-pickers">
+        <view class="time-row">
+          <text class="time-label">离店日期</text>
+          <picker mode="date" value="{{endDate}}" start="{{minEndDate}}" bindchange="onEndDateChange">
+            <view class="time-picker-box">{{endDate || '选择日期'}}</view>
+          </picker>
+        </view>
+        <view class="time-row">
+          <text class="time-label">离店时间</text>
+          <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
+        </view>
+      </view>
     </block>
-
-    <view class="time-pickers" wx:if="{{!timeOnly && startDate && endDate}}">
-      <view class="time-row">
-        <text class="time-label">入住时间</text>
-        <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
-      </view>
-      <view class="time-row">
-        <text class="time-label">离店时间</text>
-        <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
-      </view>
-    </view>
-    <view class="time-pickers" wx:elif="{{timeOnly && endDate}}">
-      <view class="time-row" style="flex:1;">
-        <text class="time-label">离店时间</text>
-        <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
-      </view>
-    </view>
 
     <view class="date-summary" wx:if="{{feeReady}}">
       <view class="flex-between fee-total-row">
@@ -98,7 +102,32 @@
     </view>
   </block>
 
-  <button class="btn-primary submit-btn" bindtap="onSubmit" wx:if="{{order.id}}">保存修改</button>
+  <view class="card" wx:if="{{order.id && (store.hasWash || needWash)}}">
+    <view class="card-title">增值服务</view>
+    <view class="pickup-row">
+      <text class="form-label" style="margin:0;">洗护服务</text>
+      <switch checked="{{needWash}}" bindchange="onWashChange" color="#E98657" disabled="{{!store.hasWash && !needWash}}" />
+    </view>
+    <text class="tip-text" wx:if="{{washPricingSummary}}">{{washPricingSummary}}</text>
+    <block wx:if="{{needWash && (store.washNotice || (store.washNoticePhotos && store.washNoticePhotos.length))}}">
+      <text class="form-label" style="margin-top:16rpx;">洗护须知</text>
+      <text class="tip-text" wx:if="{{store.washNotice}}" style="display:block;white-space:pre-wrap;">{{store.washNotice}}</text>
+      <view class="boarding-notice-photos" wx:if="{{store.washNoticePhotos && store.washNoticePhotos.length}}" style="margin-top:12rpx;">
+        <view
+          class="boarding-notice-photo-item"
+          wx:for="{{store.washNoticePhotos}}"
+          wx:key="*this"
+          bindtap="onPreviewWashNoticePhoto"
+          data-url="{{item}}"
+        >
+          <cached-image custom-class="boarding-notice-photo" src="{{item}}" mode="aspectFill" />
+        </view>
+      </view>
+    </block>
+    <text class="tip-text" wx:elif="{{timeOnly}}">寄养中可补选或取消洗护</text>
+  </view>
+
+  <button class="btn-primary submit-btn" bindtap="onSubmit" wx:if="{{order.id}}">提交修改</button>
 </view>
 
 <view wx:if="{{showTimePicker}}" class="time-picker-mask" bindtap="onCancelTimePicker">

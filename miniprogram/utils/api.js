@@ -8,7 +8,8 @@ const API_ROUTES = {
   storeService: '/api/store',
   orderService: '/api/order',
   petService: '/api/pet',
-  dailyService: '/api/daily'
+  dailyService: '/api/daily',
+  ledgerService: '/api/ledger'
 };
 
 function getToken() {

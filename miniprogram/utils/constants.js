@@ -6,6 +6,8 @@ const STORAGE_KEYS = {
   MERCHANT_ORDERS: 'pet_merchant_orders',
   CONTRACTS: 'pet_contracts',
   BILLS: 'pet_bills',
+  LEDGER: 'pet_ledger',
+  DEMO_LEDGER: 'pet_demo_ledger',
   DAILY_LOGS: 'pet_daily_logs',
   CHATS: 'pet_chats',
   SHOP: 'pet_shop',
@@ -24,7 +26,12 @@ const STORAGE_KEYS = {
   DEMO_SHOP: 'pet_demo_shop',
   DEMO_APPLY_DRAFT: 'pet_demo_apply_draft',
   DEMO_CONTRACTS: 'pet_demo_contracts',
-  RESERVE_CONTACT: 'pet_reserve_contact'
+  RESERVE_CONTACT: 'pet_reserve_contact',
+  PET_BUTLER: 'pet_butler',
+  AI_CONSULT: 'pet_ai_consult',
+  ANNOUNCEMENT_READ: 'pet_announcement_read',
+  ANNOUNCEMENT_CACHE: 'pet_announcement_cache',
+  ANNOUNCEMENT_CACHE_AT: 'pet_announcement_cache_at'
 };
 
 module.exports = { STORAGE_KEYS };

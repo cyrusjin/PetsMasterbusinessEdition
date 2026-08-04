@@ -7,10 +7,13 @@ const { normalizeWeightPricing } = require('./weightPricing');
 const { normalizeRoomPricing } = require('./roomPricing');
 const { attachStoreDisplayNo } = require('./displayNo');
 const { normalizeMultiPetDiscount, getDefaultMultiPetDiscount } = require('./multiPetPricing');
+const { normalizeWashPricing, normalizeWashFreeMinDays } = require('./washPricing');
+const { resolveStoreValueAddedServices } = require('./valueAddedServices');
 
 function mergeBillingRules(store, defaults) {
   const fromStore = (store && store.billingRules) || {};
   const defaultDiscount = (defaults && defaults.multiPetDiscount) || getDefaultMultiPetDiscount();
+  const valueAddedServices = resolveStoreValueAddedServices(store);
   return {
     ...defaults,
     ...fromStore,
@@ -37,6 +40,7 @@ function mergeBillingRules(store, defaults) {
       ...defaults.extras,
       ...(fromStore.extras || {})
     },
+    valueAddedServices,
     multiPetDiscount: normalizeMultiPetDiscount(
       fromStore.multiPetDiscount != null ? fromStore.multiPetDiscount : defaultDiscount
     )
@@ -51,6 +55,10 @@ function buildUserStoreView(store) {
   const storePhotos = Array.isArray(normalized.storePhotos) ? normalized.storePhotos.filter(Boolean) : [];
   const introPhotos = Array.isArray(normalized.introPhotos) ? normalized.introPhotos.filter(Boolean) : [];
   const noticePhotos = Array.isArray(normalized.noticePhotos) ? normalized.noticePhotos.filter(Boolean) : [];
+  const washNoticePhotos = Array.isArray(normalized.washNoticePhotos)
+    ? normalized.washNoticePhotos.filter(Boolean)
+    : [];
+  const valueAddedServices = resolveStoreValueAddedServices(normalized);
   const address = formatLocationAddress({
     name: normalized.locationName,
     address: normalized.addressRegion || normalized.address
@@ -78,6 +86,15 @@ function buildUserStoreView(store) {
     pickupFreeMinDays: normalized.pickupFreeMinDays != null && normalized.pickupFreeMinDays !== ''
       ? normalized.pickupFreeMinDays
       : '',
+    hasWash: normalized.washService === 'yes',
+    washPricing: normalizeWashPricing(normalized.washPricing || []),
+    washFreeMinDays: normalized.washFreeMinDays != null && normalized.washFreeMinDays !== ''
+      ? normalizeWashFreeMinDays(normalized.washFreeMinDays)
+      : '',
+    washNotice: (normalized.washNotice || '').trim(),
+    washNoticePhotos,
+    valueAddedServices,
+    hasValueAddedServices: valueAddedServices.length > 0,
     isOpen: isStoreOpenForUsers(normalized.status),
     deposit: normalized.deposit != null ? normalized.deposit : 0,
     depositText: `${normalized.deposit != null ? normalized.deposit : 0}元`
@@ -109,7 +126,8 @@ function prepareUserStoreView(store) {
   const listHasCloud = (list) => (list || []).some((url) => isCloudFileId(url));
   const photosOk = !listHasCloud(view.storePhotos)
     && !listHasCloud(view.introPhotos)
-    && !listHasCloud(view.noticePhotos);
+    && !listHasCloud(view.noticePhotos)
+    && !listHasCloud(view.washNoticePhotos);
   const logoOk = !view.logo || hasHttpsMedia(view.logo);
   if (photosOk && logoOk) {
     return Promise.resolve(view);

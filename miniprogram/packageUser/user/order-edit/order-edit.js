@@ -5,11 +5,12 @@ const timePicker = require('../../utils/timePicker');
 const { validateReserveContact, validateContactIdCard } = require('../../utils/reserveContact');
 const { validatePickupInfo, buildPickupPayload } = require('../../utils/pickupInfo');
 const { calcPickupShippingFee, canCalcDistancePickupFee, parseStoreCoords, isPickupFreeByStayDays } = require('../../../utils/pickupPricing');
+const { calcWashFee, formatWashPricingSummary } = require('../../../utils/washPricing');
 const { resolveStorePickupDrivingDistance } = require('../../utils/mapDistance');
 const { choosePickupLocation, formatLocationAddress, getPickupLocationValidationMessage } = require('../../../utils/location');
 const { isOrderEditTimeOnly } = require('../../utils/orderActions');
 const { showValidationAlert } = require('../../../utils/formAlert');
-const { getPetBookingConflictMessage } = require('../../../utils/bookingOverlap');
+const { getPetBookingConflictMessage, toRangeMs } = require('../../utils/bookingOverlap');
 
 function getTodayStr() {
   const today = new Date();
@@ -26,12 +27,15 @@ Page({
     startTime: '',
     endTime: '',
     minDate: getTodayStr(),
+    minEndDate: getTodayStr(),
     contactName: '',
     contactPhone: '',
     contactIdCard: '',
     emergencyPhone: '',
     specialNeeds: '',
     needPickup: false,
+    needWash: false,
+    washPricingSummary: '',
     pickupAddress: '',
     pickupLocationName: '',
     pickupLatitude: '',
@@ -71,29 +75,36 @@ Page({
       return;
     }
     const timeOnly = isOrderEditTimeOnly(order.status);
-    const store = app.getUserStoreView() || { hasPickup: order.needPickup };
+    const store = app.getUserStoreView() || { hasPickup: order.needPickup, hasWash: order.needWash };
+    const today = getTodayStr();
+    const minEndDate = order.startDate && order.startDate > today ? order.startDate : today;
+    const pending = order.editPendingConfirm && order.pendingEdit ? order.pendingEdit : null;
+    const formOrder = pending ? { ...order, ...pending } : order;
     this.setData({
       order,
       store,
       timeOnly,
-      startDate: order.startDate,
-      endDate: order.endDate,
-      startTime: order.startTime,
-      endTime: order.endTime,
-      contactName: order.contactName || '',
-      contactPhone: order.contactPhone || order.userPhone || '',
-      contactIdCard: order.contactIdCard || '',
-      emergencyPhone: order.emergencyPhone || '',
-      specialNeeds: order.specialNeeds || '',
-      needPickup: !!order.needPickup,
-      pickupAddress: order.pickupAddress || '',
-      pickupLocationName: order.pickupLocationName || '',
-      pickupLatitude: order.pickupLatitude,
-      pickupLongitude: order.pickupLongitude,
-      pickupContactPhone: order.pickupContactPhone || '',
-      pickupLeg: order.pickupIncludeOutbound === false
+      startDate: formOrder.startDate,
+      endDate: formOrder.endDate,
+      startTime: formOrder.startTime,
+      endTime: formOrder.endTime,
+      minEndDate,
+      contactName: formOrder.contactName || '',
+      contactPhone: formOrder.contactPhone || order.userPhone || '',
+      contactIdCard: formOrder.contactIdCard || '',
+      emergencyPhone: formOrder.emergencyPhone || '',
+      specialNeeds: formOrder.specialNeeds || '',
+      needPickup: !!formOrder.needPickup,
+      needWash: !!formOrder.needWash,
+      washPricingSummary: formatWashPricingSummary(store),
+      pickupAddress: formOrder.pickupAddress || '',
+      pickupLocationName: formOrder.pickupLocationName || '',
+      pickupLatitude: formOrder.pickupLatitude,
+      pickupLongitude: formOrder.pickupLongitude,
+      pickupContactPhone: formOrder.pickupContactPhone || '',
+      pickupLeg: formOrder.pickupIncludeOutbound === false
         ? 'return'
-        : (order.pickupIncludeReturn === false ? 'outbound' : 'both')
+        : (formOrder.pickupIncludeReturn === false ? 'outbound' : 'both')
     });
     this.calcFee();
   },
@@ -107,17 +118,20 @@ Page({
   },
 
   onDateSelect(e) {
-    if (this.data.timeOnly) {
-      this.setData({
-        startDate: this.data.order.startDate,
-        endDate: e.detail.endDate || e.detail.startDate
-      });
-    } else {
-      this.setData({
-        startDate: e.detail.startDate,
-        endDate: e.detail.endDate
-      });
-    }
+    this.setData({
+      startDate: e.detail.startDate,
+      endDate: e.detail.endDate
+    });
+    this.calcFee();
+  },
+
+  onEndDateChange(e) {
+    const endDate = (e.detail && e.detail.value) || '';
+    if (!endDate) return;
+    this.setData({
+      startDate: this.data.order.startDate,
+      endDate
+    });
     this.calcFee();
   },
 
@@ -190,6 +204,24 @@ Page({
     this.calcFee();
   },
 
+  onWashChange(e) {
+    const needWash = !!e.detail.value;
+    if (needWash && !(this.data.store && this.data.store.hasWash)) {
+      wx.showToast({ title: '店铺未开通洗护', icon: 'none' });
+      this.setData({ needWash: false });
+      return;
+    }
+    this.setData({ needWash });
+    this.calcFee();
+  },
+
+  onPreviewWashNoticePhoto(e) {
+    const url = e.currentTarget.dataset.url;
+    const urls = (this.data.store && this.data.store.washNoticePhotos) || [];
+    if (!url || !urls.length) return;
+    wx.previewImage({ current: url, urls });
+  },
+
   onPickupPhoneInput(e) {
     this.setData({ pickupContactPhone: (e.detail.value || '').trim() });
   },
@@ -228,7 +260,7 @@ Page({
 
   calcFee() {
     const {
-      order, timeOnly, startDate, endDate, startTime, endTime, needPickup, store,
+      order, timeOnly, startDate, endDate, startTime, endTime, needPickup, needWash, store,
       pickupLatitude, pickupLongitude, pickupDrivingDistanceKm, pickupDistanceMode
     } = this.data;
     const useStartDate = timeOnly ? order.startDate : startDate;
@@ -251,6 +283,8 @@ Page({
     const storeHasLocation = !!parseStoreCoords(storeView);
     const hasPickupCoords = !!(pickupLatitude && pickupLongitude);
     const needsDrivingDistance = !!(needPickup && isDistanceMode && storeHasLocation && hasPickupCoords);
+    // 店铺开通时可勾选；已选洗护的订单在店铺关闭洗护后仍可取消
+    const orderNeedWash = !!needWash && (!!storeView.hasWash || !!order.needWash);
 
     const applyFeeUi = (distanceKm, distanceError, distanceMode) => {
       if (feeToken !== this._feeCalcToken) return;
@@ -272,7 +306,43 @@ Page({
           stayDays: breakdown.days
         })
         : 0;
-      const totalFee = breakdown.baseFee + pickupFee;
+
+      let washFee = 0;
+      let washSnap = null;
+      if (orderNeedWash) {
+        if (storeView.hasWash) {
+          const washQuote = calcWashFee({
+            store: storeView,
+            petWeight: order.petWeight,
+            stayDays: breakdown.days,
+            needWash: true
+          });
+          washFee = washQuote.fee;
+          washSnap = {
+            unitPrice: washQuote.unitPrice,
+            fee: washFee,
+            freeByStay: washQuote.freeByStay,
+            freeMinDays: washQuote.freeMinDays,
+            text: washQuote.text
+          };
+        } else {
+          const prevSnap = (order.feeSnapshot && order.feeSnapshot.wash) || {};
+          const unitPrice = parseFloat(prevSnap.unitPrice != null ? prevSnap.unitPrice : order.washFee) || 0;
+          const freeMinDays = parseInt(prevSnap.freeMinDays, 10) || 0;
+          const freeByStay = freeMinDays > 0 && breakdown.days >= freeMinDays;
+          washFee = freeByStay ? 0 : unitPrice;
+          washSnap = {
+            unitPrice,
+            fee: washFee,
+            freeByStay,
+            freeMinDays,
+            text: freeByStay
+              ? `寄养满 ${freeMinDays} 天，洗护免费`
+              : (unitPrice > 0 ? `洗护 ¥${unitPrice}/次` : '')
+          };
+        }
+      }
+      const totalFee = breakdown.baseFee + pickupFee + washFee;
       const feeReady = breakdown.ready && (!needPickup || pickupReady);
 
       this.setData({
@@ -285,6 +355,8 @@ Page({
           days: breakdown.days,
           boardingFee: breakdown.baseFee,
           shippingFee: pickupFee,
+          washFee,
+          needWash: orderNeedWash,
           totalFee,
           feeSnapshot: {
             basePrice,
@@ -292,7 +364,8 @@ Page({
             chargeSummary: breakdown.chargeSummary,
             daysText: breakdown.daysText,
             pickupDistanceKm: distanceKm != null ? distanceKm : undefined,
-            pickupDistanceMode: isDistanceMode ? (resolvedMode || 'driving') : undefined
+            pickupDistanceMode: isDistanceMode ? (resolvedMode || 'driving') : undefined,
+            wash: washSnap || undefined
           },
           basePrice
         }
@@ -398,30 +471,70 @@ Page({
       startTime: updates.startTime || order.startTime,
       endTime: updates.endTime || order.endTime
     };
-    const overlapErr = getPetBookingConflictMessage(
-      typeof app.getOrders === 'function' ? app.getOrders() : [],
-      { id: order.petId, name: order.petName },
-      scheduleRange,
-      {
-        excludeOrderId: order.id || order.order_id,
-        excludeGroupId: order.orderGroupId || ''
-      }
+    // 仅补选增值服务、寄养时段未变时不做重叠校验
+    const scheduleChanged = (
+      String(scheduleRange.startDate || '') !== String(order.startDate || '')
+      || String(scheduleRange.endDate || '') !== String(order.endDate || '')
+      || String(scheduleRange.startTime || '') !== String(order.startTime || '')
+      || String(scheduleRange.endTime || '') !== String(order.endTime || '')
     );
-    if (overlapErr) {
-      showValidationAlert(overlapErr);
-      return;
+    if (scheduleChanged) {
+      const sameStart = (
+        String(scheduleRange.startDate || '') === String(order.startDate || '')
+        && String(scheduleRange.startTime || '') === String(order.startTime || '')
+      );
+      let checkRange = scheduleRange;
+      // 入住不变：缩短离店不校验；延长只校验「原离店 ~ 新离店」新增时段，避免把自己原订单判成冲突
+      if (sameStart) {
+        const oldEndMs = toRangeMs(order.endDate, order.endTime, '23:59');
+        const newEndMs = toRangeMs(scheduleRange.endDate, scheduleRange.endTime, '23:59');
+        if (Number.isFinite(oldEndMs) && Number.isFinite(newEndMs) && newEndMs <= oldEndMs) {
+          checkRange = null;
+        } else {
+          checkRange = {
+            startDate: order.endDate,
+            startTime: order.endTime,
+            endDate: scheduleRange.endDate,
+            endTime: scheduleRange.endTime
+          };
+        }
+      }
+
+      if (checkRange) {
+        const excludeIds = [order.id, order.order_id].filter(Boolean);
+        const overlapErr = getPetBookingConflictMessage(
+          typeof app.getOrders === 'function' ? app.getOrders() : [],
+          { id: order.petId, name: order.petName },
+          checkRange,
+          {
+            excludeOrderId: order.id || order.order_id,
+            excludeOrderIds: excludeIds,
+            excludeGroupId: order.orderGroupId || '',
+            excludeSameStayAs: {
+              petId: order.petId,
+              petName: order.petName,
+              startDate: order.startDate,
+              startTime: order.startTime
+            }
+          }
+        );
+        if (overlapErr) {
+          showValidationAlert(overlapErr);
+          return;
+        }
+      }
     }
 
-    wx.showLoading({ title: '保存中' });
+    wx.showLoading({ title: '提交中' });
     app.updateOrder(order.id, updates)
       .then(() => {
         wx.hideLoading();
-        wx.showToast({ title: '已保存', icon: 'success' });
+        wx.showToast({ title: '已提交', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 800);
       })
       .catch((err) => {
         wx.hideLoading();
-        wx.showToast({ title: (err && err.message) || '保存失败', icon: 'none' });
+        wx.showToast({ title: (err && err.message) || '提交失败', icon: 'none' });
       });
   }
 });

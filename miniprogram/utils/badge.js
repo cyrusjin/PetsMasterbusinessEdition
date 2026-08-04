@@ -31,13 +31,16 @@ function formatBadgeText(count) {
 }
 
 function countMerchantPendingOrders(orders) {
-  return (orders || []).filter((o) => o.status === 'pending').length;
+  return (orders || []).filter((o) => (
+    o.status === 'pending' || !!o.editPendingConfirm
+  )).length;
 }
 
 function countMerchantNewOrders(orders) {
   const seenAt = getSeenAt(BADGE_KEYS.MERCHANT_ORDERS_SEEN_AT);
   return (orders || []).filter((o) => (
-    o.status === 'pending' && (o.createTime || 0) > seenAt
+    (o.status === 'pending' && (o.createTime || 0) > seenAt)
+    || !!o.editPendingConfirm
   )).length;
 }
 

@@ -17,20 +17,22 @@ function canUserCancelOrder(status) {
   return USER_CANCEL_STATUSES.includes(status);
 }
 
-function canUserEditOrder(status) {
-  return USER_EDIT_STATUSES.includes(status);
+function canUserEditOrder(status, order) {
+  if (!USER_EDIT_STATUSES.includes(status)) return false;
+  if (order && order.pricePendingConfirm) return false;
+  return true;
 }
 
 function isOrderEditTimeOnly(status) {
   return status === ORDER_STATUS.BOARDING;
 }
 
-function canShowUserOrderActions(status) {
-  return canUserCancelOrder(status) || canUserEditOrder(status);
+function canShowUserOrderActions(status, order) {
+  return canUserCancelOrder(status) || canUserEditOrder(status, order);
 }
 
 function canMerchantModifyOrder(order) {
-  return !!(order && !order.pricePendingConfirm);
+  return !!(order && !order.pricePendingConfirm && !order.editPendingConfirm);
 }
 
 module.exports = {

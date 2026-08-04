@@ -52,16 +52,38 @@ function buildOrderFeeDetail(order, rules, options = {}) {
   const fees = normalizeOrderFees(order);
   const deposit = resolveOrderDeposit(order, store);
   const needPickup = !!(order && order.needPickup);
+  const needWash = !!(order && order.needWash);
+  const hasValueAdded = !!(fees.hasValueAdded);
+  const washSnap = (order && order.feeSnapshot && order.feeSnapshot.wash) || null;
+  const washFeeText = needWash && fees.washFee === 0 && washSnap && washSnap.freeByStay
+    ? '0（满天免费）'
+    : formatMoney(fees.washFee);
+  const valueAddedItems = Array.isArray(order && order.valueAddedServices)
+    ? order.valueAddedServices
+    : ((order && order.feeSnapshot && order.feeSnapshot.valueAdded && order.feeSnapshot.valueAdded.items) || []);
+  const valueAddedItemsView = valueAddedItems.map((item) => ({
+    id: item.id || item.name,
+    name: item.name || '增值服务',
+    priceText: formatMoney(item.price)
+  }));
 
   if (hasStoredFeeSnapshot(order)) {
     const snap = order.feeSnapshot;
     return {
       ready: true,
       needPickup,
+      needWash,
+      hasValueAdded,
       boardingFee: fees.boardingFee,
       boardingFeeText: formatMoney(fees.boardingFee),
       shippingFee: fees.shippingFee,
       shippingFeeText: formatMoney(fees.shippingFee),
+      washFee: fees.washFee,
+      washFeeText,
+      washCalcText: (washSnap && washSnap.text) || '',
+      valueAddedFee: fees.valueAddedFee,
+      valueAddedFeeText: formatMoney(fees.valueAddedFee),
+      valueAddedItems: valueAddedItemsView,
       totalFee: fees.totalFee,
       totalFeeText: formatMoney(fees.totalFee),
       basePrice: snap.basePrice,
@@ -92,10 +114,18 @@ function buildOrderFeeDetail(order, rules, options = {}) {
   return {
     ready: breakdown.ready,
     needPickup,
+    needWash,
+    hasValueAdded,
     boardingFee: fees.boardingFee,
     boardingFeeText: formatMoney(fees.boardingFee),
     shippingFee: fees.shippingFee,
     shippingFeeText: formatMoney(fees.shippingFee),
+    washFee: fees.washFee,
+    washFeeText,
+    washCalcText: (washSnap && washSnap.text) || '',
+    valueAddedFee: fees.valueAddedFee,
+    valueAddedFeeText: formatMoney(fees.valueAddedFee),
+    valueAddedItems: valueAddedItemsView,
     totalFee: fees.totalFee,
     totalFeeText: formatMoney(fees.totalFee),
     basePrice,

@@ -11,6 +11,7 @@ const {
 } = require('../../utils/orderActions');
 const { attachOrderDisplayNo } = require('../../../utils/displayNo');
 const { formatOrderCreateTime } = require('../../../utils/util');
+const { buildPendingEditLines, getPendingEditTotalFee } = require('../../utils/pendingEdit');
 
 Page({
   data: {
@@ -19,6 +20,8 @@ Page({
     canCancel: false,
     canEdit: false,
     showActions: false,
+    pendingEditLines: [],
+    pendingEditTotalFee: null,
     feeSummary: {
       boardingFee: 0,
       shippingFee: 0,
@@ -72,8 +75,17 @@ Page({
       order,
       statusLabel: formatOrderStatus(status),
       canCancel: canUserCancelOrder(status),
-      canEdit: canUserEditOrder(status),
-      showActions: canShowUserOrderActions(status),
+      canEdit: canUserEditOrder(status, order),
+      showActions: canShowUserOrderActions(status, order),
+      pendingEditLines: order.editPendingConfirm ? buildPendingEditLines(order) : [],
+      pendingEditTotalFee: order.editPendingConfirm ? getPendingEditTotalFee(order) : null,
+      valueAddedServicesText: Array.isArray(order.valueAddedServices) && order.valueAddedServices.length
+        ? order.valueAddedServices.map((item) => {
+          const name = (item && item.name) || '增值服务';
+          const price = item && item.price != null ? item.price : '';
+          return price !== '' ? `${name}（¥${price}）` : name;
+        }).join('、')
+        : '',
       feeSummary,
       feeDetail
     });

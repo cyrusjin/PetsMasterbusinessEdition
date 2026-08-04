@@ -838,15 +838,19 @@ App({
     return storeApi.getStore(storeId)
       .then((res) => {
         if (res.success && res.store) {
-          this._cacheStore(res.store);
+          const localShop = this.getData(STORAGE_KEYS.SHOP) || {};
+          const store = (localShop.store_id && localShop.store_id === res.store.store_id)
+            ? mergeMerchantShop(localShop, res.store)
+            : res.store;
+          this._cacheStore(store);
           storeDebug.log('bindStore 成功', {
-            storeId: res.store.store_id,
-            storeName: res.store.name
+            storeId: store.store_id,
+            storeName: store.name
           });
           if (syncUser) {
-            return this._maybeSyncUserStore(storeId).then(() => res.store);
+            return this._maybeSyncUserStore(storeId).then(() => store);
           }
-          return res.store;
+          return store;
         }
         storeDebug.log('bindStore 失败', { storeId, errMsg: res.errMsg || '店铺不存在' });
         if (this._isStoreMissingError(res.errMsg)) {
@@ -2617,14 +2621,24 @@ App({
       const saved = merchantDemo.saveDemoShop(normalized);
       this.globalData.merchantStoreId = saved.store_id;
       this._merchantStoreFetchedAt = Date.now();
+      this._syncCurrentStoreFromShop(saved);
       return attachStoreDisplayNo(saved);
     }
     this.setData(STORAGE_KEYS.SHOP, normalized);
     if (normalized && normalized.store_id) {
       this.globalData.merchantStoreId = normalized.store_id;
       this._merchantStoreFetchedAt = Date.now();
+      this._syncCurrentStoreFromShop(normalized);
     }
     return normalized;
+  },
+
+  /** 商家保存店铺后，同步更新用户端绑定店铺缓存，避免预约页读到旧数据 */
+  _syncCurrentStoreFromShop(shop) {
+    if (!shop || !shop.store_id) return;
+    const current = this.getCurrentStore();
+    if (current && current.store_id && current.store_id !== shop.store_id) return;
+    this._cacheStore(current ? { ...current, ...shop } : shop);
   },
 
   getBillingRules() {

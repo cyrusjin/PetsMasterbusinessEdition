@@ -2,6 +2,7 @@
   "navigationBarTitleText": "商家入驻",
   "usingComponents": {
     "cached-image": "/components/cached-image/cached-image",
-    "oa-follow-sheet": "/components/oa-follow-sheet/oa-follow-sheet"
+    "oa-follow-sheet": "/components/oa-follow-sheet/oa-follow-sheet",
+    "cs-contact": "/components/cs-contact/cs-contact"
   }
 }

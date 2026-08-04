@@ -4,42 +4,66 @@ function parseFee(value, fallback = 0) {
   return Number.isFinite(num) && num >= 0 ? Math.round(num * 100) / 100 : fallback;
 }
 
+function hasValueAddedServices(order) {
+  const list = order && order.valueAddedServices;
+  return Array.isArray(list) && list.length > 0;
+}
+
 function normalizeOrderFees(order) {
   const source = order || {};
   const needPickup = !!source.needPickup;
+  const needWash = !!source.needWash;
+  const hasValueAdded = hasValueAddedServices(source);
   const totalFee = parseFee(source.totalFee, 0);
   let boardingFee = parseFee(source.boardingFee, NaN);
   let shippingFee = parseFee(source.shippingFee, 0);
-
-  if (!Number.isFinite(boardingFee)) {
-    boardingFee = needPickup ? Math.max(0, totalFee - shippingFee) : totalFee;
-  }
+  let washFee = parseFee(source.washFee, 0);
+  let valueAddedFee = parseFee(source.valueAddedFee, 0);
 
   if (!needPickup) {
     shippingFee = 0;
   }
+  if (!needWash) {
+    washFee = 0;
+  }
+  if (!hasValueAdded) {
+    valueAddedFee = 0;
+  }
 
-  const normalizedTotal = parseFee(boardingFee + shippingFee, totalFee);
+  if (!Number.isFinite(boardingFee)) {
+    boardingFee = Math.max(0, totalFee - shippingFee - washFee - valueAddedFee);
+  }
+
+  const normalizedTotal = parseFee(boardingFee + shippingFee + washFee + valueAddedFee, totalFee);
 
   return {
     boardingFee,
     shippingFee,
+    washFee,
+    valueAddedFee,
+    needWash,
+    hasValueAdded,
     totalFee: normalizedTotal
   };
 }
 
-function buildFeePayload(boardingFee, shippingFee, needPickup) {
+function buildFeePayload(boardingFee, shippingFee, needPickup, washFee, needWash, valueAddedFee, hasValueAdded) {
   const boarding = parseFee(boardingFee, 0);
   const shipping = needPickup ? parseFee(shippingFee, 0) : 0;
+  const wash = needWash ? parseFee(washFee, 0) : 0;
+  const valueAdded = hasValueAdded ? parseFee(valueAddedFee, 0) : 0;
   return {
     boardingFee: boarding,
     shippingFee: shipping,
-    totalFee: parseFee(boarding + shipping, 0)
+    washFee: wash,
+    valueAddedFee: valueAdded,
+    totalFee: parseFee(boarding + shipping + wash + valueAdded, 0)
   };
 }
 
 module.exports = {
   parseFee,
   normalizeOrderFees,
-  buildFeePayload
+  buildFeePayload,
+  hasValueAddedServices
 };

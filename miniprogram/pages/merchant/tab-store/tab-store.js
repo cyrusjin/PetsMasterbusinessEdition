@@ -56,6 +56,7 @@ const {
   uploadStorePhotos,
   uploadIntroPhotos,
   uploadNoticePhotos,
+  uploadWashNoticePhotos,
   uploadStoreLogo,
   normalizeBusinessLicense,
   uploadBusinessLicense
@@ -70,6 +71,15 @@ const {
 const { normalizeDeposit, validateStoreForm } = require('../../../utils/storeForm');
 const { normalizePickupPricing, PICKUP_PRICING_MODE, parsePickupFreeMinDays } = require('../../../utils/pickupPricing');
 const {
+  normalizeWashPricing,
+  normalizeWashFields,
+  parseWashFreeMinDays,
+  getDefaultWashPricing,
+  addWashRange,
+  removeWashRange,
+  updateWashRangeField
+} = require('../../../utils/washPricing');
+const {
   MAX_ROOM_DESCRIPTION,
   normalizeRoomPricing,
   addRoom,
@@ -77,6 +87,16 @@ const {
   updateRoomField,
   uploadRoomPricingPhotos
 } = require('../../../utils/roomPricing');
+const {
+  MAX_VALUE_ADDED_DESCRIPTION,
+  MAX_VALUE_ADDED_NAME,
+  normalizeValueAddedServices,
+  resolveStoreValueAddedServices,
+  addValueAddedService,
+  removeValueAddedService,
+  updateValueAddedServiceField,
+  uploadValueAddedServicePhotos
+} = require('../../../utils/valueAddedServices');
 const {
   getDefaultClauseEditText,
   getStoredClauseEditText,
@@ -167,6 +187,7 @@ Page({
     storePhotos: [],
     introPhotos: [],
     noticePhotos: [],
+    washNoticePhotos: [],
     maxStorePhotos: MAX_STORE_PHOTOS,
     maxIntroPhotos: MAX_INTRO_PHOTOS,
     maxNoticePhotos: MAX_NOTICE_PHOTOS,
@@ -174,6 +195,9 @@ Page({
     maxNoticeText: MAX_NOTICE_TEXT,
     maxPickupNoticeText: MAX_PICKUP_NOTICE_TEXT,
     maxRoomDescription: MAX_ROOM_DESCRIPTION,
+    maxValueAddedDescription: MAX_VALUE_ADDED_DESCRIPTION,
+    maxValueAddedName: MAX_VALUE_ADDED_NAME,
+    valueAddedServices: [],
     photoDrag: {
       active: false,
       listKey: '',
@@ -187,6 +211,8 @@ Page({
     hideMerchantTabBar: true,
     oaFollowSheetVisible: false,
     pickupFreeMode: 'none',
+    washPricing: [],
+    washFreeMode: 'none',
     multiPetDiscountEnabled: false,
     multiPetDiscountPercent: '',
     showContractModal: false,
@@ -660,6 +686,7 @@ Page({
     if (listKey === 'apply') return normalizeStorePhotos(this.data.applyStorePhotos);
     if (listKey === 'intro') return normalizeIntroPhotos(this.data.introPhotos);
     if (listKey === 'notice') return normalizeNoticePhotos(this.data.noticePhotos);
+    if (listKey === 'washNotice') return normalizeNoticePhotos(this.data.washNoticePhotos);
     return normalizeStorePhotos(this.data.storePhotos);
   },
 
@@ -678,6 +705,10 @@ Page({
     }
     if (listKey === 'notice') {
       this._applyNoticePhotos(photos);
+      return;
+    }
+    if (listKey === 'washNotice') {
+      this._applyWashNoticePhotos(photos);
       return;
     }
     this._applyStorePhotos(photos);
@@ -854,6 +885,8 @@ Page({
       if (listKey === 'intro') {
         this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_INTRO_PHOTOS));
       } else if (listKey === 'notice') {
+        this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_NOTICE_PHOTOS));
+      } else if (listKey === 'washNotice') {
         this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_NOTICE_PHOTOS));
       } else {
         this._setPhotoList(listKey, reorderStorePhotos(photos, fromIndex, targetIndex));
@@ -1063,7 +1096,11 @@ Page({
       storePhotos: normalizeStorePhotos(normalizedShop.storePhotos),
       introPhotos: normalizeIntroPhotos(normalizedShop.introPhotos),
       noticePhotos: normalizeNoticePhotos(normalizedShop.noticePhotos),
+      washNoticePhotos: normalizeNoticePhotos(normalizedShop.washNoticePhotos),
       pickupFreeMode: parsePickupFreeMinDays(normalizedShop.pickupFreeMinDays) > 0 ? 'minDays' : 'none',
+      washPricing: normalizeWashPricing(normalizedShop.washPricing || []),
+      washFreeMode: parseWashFreeMinDays(normalizedShop.washFreeMinDays) > 0 ? 'minDays' : 'none',
+      valueAddedServices: resolveStoreValueAddedServices(normalizedShop),
       ...pickBillingState(rules),
       ...pickBusinessHoursState(normalizedShop),
       ...pickReceptionRangeState(normalizedShop),
@@ -1111,6 +1148,9 @@ Page({
       pickupNotice: shop.pickupNotice || '',
       wechatId: (shop.wechatId || '').trim(),
       ...normalizePickupPricing(shop),
+      ...normalizeWashFields(shop),
+      valueAddedServices: resolveStoreValueAddedServices(shop),
+      washNoticePhotos: normalizeNoticePhotos(shop.washNoticePhotos),
       deposit: normalizeDeposit(shop.deposit),
       compensationLimit: shop.compensationLimit != null && shop.compensationLimit !== ''
         ? String(shop.compensationLimit)
@@ -1135,6 +1175,12 @@ Page({
     const normalized = normalizeNoticePhotos(noticePhotos);
     const shop = { ...this.data.shop, noticePhotos: normalized };
     this.setData({ shop, noticePhotos: normalized });
+  },
+
+  _applyWashNoticePhotos(washNoticePhotos) {
+    const normalized = normalizeNoticePhotos(washNoticePhotos);
+    const shop = { ...this.data.shop, washNoticePhotos: normalized };
+    this.setData({ shop, washNoticePhotos: normalized });
   },
 
   _applyReceptionRange(receptionRange) {
@@ -1182,21 +1228,37 @@ Page({
     const pickupFreeMinDays = this.data.pickupFreeMode === 'minDays'
       ? (this.data.shop.pickupFreeMinDays || '')
       : '';
+    const washService = this.data.shop.washService === 'yes' ? 'yes' : 'no';
+    const washFreeMinDays = washService === 'yes' && this.data.washFreeMode === 'minDays'
+      ? (this.data.shop.washFreeMinDays || '')
+      : '';
     return {
       shop: {
         ...this.data.shop,
         pickupFreeMinDays,
+        washService,
+        washPricing: washService === 'yes'
+          ? normalizeWashPricing(this.data.washPricing)
+          : (this.data.shop.washPricing || getDefaultWashPricing()),
+        washFreeMinDays,
         businessHours: this.data.businessHours,
         receptionRange: this.data.receptionRange,
         storePhotos: this.data.storePhotos,
         introPhotos: this.data.introPhotos,
-        noticePhotos: this.data.noticePhotos
+        noticePhotos: this.data.noticePhotos,
+        washNotice: washService === 'yes' ? (this.data.shop.washNotice || '') : '',
+        washNoticePhotos: washService === 'yes'
+          ? normalizeNoticePhotos(this.data.washNoticePhotos)
+          : [],
+        valueAddedServices: normalizeValueAddedServices(this.data.valueAddedServices)
       },
       businessHours: this.data.businessHours,
       receptionRange: this.data.receptionRange,
       storePhotos: this.data.storePhotos,
       introPhotos: this.data.introPhotos,
       noticePhotos: this.data.noticePhotos,
+      washNoticePhotos: this.data.washNoticePhotos,
+      valueAddedServices: this.data.valueAddedServices,
       billingRules,
       checkInDayCharge: this.data.checkInDayCharge,
       departureDayCharge: this.data.departureDayCharge,
@@ -1212,16 +1274,23 @@ Page({
         return '请填写住几天及以上免费接送';
       }
     }
+    if (this.data.shop.washService === 'yes' && this.data.washFreeMode === 'minDays') {
+      if (!parseWashFreeMinDays(this.data.shop.washFreeMinDays)) {
+        return '请填写住几天及以上免费洗护';
+      }
+    }
     return '';
   },
 
   _getBillingRulesPayload() {
     const percent = parseFloat(this.data.multiPetDiscountPercent);
+    const valueAddedServices = normalizeValueAddedServices(this.data.valueAddedServices);
     return {
       ...app.getBillingRules(),
       billingMode: this.data.billingMode,
       weightPricing: normalizeWeightPricing(this.data.weightPricing),
       roomPricing: normalizeRoomPricing(this.data.roomPricing),
+      valueAddedServices,
       checkInDayCharge: this.data.checkInDayCharge,
       departureDayCharge: this.data.departureDayCharge,
       departureCharge: normalizeDepartureCharge(this.data.departureCharge),
@@ -1364,6 +1433,48 @@ Page({
       shop.pickupFreeMinDays = '7';
     }
     this.setData({ pickupFreeMode, shop });
+  },
+
+  onWashServiceChange(e) {
+    this._markDirty();
+    const washService = e.detail.value;
+    const shop = { ...this.data.shop, washService };
+    const patch = { shop };
+    if (washService === 'yes' && !(this.data.washPricing && this.data.washPricing.length)) {
+      patch.washPricing = getDefaultWashPricing();
+    }
+    this.setData(patch);
+  },
+
+  onWashFreeModeChange(e) {
+    this._markDirty();
+    const washFreeMode = e.detail.value === 'minDays' ? 'minDays' : 'none';
+    const shop = { ...this.data.shop };
+    if (washFreeMode === 'none') {
+      shop.washFreeMinDays = '';
+    } else if (!parseWashFreeMinDays(shop.washFreeMinDays)) {
+      shop.washFreeMinDays = '7';
+    }
+    this.setData({ washFreeMode, shop });
+  },
+
+  onWashRangeField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    const washPricing = updateWashRangeField(this.data.washPricing, index, field, e.detail.value);
+    this.setData({ washPricing });
+  },
+
+  onAddWashRange() {
+    this._markDirty();
+    this.setData({ washPricing: addWashRange(this.data.washPricing) });
+  },
+
+  onRemoveWashRange(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({ washPricing: removeWashRange(this.data.washPricing, index) });
   },
 
   onBusinessStatusChange(e) {
@@ -1522,6 +1633,46 @@ Page({
     wx.previewImage({ current: url, urls });
   },
 
+  onChooseWashNoticePhotos() {
+    if (this._choosingWashNoticePhotos) return;
+    const current = normalizeNoticePhotos(this.data.washNoticePhotos);
+    const remain = MAX_NOTICE_PHOTOS - current.length;
+    if (remain <= 0) {
+      wx.showToast({ title: `最多上传${MAX_NOTICE_PHOTOS}张`, icon: 'none' });
+      return;
+    }
+    this._choosingWashNoticePhotos = true;
+    wx.chooseMedia({
+      count: remain,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        this._markDirty();
+        const picked = (res.tempFiles || []).map((file) => file.tempFilePath);
+        this._applyWashNoticePhotos(current.concat(picked).slice(0, MAX_NOTICE_PHOTOS));
+      },
+      complete: () => {
+        this._choosingWashNoticePhotos = false;
+      }
+    });
+  },
+
+  onDeleteWashNoticePhoto(e) {
+    const index = e.currentTarget.dataset.index;
+    const washNoticePhotos = [...normalizeNoticePhotos(this.data.washNoticePhotos)];
+    washNoticePhotos.splice(index, 1);
+    this._markDirty();
+    this._applyWashNoticePhotos(washNoticePhotos);
+  },
+
+  onPreviewWashNoticePhoto(e) {
+    if (this.data.photoDrag && this.data.photoDrag.active) return;
+    const url = e.currentTarget.dataset.url;
+    const urls = normalizeNoticePhotos(this.data.washNoticePhotos);
+    if (!url || !urls.length) return;
+    wx.previewImage({ current: url, urls });
+  },
+
   onToggleWeekday(e) {
     this._markDirty();
     const value = e.currentTarget.dataset.value;
@@ -1630,6 +1781,82 @@ Page({
     this._markDirty();
     const index = e.currentTarget.dataset.index;
     this.setData({ roomPricing: removeRoom(this.data.roomPricing, index) });
+  },
+
+  onValueAddedField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    const valueAddedServices = updateValueAddedServiceField(
+      this.data.valueAddedServices, index, field, e.detail.value
+    );
+    this.setData({ valueAddedServices });
+  },
+
+  onChooseValueAddedPhoto(e) {
+    if (this._choosingValueAddedPhoto) return;
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || index < 0) return;
+    this._choosingValueAddedPhoto = true;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res && res.tempFiles && res.tempFiles[0];
+        const path = file && file.tempFilePath;
+        if (!path) {
+          wx.showToast({ title: '未选择到图片', icon: 'none' });
+          return;
+        }
+        this._markDirty();
+        const valueAddedServices = updateValueAddedServiceField(
+          this.data.valueAddedServices, index, 'photo', path
+        );
+        this.setData({ valueAddedServices });
+      },
+      fail: (err) => {
+        const msg = (err && err.errMsg) || '';
+        if (/cancel/i.test(msg)) return;
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
+      },
+      complete: () => {
+        this._choosingValueAddedPhoto = false;
+      }
+    });
+  },
+
+  onDeleteValueAddedPhoto(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const valueAddedServices = updateValueAddedServiceField(
+      this.data.valueAddedServices, index, 'photo', ''
+    );
+    this.setData({ valueAddedServices });
+  },
+
+  onPreviewValueAddedPhoto(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = (this.data.valueAddedServices || [])[index];
+    const url = item && item.photo;
+    if (!url) return;
+    resolveImageUrls([url]).then((urls) => {
+      const current = (urls && urls[0]) || url;
+      wx.previewImage({ current, urls: [current] });
+    });
+  },
+
+  onAddValueAddedService() {
+    this._markDirty();
+    this.setData({ valueAddedServices: addValueAddedService(this.data.valueAddedServices) });
+  },
+
+  onRemoveValueAddedService(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({
+      valueAddedServices: removeValueAddedService(this.data.valueAddedServices, index)
+    });
   },
 
   _setTabBarVisible(_visible) {
@@ -1761,6 +1988,18 @@ Page({
       pickupFreeMinDays: this.data.pickupFreeMode === 'minDays'
         ? (this.data.shop.pickupFreeMinDays || '')
         : '',
+      washService: this.data.shop.washService === 'yes' ? 'yes' : 'no',
+      washPricing: this.data.shop.washService === 'yes'
+        ? normalizeWashPricing(this.data.washPricing)
+        : (this.data.washPricing || getDefaultWashPricing()),
+      washFreeMinDays: this.data.shop.washService === 'yes' && this.data.washFreeMode === 'minDays'
+        ? (this.data.shop.washFreeMinDays || '')
+        : '',
+      washNotice: this.data.shop.washService === 'yes' ? (this.data.shop.washNotice || '') : '',
+      washNoticePhotos: this.data.shop.washService === 'yes'
+        ? normalizeNoticePhotos(this.data.washNoticePhotos)
+        : [],
+      valueAddedServices: normalizeValueAddedServices(this.data.valueAddedServices),
       status: nextStatus,
       businessHours: this.data.businessHours,
       receptionRange: this.data.receptionRange,
@@ -1784,12 +2023,23 @@ Page({
       })
       .then((noticePhotos) => {
         shop.noticePhotos = noticePhotos;
+        return uploadWashNoticePhotos(shop.washNoticePhotos, cachedShop.washNoticePhotos);
+      })
+      .then((washNoticePhotos) => {
+        shop.washNoticePhotos = washNoticePhotos;
         const fallbackRooms = ((cachedShop.billingRules || {}).roomPricing) || [];
         return uploadRoomPricingPhotos(billingRules.roomPricing, fallbackRooms);
       })
       .then((roomPricing) => {
         billingRules.roomPricing = roomPricing;
         shop.billingRules = { ...shop.billingRules, roomPricing };
+        const fallbackServices = cachedShop.valueAddedServices || [];
+        return uploadValueAddedServicePhotos(shop.valueAddedServices, fallbackServices);
+      })
+      .then((valueAddedServices) => {
+        shop.valueAddedServices = valueAddedServices;
+        billingRules.valueAddedServices = valueAddedServices;
+        shop.billingRules = { ...shop.billingRules, valueAddedServices };
         return app.syncShopToCloud(shop);
       })
       .then((saved) => {

@@ -1,6 +1,16 @@
-<view class="merchant-page has-tab-bar" style="padding-bottom: 160rpx;">
-  <view class="container">
-    <view class="mode-switch-row">
+<view class="merchant-page has-tab-bar has-custom-nav" style="padding-bottom: 160rpx;">
+  <view class="custom-nav" style="padding-top: {{statusBarHeight}}px; height: {{navTotalHeight}}px;">
+    <view class="custom-nav-inner" style="height: {{navBarHeight}}px;">
+      <view class="nav-announce" bindtap="onGoAnnouncements">
+        <image class="nav-announce-icon" src="/images/icon-announce.png" mode="aspectFit" />
+        <view class="nav-announce-dot" wx:if="{{hasUnreadAnnouncement}}"></view>
+      </view>
+      <text class="custom-nav-title">{{navTitle}}</text>
+      <view class="nav-announce-placeholder"></view>
+    </view>
+  </view>
+  <view class="container" style="padding-top: {{navTotalHeight}}px;">
+    <view class="mode-switch-row mode-switch-row--end">
       <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
     </view>
     <oa-follow-banner scene="merchant" />
@@ -38,6 +48,14 @@
         <view class="quick-item" bindtap="onGoDailyLogs">
           <image class="quick-icon-img" src="/images/card/card-camera.png" mode="aspectFit" />
           <text>打卡记录</text>
+        </view>
+        <view class="quick-item" bindtap="onGoCustomers">
+          <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+          <text>客户管理</text>
+        </view>
+        <view class="quick-item" bindtap="onGoLedger">
+          <image class="quick-icon-img" src="/images/card/card-stats.png" mode="aspectFit" />
+          <text>记账本</text>
         </view>
       </view>
     </view>

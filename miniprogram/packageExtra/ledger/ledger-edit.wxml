@@ -1,0 +1,60 @@
+<view class="page">
+  <view class="demo-banner" wx:if="{{isDemoMode}}">
+    <text class="demo-banner-text">体验模式 · 数据仅保存在本地</text>
+  </view>
+
+  <view class="card">
+    <view class="form-group">
+      <text class="form-label">类型</text>
+      <view class="type-row">
+        <view
+          class="type-chip {{type === item.key ? 'active' : ''}} {{item.key}}"
+          wx:for="{{typeOptions}}"
+          wx:key="key"
+          data-key="{{item.key}}"
+          bindtap="onTypeTap"
+        >{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>分类</text>
+      <picker mode="selector" range="{{categories}}" range-key="label" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-value">{{categories[categoryIndex].label || '请选择分类'}}</view>
+      </picker>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>金额（元）</text>
+      <input
+        class="form-input"
+        type="digit"
+        value="{{amount}}"
+        bindinput="onAmountInput"
+        placeholder="请输入金额"
+      />
+    </view>
+
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>日期</text>
+      <picker mode="date" value="{{date}}" bindchange="onDateChange">
+        <view class="picker-value">{{date || '请选择日期'}}</view>
+      </picker>
+    </view>
+
+    <view class="form-group form-group-last">
+      <text class="form-label">备注</text>
+      <textarea
+        class="form-textarea"
+        value="{{note}}"
+        bindinput="onNoteInput"
+        maxlength="120"
+        placeholder="可选，如供应商、用途说明"
+      />
+    </view>
+  </view>
+
+  <button class="btn-primary" bindtap="onSave" disabled="{{saving}}">
+    {{isEdit ? '保存修改' : '确认记账'}}
+  </button>
+</view>
