@@ -6,7 +6,11 @@
           <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-photo" />
           <view wx:else class="pet-avatar-small">{{item.name[0]}}</view>
           <view>
-            <text class="boarding-name">{{item.name}}</text>
+            <view class="flex-row gap-12">
+              <text class="boarding-name">{{item.name}}</text>
+              <text wx:if="{{item.isShared}}" class="tag tag-orange">家人共享</text>
+              <text wx:elif="{{item.memberCount > 0}}" class="tag tag-blue">家庭宠</text>
+            </view>
             <view class="flex-row gap-16 mt-16">
               <text class="tag tag-blue">{{item.type}}</text>
               <text class="tag tag-green">{{item.gender}}</text>
@@ -16,11 +20,19 @@
         </view>
         <view class="flex-row gap-16">
           <text class="btn-sm btn-blue" bindtap="onEdit" data-id="{{item.id}}">编辑</text>
-          <text class="btn-sm btn-red" bindtap="onDelete" data-id="{{item.id}}">删除</text>
+          <text
+            wx:if="{{item.isOwner !== false}}"
+            class="btn-sm btn-red"
+            bindtap="onDelete"
+            data-id="{{item.id}}"
+          >删除</text>
         </view>
       </view>
       <view class="pet-detail-row" wx:if="{{item.vaccination}}">
         <text class="text-gray">疫苗：</text><text class="{{item.vaccination==='已接种'?'text-green':'text-red'}}">{{item.vaccination}}</text>
+      </view>
+      <view class="pet-actions">
+        <text class="link-action" bindtap="onMembers" data-id="{{item.id}}">家庭成员</text>
       </view>
     </view>
   </view>

@@ -1,12 +1,15 @@
 const app = getApp();
 
 Page({
-  data: { pets: [], loading: false },
+  data: {
+    pets: [],
+    loading: false
+  },
 
   onShow() {
     this.setData({ loading: true });
-    app.loadPets()
-      .then((pets) => this.setData({ pets }))
+    app.loadPets({ force: true })
+      .then((pets) => this.setData({ pets: pets || [] }))
       .finally(() => this.setData({ loading: false }));
   },
 
@@ -18,11 +21,16 @@ Page({
     wx.navigateTo({ url: '/packageUser/user/pet-form/pet-form?id=' + e.currentTarget.dataset.id });
   },
 
+  onMembers(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({ url: '/packageUser/user/pet-members/pet-members?id=' + id });
+  },
+
   onDelete(e) {
     const id = e.currentTarget.dataset.id;
     wx.showModal({
       title: '删除宠物',
-      content: '确定删除该宠物档案吗？',
+      content: '确定删除该宠物档案吗？家庭成员也将失去访问权限。',
       success: (r) => {
         if (!r.confirm) return;
         wx.showLoading({ title: '删除中' });

@@ -552,6 +552,23 @@
   width: 100%;
   box-sizing: border-box;
 }
+.pet-room-section { margin-bottom: 20rpx; }
+.pet-room-section:last-child { margin-bottom: 0; }
+.pet-room-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+.pet-room-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333333;
+}
+.pet-room-meta {
+  font-size: 22rpx;
+  color: #999999;
+}
 .room-item {
   width: auto;
   min-width: 0;

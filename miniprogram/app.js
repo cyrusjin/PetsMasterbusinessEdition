@@ -1947,7 +1947,7 @@ App({
     if (!force && this._petsFetchedAt && Date.now() - this._petsFetchedAt < PETS_TTL) {
       return Promise.resolve(localPets);
     }
-    if (this._loadPetsPromise) {
+    if (!force && this._loadPetsPromise) {
       return this._loadPetsPromise;
     }
     this._loadPetsPromise = petApi.listPets()

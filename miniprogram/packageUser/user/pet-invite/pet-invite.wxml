@@ -1,0 +1,14 @@
+<view class="container invite-page">
+  <view class="invite-card" wx:if="{{!done}}">
+    <text class="invite-title">宠物家人邀请</text>
+    <text class="invite-desc">接受后可查看/编辑该宠物档案，并参与相关寄养动态与预约。</text>
+    <view class="invite-status" wx:if="{{loading}}">正在加入…</view>
+    <view class="invite-status text-red" wx:elif="{{error}}">{{error}}</view>
+    <button class="btn-primary" wx:if="{{!loading && error}}" bindtap="onRetry">重新加入</button>
+  </view>
+  <view class="invite-card" wx:else>
+    <text class="invite-title">已加入家庭宠物</text>
+    <text class="invite-desc">{{petName ? '「' + petName + '」' : '该宠物'}}已加入你的宠物列表</text>
+    <button class="btn-primary" bindtap="onGoPets">查看宠物档案</button>
+  </view>
+</view>

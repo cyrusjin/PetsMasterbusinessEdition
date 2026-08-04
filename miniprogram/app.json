@@ -17,6 +17,8 @@
         "user/login/login",
         "user/pets/pets",
         "user/pet-form/pet-form",
+        "user/pet-invite/pet-invite",
+        "user/pet-members/pet-members",
         "user/reserve/reserve",
         "user/boarding-contract/boarding-contract",
         "user/order-detail/order-detail",

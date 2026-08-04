@@ -1,0 +1,37 @@
+<view class="container">
+  <view class="members-head" wx:if="{{petName}}">
+    <text class="members-title">{{petName}}</text>
+    <text class="members-sub">家庭成员可共同管理该宠物档案与相关寄养动态</text>
+  </view>
+
+  <view class="card" wx:if="{{loading}}">
+    <text class="text-gray">加载中…</text>
+  </view>
+
+  <view class="card member-card" wx:for="{{members}}" wx:key="openid">
+    <view class="flex-between">
+      <view class="flex-row gap-20">
+        <cached-image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" custom-class="member-avatar" />
+        <view wx:else class="member-avatar placeholder">{{item.nickName[0] || '宠'}}</view>
+        <view>
+          <text class="boarding-name">{{item.nickName || '微信用户'}}</text>
+          <view class="mt-16">
+            <text class="tag {{item.isOwner ? 'tag-orange' : 'tag-blue'}}">{{item.isOwner ? '主账号' : '家人'}}</text>
+          </view>
+        </view>
+      </view>
+      <text
+        wx:if="{{isOwner && !item.isOwner}}"
+        class="btn-sm btn-red"
+        bindtap="onRemove"
+        data-openid="{{item.openid}}"
+        data-name="{{item.nickName}}"
+      >移除</text>
+    </view>
+  </view>
+
+  <view class="actions" wx:if="{{!loading}}">
+    <button wx:if="{{isOwner}}" class="btn-primary" open-type="share" loading="{{sharing}}">邀请家人</button>
+    <button wx:else class="btn-outline" bindtap="onLeave">退出家庭宠物</button>
+  </view>
+</view>

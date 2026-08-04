@@ -56,6 +56,14 @@
     </view>
   </view>
 
+  <view class="invite-family-bar" bindtap="onOpenInviteFamily">
+    <view class="invite-family-copy">
+      <text class="invite-family-title">邀请家人</text>
+      <text class="invite-family-sub">分享宠物档案，一起接收寄养动态</text>
+    </view>
+    <text class="invite-family-arrow">›</text>
+  </view>
+
   <view class="reserve-card" bindtap="onGoReserve">
     <view class="reserve-copy">
       <text class="reserve-title">预约专属服务</text>
@@ -207,5 +215,46 @@
     <scroll-view scroll-y class="intro-full-body" show-scrollbar="{{false}}">
       <view class="intro-full-text">{{introPreviewContent}}</view>
     </scroll-view>
+  </view>
+</view>
+
+<view class="invite-modal-root" wx:if="{{inviteModalVisible}}">
+  <view class="invite-modal-mask" catchtouchmove="onInviteModalTouchMove" bindtap="onCloseInviteFamily"></view>
+  <view class="invite-modal-sheet" catchtap="onInviteModalTouchMove">
+    <view class="invite-modal-head">
+      <view>
+        <text class="invite-modal-title">邀请家人</text>
+        <text class="invite-modal-sub">选择要分享的宠物，默认全部</text>
+      </view>
+      <text class="invite-modal-close" bindtap="onCloseInviteFamily">关闭</text>
+    </view>
+    <view class="invite-modal-tools">
+      <text class="invite-modal-tool" bindtap="onSelectAllSharePets">全选</text>
+      <text class="invite-modal-tool" bindtap="onClearSharePets">清空</text>
+      <text class="invite-modal-count">已选 {{shareSelectedCount}} 只</text>
+    </view>
+    <scroll-view scroll-y class="invite-modal-list" show-scrollbar="{{false}}">
+      <view
+        class="invite-pet-row {{item.selected ? 'selected' : ''}}"
+        wx:for="{{sharePets}}"
+        wx:key="id"
+        bindtap="onToggleSharePet"
+        data-id="{{item.id}}"
+      >
+        <view class="invite-pet-check {{item.selected ? 'on' : ''}}"></view>
+        <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="invite-pet-avatar" />
+        <view wx:else class="invite-pet-avatar fallback">{{item.name[0] || '宠'}}</view>
+        <view class="invite-pet-meta">
+          <text class="invite-pet-name">{{item.name}}</text>
+          <text class="invite-pet-type">{{item.type || '宠物'}}</text>
+        </view>
+      </view>
+    </scroll-view>
+    <button
+      class="invite-share-btn {{shareSelectedCount && !invitePreparing ? '' : 'disabled'}}"
+      open-type="share"
+      loading="{{invitePreparing}}"
+      disabled="{{!shareSelectedCount || invitePreparing}}"
+    >分享给微信好友</button>
   </view>
 </view>

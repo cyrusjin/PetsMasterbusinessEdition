@@ -164,10 +164,20 @@ function requestUploadSign(folder, ext) {
     });
 }
 
+function rejectOnFailure(res, fallbackMsg = '请求失败') {
+  if (!res || res.success === false) {
+    const err = new Error((res && res.errMsg) || fallbackMsg);
+    err.response = res;
+    return Promise.reject(err);
+  }
+  return res;
+}
+
 module.exports = {
   callApiService,
   normalizeApiError,
   ensureLogin,
+  rejectOnFailure,
   getToken,
   setToken,
   clearToken,

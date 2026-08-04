@@ -33,6 +33,15 @@ function getPetBasePrice(rules, petWeight, roomType) {
   return findWeightPrice((rules || {}).weightPricing, petWeight);
 }
 
+function resolvePetRoomType(pet, roomType, petRoomTypes) {
+  const petId = pet && pet.id;
+  if (petId != null && petRoomTypes && typeof petRoomTypes === 'object') {
+    const mapped = petRoomTypes[petId];
+    if (mapped) return mapped;
+  }
+  return roomType || '';
+}
+
 function roundMoney(amount) {
   return Math.round((parseFloat(amount) || 0) * 100) / 100;
 }
@@ -40,6 +49,7 @@ function roundMoney(amount) {
 /**
  * 多宠寄养费：按原价从高到低，首只全价，第 2 只起按折扣。
  * 兼容缺省 / enabled:false → 全部全价。
+ * room 模式可用 petRoomTypes（按宠选房），也兼容统一 roomType。
  */
 function calcMultiPetBoardingFees({
   pets,
@@ -49,12 +59,14 @@ function calcMultiPetBoardingFees({
   startTime,
   endTime,
   roomType,
+  petRoomTypes,
   extrasFeePerDay = 0
 }) {
   const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
   const discount = normalizeMultiPetDiscount(rules && rules.multiPetDiscount);
   const draft = list.map((pet, sourceIndex) => {
-    const basePrice = getPetBasePrice(rules, pet.weight, roomType);
+    const petRoomType = resolvePetRoomType(pet, roomType, petRoomTypes);
+    const basePrice = getPetBasePrice(rules, pet.weight, petRoomType);
     const breakdown = calcStayFeeBreakdown(
       startDate, endDate, startTime, endTime, rules, basePrice
     );
@@ -63,6 +75,7 @@ function calcMultiPetBoardingFees({
     return {
       pet,
       sourceIndex,
+      roomType: petRoomType,
       basePrice,
       breakdown,
       extrasFee,
@@ -88,6 +101,7 @@ function calcMultiPetBoardingFees({
     return {
       pet: item.pet,
       sourceIndex: item.sourceIndex,
+      roomType: item.roomType,
       basePrice: item.basePrice,
       breakdown: item.breakdown,
       extrasFee: item.extrasFee,
@@ -137,6 +151,7 @@ module.exports = {
   getDefaultMultiPetDiscount,
   normalizeMultiPetDiscount,
   getPetBasePrice,
+  resolvePetRoomType,
   calcMultiPetBoardingFees,
   validateMultiPetDiscount
 };

@@ -20,33 +20,45 @@
   </view>
 
   <view class="card" wx:if="{{store && store.isOpen && billingMode === 'room'}}">
-    <view class="card-title"><text>选择房间 <text class="required-star">*</text></text></view>
-    <view class="room-select-row">
-      <view
-        class="room-item {{roomType === item.id ? 'room-selected' : ''}} {{item.disabled ? 'room-disabled' : ''}}"
-        wx:for="{{roomOptions}}"
-        wx:key="id"
-        bindtap="onRoomTypeSelect"
-        data-type="{{item.id}}"
-      >
+    <view class="card-title">
+      <text>选择房间 <text class="required-star">*</text></text>
+      <text class="text-gray pet-multi-hint" wx:if="{{selectedPets.length > 1}}">为每只宠物选择</text>
+    </view>
+    <view class="pet-room-section" wx:for="{{petRoomSections}}" wx:key="petId">
+      <view class="pet-room-head" wx:if="{{petRoomSections.length > 1}}">
+        <text class="pet-room-name">{{item.petName}}</text>
+        <text class="pet-room-meta">{{item.petMeta}}</text>
+      </view>
+      <view class="room-select-row">
         <view
-          class="room-photo-wrap"
-          wx:if="{{item.photo}}"
-          catchtap="onPreviewRoomPhoto"
-          data-url="{{item.photo}}"
+          class="room-item {{item.roomType === room.id ? 'room-selected' : ''}} {{room.disabled ? 'room-disabled' : ''}}"
+          wx:for="{{item.roomOptions}}"
+          wx:for-item="room"
+          wx:key="id"
+          bindtap="onRoomTypeSelect"
+          data-type="{{room.id}}"
+          data-pet-id="{{item.petId}}"
         >
-          <cached-image custom-class="room-photo-img" src="{{item.photo}}" mode="aspectFill" />
+          <view
+            class="room-photo-wrap"
+            wx:if="{{room.photo}}"
+            catchtap="onPreviewRoomPhoto"
+            data-url="{{room.photo}}"
+          >
+            <cached-image custom-class="room-photo-img" src="{{room.photo}}" mode="aspectFill" />
+          </view>
+          <view class="room-photo-wrap room-photo-empty" wx:else>
+            <text class="room-icon">🐾</text>
+          </view>
+          <text class="room-name">{{room.name}}</text>
+          <text class="room-desc" wx:if="{{room.description}}">{{room.description}}</text>
+          <text class="room-limit">{{room.weightLimitText}}</text>
+          <text class="room-price">¥{{room.price}}/天</text>
+          <text class="room-disabled-tip" wx:if="{{room.disabled}}">体重超限</text>
         </view>
-        <view class="room-photo-wrap room-photo-empty" wx:else>
-          <text class="room-icon">🐾</text>
-        </view>
-        <text class="room-name">{{item.name}}</text>
-        <text class="room-desc" wx:if="{{item.description}}">{{item.description}}</text>
-        <text class="room-limit">{{item.weightLimitText}}</text>
-        <text class="room-price">¥{{item.price}}/天</text>
-        <text class="room-disabled-tip" wx:if="{{item.disabled}}">体重超限</text>
       </view>
     </view>
+    <view class="text-gray pet-empty-tip" wx:if="{{!petRoomSections.length}}">请先选择宠物</view>
   </view>
 
   <block wx:if="{{store && store.isOpen}}">
@@ -132,8 +144,8 @@
         <block wx:if="{{feeReady}}">
           <view class="fee-breakdown">
             <view class="fee-breakdown-title">{{feeBreakdownTitle}}</view>
-            <view class="fee-pet-row" wx:for="{{multiPetFeeItems}}" wx:key="name" wx:if="{{multiPetFeeItems.length > 1}}">
-              <text class="fee-day-date">{{item.name}}</text>
+            <view class="fee-pet-row" wx:for="{{multiPetFeeItems}}" wx:key="petId" wx:if="{{multiPetFeeItems.length > 1}}">
+              <text class="fee-day-date">{{item.name}}{{item.roomName ? ' · ' + item.roomName : ''}}</text>
               <text class="fee-day-label">寄养费</text>
               <text class="fee-day-factor" wx:if="{{item.discountAmountText}}">已减 ¥{{item.discountAmountText}}</text>
               <text class="fee-day-amount">¥{{item.boardingFeeText}}</text>
@@ -178,7 +190,7 @@
         </block>
         <view wx:else class="fee-pending-tip">
           <text wx:if="{{!startTime || !endTime}}">请选择入住时间和离店时间后查看费用</text>
-          <text wx:elif="{{billingMode === 'room' && !roomType}}">请选择房间后查看费用</text>
+          <text wx:elif="{{billingMode === 'room' && !roomsReady}}">请为每只宠物选择房间后查看费用</text>
         </view>
       </view>
     </view>

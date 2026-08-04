@@ -78,10 +78,47 @@ function buildSelectedPetIds(selectedPets) {
   return ids;
 }
 
-function getHeaviestPetWeight(pets) {
+function prunePetRoomTypes(pets, petRoomTypes, roomPricing) {
+  const src = petRoomTypes && typeof petRoomTypes === 'object' ? petRoomTypes : {};
+  const next = {};
+  (pets || []).forEach((pet) => {
+    if (!pet || !pet.id) return;
+    const roomType = src[pet.id];
+    if (!roomType) return;
+    const room = findRoom(roomPricing, roomType);
+    if (room && supportsPetWeight(room, pet.weight)) {
+      next[pet.id] = roomType;
+    }
+  });
+  return next;
+}
+
+function buildPetRoomSections(pets, petRoomTypes, roomPricing) {
+  const map = petRoomTypes && typeof petRoomTypes === 'object' ? petRoomTypes : {};
+  return (pets || []).filter(Boolean).map((pet) => ({
+    petId: pet.id,
+    petName: pet.name || '',
+    petMeta: `${pet.type || ''} · ${pet.age != null ? pet.age : '—'}岁 · ${pet.weight != null ? pet.weight : '—'}kg`,
+    roomType: map[pet.id] || '',
+    roomOptions: buildRoomOptions(roomPricing, pet.weight)
+  }));
+}
+
+function allPetsHaveRoom(pets, petRoomTypes) {
   const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
-  if (!list.length) return null;
-  return Math.max(...list.map((p) => parseFloat(p.weight) || 0));
+  const map = petRoomTypes && typeof petRoomTypes === 'object' ? petRoomTypes : {};
+  return list.length > 0 && list.every((p) => !!map[p.id]);
+}
+
+function formatPetRoomSummary(pets, petRoomTypes, roomPricing) {
+  const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
+  const map = petRoomTypes && typeof petRoomTypes === 'object' ? petRoomTypes : {};
+  return list.map((pet) => {
+    const room = findRoom(roomPricing, map[pet.id]);
+    const roomName = room ? room.name : '';
+    if (!roomName) return '';
+    return list.length > 1 ? `${pet.name}：${roomName}` : roomName;
+  }).filter(Boolean).join('；');
 }
 
 Page({
@@ -137,8 +174,9 @@ Page({
     basePrice: 0,
     basePriceText: '0',
     billingMode: 'weight',
-    roomType: '',
-    roomOptions: [],
+    petRoomTypes: {},
+    petRoomSections: [],
+    roomsReady: false,
     extraList: [],
     specialNeeds: '',
     specialNeedGuides: buildSpecialNeedGuides(''),
@@ -185,46 +223,50 @@ Page({
       });
   },
 
-  _setRoomOptions(petWeight, extraPatch, roomType) {
+  _setPetRoomSections(pets, petRoomTypes, extraPatch) {
     const rules = app.getStoreBillingRules();
-    const roomOptions = buildRoomOptions(rules.roomPricing, petWeight);
-    const patch = { ...(extraPatch || {}), roomOptions };
-    if (roomType !== undefined) patch.roomType = roomType;
+    const pruned = prunePetRoomTypes(pets, petRoomTypes, rules.roomPricing);
+    const petRoomSections = buildPetRoomSections(pets, pruned, rules.roomPricing);
+    const patch = {
+      ...(extraPatch || {}),
+      petRoomTypes: pruned,
+      petRoomSections,
+      roomsReady: allPetsHaveRoom(pets, pruned)
+    };
     this.setData(patch);
-    return this._refreshRoomOptionPhotos(roomOptions);
+    return this._refreshPetRoomSectionPhotos(petRoomSections);
   },
 
-  _refreshRoomOptionPhotos(roomOptions) {
-    const list = Array.isArray(roomOptions) ? roomOptions : [];
+  _refreshPetRoomSectionPhotos(petRoomSections) {
+    const sections = Array.isArray(petRoomSections) ? petRoomSections : [];
     const token = (this._roomPhotoToken = (this._roomPhotoToken || 0) + 1);
-    return resolveRoomOptionsPhotos(list).then((resolved) => {
+    return Promise.all(sections.map((section) => (
+      resolveRoomOptionsPhotos(section.roomOptions || []).then((resolved) => ({
+        ...section,
+        roomOptions: resolved
+      }))
+    ))).then((resolvedSections) => {
       if (token !== this._roomPhotoToken) return;
-      const changed = resolved.some((room, i) => room.photo !== (list[i] && list[i].photo));
+      const changed = resolvedSections.some((section, i) => {
+        const prev = sections[i] && sections[i].roomOptions;
+        return (section.roomOptions || []).some((room, j) => room.photo !== (prev && prev[j] && prev[j].photo));
+      });
       if (changed) {
-        this.setData({ roomOptions: resolved });
+        this.setData({ petRoomSections: resolvedSections });
       }
     }).catch(() => {});
   },
 
   _applyPetsSelection(selectedPets) {
     this._invalidateSignedContract();
-    const rules = app.getStoreBillingRules();
     const list = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
-    let roomType = this.data.roomType;
-    const selectedRoom = findRoom(rules.roomPricing, roomType);
-    if (roomType && selectedRoom) {
-      const allSupport = list.length > 0 && list.every((p) => supportsPetWeight(selectedRoom, p.weight));
-      if (!allSupport) roomType = '';
-    } else if (!selectedRoom) {
-      roomType = '';
-    }
     const selectedPet = list[0] || null;
     const selectedPetIds = buildSelectedPetIds(list);
-    this._setRoomOptions(getHeaviestPetWeight(list), {
+    this._setPetRoomSections(list, this.data.petRoomTypes, {
       selectedPets: list,
       selectedPet,
       selectedPetIds
-    }, roomType);
+    });
     this.calcFee();
   },
 
@@ -236,7 +278,7 @@ Page({
       endDate: this.data.endDate,
       startTime: this.data.startTime,
       endTime: this.data.endTime,
-      roomType: this.data.roomType,
+      petRoomTypes: { ...(this.data.petRoomTypes || {}) },
       needPickup: this.data.needPickup,
       pickupAddress: this.data.pickupAddress,
       pickupLocationName: this.data.pickupLocationName,
@@ -291,16 +333,12 @@ Page({
         const selectedPet = selectedPets[0] || null;
         const selectedPetIds = buildSelectedPetIds(selectedPets);
 
-        const roomOptions = buildRoomOptions(rules.roomPricing, getHeaviestPetWeight(selectedPets));
-        let roomType = preserveForm && prevForm ? prevForm.roomType : '';
-        if (roomType) {
-          const rawRoom = findRoom(rules.roomPricing, roomType);
-          if (!rawRoom) {
-            roomType = '';
-          } else if (selectedPets.some((p) => !supportsPetWeight(rawRoom, p.weight))) {
-            roomType = '';
-          }
-        }
+        const petRoomTypes = prunePetRoomTypes(
+          selectedPets,
+          preserveForm && prevForm ? prevForm.petRoomTypes : {},
+          rules.roomPricing
+        );
+        const petRoomSections = buildPetRoomSections(selectedPets, petRoomTypes, rules.roomPricing);
 
         const patch = {
           store,
@@ -318,8 +356,9 @@ Page({
           selectedPets,
           selectedPetIds,
           selectedPet,
-          roomOptions,
-          roomType
+          petRoomTypes,
+          petRoomSections,
+          roomsReady: allPetsHaveRoom(selectedPets, petRoomTypes)
         };
 
         if (preserveForm && prevForm) {
@@ -347,7 +386,7 @@ Page({
         this.setData(patch);
         this._pageReady = true;
         this.calcFee();
-        return this._refreshRoomOptionPhotos(roomOptions);
+        return this._refreshPetRoomSectionPhotos(petRoomSections);
       });
     });
   },
@@ -613,23 +652,31 @@ Page({
 
   onRoomTypeSelect(e) {
     const roomType = e.currentTarget.dataset.type;
-    const { roomOptions, selectedPets } = this.data;
+    const petId = e.currentTarget.dataset.petId;
+    const { selectedPets, petRoomTypes, petRoomSections } = this.data;
     if (!selectedPets || !selectedPets.length) {
       wx.showToast({ title: '请先选择宠物', icon: 'none' });
       return;
     }
-    const room = roomOptions.find((item) => item.id === roomType);
+    const pet = (selectedPets || []).find((p) => p.id === petId);
+    if (!pet) {
+      wx.showToast({ title: '请先选择宠物', icon: 'none' });
+      return;
+    }
+    const section = (petRoomSections || []).find((item) => item.petId === petId);
+    const roomOption = section && (section.roomOptions || []).find((item) => item.id === roomType);
     const rules = app.getStoreBillingRules();
     const rawRoom = findRoom(rules.roomPricing, roomType);
-    if (!rawRoom || selectedPets.some((p) => !supportsPetWeight(rawRoom, p.weight))) {
+    if (!rawRoom || !supportsPetWeight(rawRoom, pet.weight)) {
       wx.showToast({ title: '宠物体重超出该房间限制', icon: 'none' });
       return;
     }
-    if (room && room.disabled) {
+    if (roomOption && roomOption.disabled) {
       wx.showToast({ title: '宠物体重超出该房间限制', icon: 'none' });
       return;
     }
-    this.setData({ roomType });
+    const nextTypes = { ...(petRoomTypes || {}), [petId]: roomType };
+    this._setPetRoomSections(selectedPets, nextTypes);
     this._invalidateSignedContract();
     this.calcFee();
   },
@@ -676,7 +723,7 @@ Page({
   calcFee() {
     const {
       selectedPets, startDate, endDate, startTime, endTime, extraList, needPickup,
-      roomType, billingMode, store, pickupLatitude, pickupLongitude,
+      petRoomTypes, billingMode, store, pickupLatitude, pickupLongitude,
       pickupDrivingDistanceKm, pickupDistanceMode
     } = this.data;
     const rules = app.getStoreBillingRules();
@@ -690,7 +737,7 @@ Page({
       return;
     }
 
-    if (billingMode === 'room' && !roomType) {
+    if (billingMode === 'room' && !allPetsHaveRoom(pets, petRoomTypes)) {
       this._resetFeeState(chargeSummary);
       return;
     }
@@ -707,7 +754,7 @@ Page({
       endDate,
       startTime,
       endTime,
-      roomType,
+      petRoomTypes,
       extrasFeePerDay
     });
     this._multiPetFeeResult = multiResult;
@@ -716,12 +763,17 @@ Page({
     const breakdown = primaryItem.breakdown;
     const boardingTotalFee = multiResult.boardingTotal;
     const basePrice = primaryItem.basePrice;
-    const multiPetFeeItems = multiResult.items.map((item) => ({
-      name: item.pet.name,
-      boardingFeeText: formatMoney(item.boardingFee),
-      discountAmountText: item.discountAmount > 0 ? formatMoney(item.discountAmount) : '',
-      isPrimary: item.isPrimary
-    }));
+    const multiPetFeeItems = multiResult.items.map((item) => {
+      const room = findRoom(rules.roomPricing, item.roomType);
+      return {
+        petId: item.pet.id,
+        name: item.pet.name,
+        roomName: room ? room.name : '',
+        boardingFeeText: formatMoney(item.boardingFee),
+        discountAmountText: item.discountAmount > 0 ? formatMoney(item.discountAmount) : '',
+        isPrimary: item.isPrimary
+      };
+    });
     const feeBreakdownTitle = multiResult.items.length > 1
       ? '费用明细'
       : `费用明细（¥${formatMoney(basePrice)}/天）`;
@@ -894,7 +946,7 @@ Page({
   _validateBeforeContract() {
     const store = this.data.store;
     const {
-      selectedPets, startDate, endDate, startTime, endTime, billingMode, roomType, feeReady
+      selectedPets, startDate, endDate, startTime, endTime, billingMode, petRoomTypes, feeReady
     } = this.data;
     const pets = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
 
@@ -907,12 +959,17 @@ Page({
     if (!startDate || !endDate) return '请选择寄养时间';
     if (startDate < getTodayStr()) return '不能选择过去的日期';
     if (!startTime || !endTime) return '请选择入住和离店时间';
-    if (billingMode === 'room' && !roomType) return '请选择房间';
     if (billingMode === 'room') {
+      if (!allPetsHaveRoom(pets, petRoomTypes)) {
+        return pets.length > 1 ? '请为每只宠物选择房间' : '请选择房间';
+      }
       const rules = app.getStoreBillingRules();
-      const room = findRoom(rules.roomPricing, roomType);
-      if (!room || pets.some((p) => !supportsPetWeight(room, p.weight))) {
-        return '请选择适合全部宠物体重的房间';
+      for (let i = 0; i < pets.length; i += 1) {
+        const pet = pets[i];
+        const room = findRoom(rules.roomPricing, petRoomTypes[pet.id]);
+        if (!room || !supportsPetWeight(room, pet.weight)) {
+          return `请为「${pet.name || '宠物'}」选择适合体重的房间`;
+        }
       }
     }
     if (!feeReady) return '请完成时间和费用选择';
@@ -952,11 +1009,10 @@ Page({
   _buildContractDraft() {
     const {
       selectedPets, selectedPet, startDate, endDate, startTime, endTime, days, grandTotalFee,
-      specialNeeds, needPickup, roomType, billingMode, contactName, contactPhone, contactIdCard
+      specialNeeds, needPickup, petRoomTypes, billingMode, contactName, contactPhone, contactIdCard
     } = this.data;
     const store = this._getContractStore();
     const rules = app.getStoreBillingRules();
-    const room = findRoom(rules.roomPricing, roomType);
     const pets = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
 
     return buildContractDraft({
@@ -972,7 +1028,7 @@ Page({
       deposit: store.deposit != null ? store.deposit : 0,
       specialNeeds,
       needPickup: store.hasPickup && needPickup,
-      roomName: room ? room.name : '',
+      roomName: formatPetRoomSummary(pets, petRoomTypes, rules.roomPricing),
       billingMode,
       contactName,
       contactPhone,
@@ -1022,13 +1078,13 @@ Page({
     const {
       store,
       selectedPets, startDate, endDate, startTime, endTime, days,
-      extraList, specialNeeds, needPickup, roomType, billingMode,
+      extraList, specialNeeds, needPickup, petRoomTypes, billingMode,
       signedContractDraft, contactName, contactPhone, contactIdCard, emergencyPhone
     } = this.data;
 
+    const rules = app.getStoreBillingRules();
     let multiResult = this._multiPetFeeResult;
     if (!multiResult) {
-      const rules = app.getStoreBillingRules();
       let extrasFeePerDay = 0;
       extraList.filter((e) => e.checked).forEach((e) => {
         extrasFeePerDay += e.price;
@@ -1040,7 +1096,7 @@ Page({
         endDate,
         startTime,
         endTime,
-        roomType,
+        petRoomTypes,
         extrasFeePerDay
       });
       this._multiPetFeeResult = multiResult;
@@ -1063,7 +1119,6 @@ Page({
       })
       : 0;
     const signTime = signedContractDraft.signTime || new Date().toLocaleString('zh-CN');
-    const roomName = (findRoom(app.getStoreBillingRules().roomPricing, roomType) || {}).name || '';
     const checkedExtras = extraList.filter((e) => e.checked).map((e) => e.key);
 
     const buildOrderForItem = (item, index) => {
@@ -1073,6 +1128,8 @@ Page({
       const orderBoardingFee = item.boardingFee;
       const orderTotalFee = orderBoardingFee + shippingFee;
       const contractId = `ctr_${Date.now()}_${index}`;
+      const roomType = item.roomType || (petRoomTypes && petRoomTypes[pet.id]) || '';
+      const roomName = (findRoom(rules.roomPricing, roomType) || {}).name || '';
 
       const contractPayload = {
         ...buildContractDraft({
@@ -1296,9 +1353,14 @@ Page({
   onPreviewRoomPhoto(e) {
     const url = e.currentTarget.dataset.url;
     if (!url) return;
-    const urls = (this.data.roomOptions || [])
-      .map((room) => room && room.photo)
-      .filter(Boolean);
+    const urls = [];
+    (this.data.petRoomSections || []).forEach((section) => {
+      (section.roomOptions || []).forEach((room) => {
+        if (room && room.photo && urls.indexOf(room.photo) < 0) {
+          urls.push(room.photo);
+        }
+      });
+    });
     wx.previewImage({
       current: url,
       urls: urls.length ? urls : [url]

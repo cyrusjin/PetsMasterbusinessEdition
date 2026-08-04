@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "宠物寄养",
   "enablePullDownRefresh": true,
+  "enableShareAppMessage": true,
   "usingComponents": {}
 }

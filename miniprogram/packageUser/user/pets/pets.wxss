@@ -1,2 +1,14 @@
 .pet-photo { width: 80rpx; height: 80rpx; border-radius: 50%; border: 3rpx solid #F2DEC9; }
 .pet-detail-row { display: flex; align-items: center; margin-top: 16rpx; padding-top: 16rpx; border-top: 1rpx solid #F2DEC9; font-size: 24rpx; }
+.pet-actions {
+  display: flex;
+  gap: 32rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #F2DEC9;
+}
+.link-action {
+  font-size: 24rpx;
+  color: #E98657;
+}
+.gap-12 { gap: 12rpx; }

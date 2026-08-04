@@ -7,6 +7,7 @@ const { resolveEntryStoreId, enterStoreAndRefresh } = require('../../utils/store
 const { formatOrderCreateTime } = require('../../utils/util');
 const { isAuthorizedNickName, getDisplayNickName } = require('../../utils/userAuth');
 const { copyText } = require('../../utils/clipboard');
+const petApi = require('../../utils/pet');
 const {
   getMiniProgramMeta,
   fetchMerchantSwitchEnabled,
@@ -38,7 +39,11 @@ Page({
     showMerchantSwitch: false,
     introExpandable: false,
     introPreviewVisible: false,
-    introPreviewContent: ''
+    introPreviewContent: '',
+    inviteModalVisible: false,
+    sharePets: [],
+    shareSelectedCount: 0,
+    invitePreparing: false
   },
 
   _syncUserTabBar(index) {
@@ -114,6 +119,13 @@ Page({
 
   onLoad(options) {
     storeDebug.logEntryOptions('首页 onLoad', options);
+
+    const petInvite = String((options && (options.pet_invite || options.inviteId)) || '').trim();
+    if (petInvite) {
+      wx.navigateTo({
+        url: `/packageUser/user/pet-invite/pet-invite?pet_invite=${encodeURIComponent(petInvite)}`
+      });
+    }
 
     const sceneStoreId = options.scene ? decodeURIComponent(String(options.scene)) : '';
     const storeId = options.store_id || (sceneStoreId.startsWith('store_') ? sceneStoreId : '');
@@ -431,7 +443,9 @@ Page({
   onIntroPreviewTouchMove() {},
 
   onHide() {
-    this._setTabBarHidden(false);
+    if (!this.data.inviteModalVisible && !this.data.introPreviewVisible) {
+      this._setTabBarHidden(false);
+    }
   },
 
   onOpenStoreLocation() {
@@ -480,6 +494,122 @@ Page({
   onGoOrders() { wx.switchTab({ url: '/pages/orders/orders' }); },
   onGoDaily(e) { wx.navigateTo({ url: '/packageUser/user/pet-daily/pet-daily?id=' + e.currentTarget.dataset.id }); },
 
+  _countSelectedSharePets(sharePets) {
+    return (sharePets || []).filter((item) => item.selected).length;
+  },
+
+  _ownedShareablePets(pets) {
+    return (pets || []).filter((pet) => pet && pet.id && pet.isOwner !== false && !pet.isShared);
+  },
+
+  onOpenInviteFamily() {
+    wx.showLoading({ title: '加载中', mask: true });
+    app.loadPets({ force: true })
+      .then((pets) => {
+        const owned = this._ownedShareablePets(pets);
+        if (!owned.length) {
+          wx.hideLoading();
+          wx.showToast({ title: '请先添加自己的宠物', icon: 'none' });
+          return;
+        }
+        const sharePets = owned.map((pet) => ({
+          id: pet.id,
+          name: pet.name || '我的宝贝',
+          photo: pet.photo || '',
+          type: pet.type || '',
+          selected: true,
+          inviteId: ''
+        }));
+        this._setTabBarHidden(true);
+        this.setData({
+          inviteModalVisible: true,
+          sharePets,
+          shareSelectedCount: sharePets.length,
+          invitePreparing: true
+        });
+        wx.hideLoading();
+        return this._prepareInvitesForSelected();
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        wx.showToast({
+          title: (err && err.message) || '加载失败',
+          icon: 'none'
+        });
+      });
+  },
+
+  onCloseInviteFamily() {
+    this._setTabBarHidden(!!this.data.introPreviewVisible);
+    this.setData({
+      inviteModalVisible: false,
+      sharePets: [],
+      shareSelectedCount: 0,
+      invitePreparing: false
+    });
+  },
+
+  onInviteModalTouchMove() {},
+
+  onToggleSharePet(e) {
+    const id = e.currentTarget.dataset.id;
+    const sharePets = (this.data.sharePets || []).map((item) => (
+      item.id === id ? { ...item, selected: !item.selected } : item
+    ));
+    this.setData({
+      sharePets,
+      shareSelectedCount: this._countSelectedSharePets(sharePets)
+    });
+    const target = sharePets.find((item) => item.id === id);
+    if (target && target.selected && !target.inviteId) {
+      this._prepareInvitesForSelected();
+    }
+  },
+
+  onSelectAllSharePets() {
+    const sharePets = (this.data.sharePets || []).map((item) => ({ ...item, selected: true }));
+    this.setData({
+      sharePets,
+      shareSelectedCount: sharePets.length
+    });
+    this._prepareInvitesForSelected();
+  },
+
+  onClearSharePets() {
+    const sharePets = (this.data.sharePets || []).map((item) => ({ ...item, selected: false }));
+    this.setData({
+      sharePets,
+      shareSelectedCount: 0
+    });
+  },
+
+  _prepareInvitesForSelected() {
+    const need = (this.data.sharePets || []).filter((item) => item.selected && !item.inviteId);
+    if (!need.length) {
+      this.setData({ invitePreparing: false });
+      return Promise.resolve();
+    }
+    this.setData({ invitePreparing: true });
+    return Promise.all(need.map((pet) => (
+      petApi.createPetShareInvite(pet.id)
+        .then((res) => ({ id: pet.id, inviteId: (res && res.inviteId) || '' }))
+        .catch(() => ({ id: pet.id, inviteId: '' }))
+    ))).then((results) => {
+      const map = {};
+      results.forEach((item) => {
+        if (item.inviteId) map[item.id] = item.inviteId;
+      });
+      const sharePets = (this.data.sharePets || []).map((item) => (
+        map[item.id] ? { ...item, inviteId: map[item.id] } : item
+      ));
+      this.setData({ sharePets, invitePreparing: false });
+      const failed = need.filter((pet) => !map[pet.id]);
+      if (failed.length) {
+        wx.showToast({ title: '部分邀请生成失败', icon: 'none' });
+      }
+    });
+  },
+
   onSwitchToMerchant() {
     const go = () => {
       if (app.enterMerchantMode) {
@@ -506,6 +636,17 @@ Page({
   },
 
   onShareAppMessage() {
+    const selected = (this.data.sharePets || []).filter((item) => item.selected && item.inviteId);
+    if (this.data.inviteModalVisible && selected.length) {
+      const ids = selected.map((item) => item.inviteId).join(',');
+      const title = selected.length === 1
+        ? `邀请你一起照顾${selected[0].name}`
+        : `邀请你一起照顾我家的${selected.length}只毛孩子`;
+      return {
+        title,
+        path: `/packageUser/user/pet-invite/pet-invite?pet_invite=${encodeURIComponent(ids)}`
+      };
+    }
     const store = app.getUserStoreView() || app.getShop() || {};
     const storeId = app.getShareStoreId();
     const config = buildStoreShareConfig(store, storeId);
