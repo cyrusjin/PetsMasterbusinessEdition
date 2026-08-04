@@ -193,6 +193,56 @@ function getCachedPath(source) {
   return peekCachedPath(source, { skipTouch: false });
 }
 
+function removeCacheEntry(source) {
+  const index = getMemoryIndex();
+  const item = index[source];
+  if (item && item.path && fileExists(item.path)) {
+    try {
+      getFs().unlinkSync(item.path);
+    } catch (err) {
+      // ignore
+    }
+  }
+  delete index[source];
+}
+
+function evictOldestCacheEntries(count = 20) {
+  const index = getMemoryIndex();
+  const keys = Object.keys(index);
+  if (!keys.length) return 0;
+  const removeCount = Math.min(Math.max(count, 1), keys.length);
+  keys
+    .sort((a, b) => (index[a].updatedAt || 0) - (index[b].updatedAt || 0))
+    .slice(0, removeCount)
+    .forEach((key) => removeCacheEntry(key));
+  schedulePersistIndex();
+  return removeCount;
+}
+
+function isStorageLimitError(err) {
+  const msg = String((err && (err.errMsg || err.message)) || err || '');
+  return /maximum size|storage limit|exceeded|空间不足|上限/i.test(msg);
+}
+
+/**
+ * 写入用户目录缓存。优先 copyFile（不占用 saveFile 10MB 配额），失败再降级。
+ */
+function writeCacheFile(tempFilePath, targetPath) {
+  const fs = getFs();
+  try {
+    fs.copyFileSync(tempFilePath, targetPath);
+    return targetPath;
+  } catch (copyErr) {
+    // 部分基础库对跨目录 copy 不稳定，再试 saveFile
+    try {
+      return fs.saveFileSync(tempFilePath, targetPath);
+    } catch (saveErr) {
+      saveErr.copyErr = copyErr;
+      throw saveErr;
+    }
+  }
+}
+
 function saveTempFile(tempFilePath, source) {
   ensureCacheDir();
   const targetPath = expectedCachePath(source);
@@ -200,9 +250,27 @@ function saveTempFile(tempFilePath, source) {
     touchCacheEntry(source, targetPath);
     return targetPath;
   }
-  const savedPath = getFs().saveFileSync(tempFilePath, targetPath);
-  touchCacheEntry(source, savedPath);
-  return savedPath;
+
+  try {
+    const savedPath = writeCacheFile(tempFilePath, targetPath);
+    touchCacheEntry(source, savedPath);
+    return savedPath;
+  } catch (err) {
+    if (!isStorageLimitError(err)) throw err;
+    // 本地缓存已满：清理一批旧图后重试一次
+    evictOldestCacheEntries(40);
+    try {
+      const savedPath = writeCacheFile(tempFilePath, targetPath);
+      touchCacheEntry(source, savedPath);
+      return savedPath;
+    } catch (retryErr) {
+      // 仍失败则放弃本地缓存，直接用网络/临时路径展示
+      const limitErr = new Error('图片本地缓存已满，已跳过缓存');
+      limitErr.code = 'IMAGE_CACHE_FULL';
+      limitErr.cause = retryErr;
+      throw limitErr;
+    }
+  }
 }
 
 function downloadHttp(url) {
@@ -247,10 +315,22 @@ function _resolveImageUrl(source) {
   return loader
     .then((tempFilePath) => {
       if (!tempFilePath) return url;
-      return saveTempFile(tempFilePath, url);
+      try {
+        return saveTempFile(tempFilePath, url);
+      } catch (err) {
+        if (err && err.code === 'IMAGE_CACHE_FULL') {
+          console.warn('[imageCache] 本地缓存已满，改用原图地址', url);
+          return url;
+        }
+        throw err;
+      }
     })
     .catch((err) => {
-      console.error('[imageCache] 缓存失败', url, err);
+      if (err && err.code === 'IMAGE_CACHE_FULL') {
+        console.warn('[imageCache] 本地缓存已满，改用原图地址', url);
+      } else {
+        console.warn('[imageCache] 缓存失败，改用原图地址', url, err);
+      }
       return url;
     });
 }
@@ -314,5 +394,6 @@ module.exports = {
   resolveImageUrl,
   resolveImageUrls,
   clearImageFileCache,
-  flushCacheIndex
+  flushCacheIndex,
+  evictOldestCacheEntries
 };
