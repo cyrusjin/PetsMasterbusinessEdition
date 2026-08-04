@@ -1190,6 +1190,7 @@ Page({
     const buildOrderForItem = (item, index) => {
       const pet = item.pet;
       const isPrimary = item.isPrimary;
+      // 接送/增值只挂主单，同组多宠只收一次接送费
       const shippingFee = isPrimary ? pickupFee : 0;
       const orderNeedWash = !!(storeView.hasWash && needWash);
       const washQuote = calcWashFee({

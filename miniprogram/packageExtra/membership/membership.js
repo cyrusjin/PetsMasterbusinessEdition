@@ -1,15 +1,19 @@
 const app = getApp();
 const membershipApi = require('../utils/membership');
 
+/** 服务端会员接口未上线前，禁止请求与支付 */
+const MEMBERSHIP_SERVER_READY = false;
+
 Page({
   data: {
+    unavailable: !MEMBERSHIP_SERVER_READY,
     membership: {
       active: false,
       freeDogLimit: 5,
       boardingCount: 0,
       priceYuan: '9.9',
       periodDays: 30,
-      enabled: true,
+      enabled: false,
       payConfigured: false
     },
     paying: false
@@ -20,22 +24,38 @@ Page({
   },
 
   load() {
+    if (!MEMBERSHIP_SERVER_READY) {
+      this.setData({
+        unavailable: true,
+        membership: {
+          active: false,
+          freeDogLimit: 5,
+          boardingCount: 0,
+          priceYuan: '9.9',
+          periodDays: 30,
+          enabled: false,
+          payConfigured: false
+        }
+      });
+      return;
+    }
     const shop = app.getShop ? app.getShop() : (app.globalData.shop || {});
     const storeId = (shop && shop.store_id) || '';
     membershipApi.getMembershipStatus(storeId)
       .then((res) => {
         if (res.membership) {
-          this.setData({ membership: res.membership });
+          this.setData({ unavailable: false, membership: res.membership });
         }
       })
       .catch((err) => {
-        wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' });
+        this.setData({ unavailable: true });
+        wx.showToast({ title: (err && err.message) || '会员服务暂未开放', icon: 'none' });
       });
   },
 
   onPay() {
     if (this.data.paying) return;
-    if (!this.data.membership.enabled) {
+    if (!MEMBERSHIP_SERVER_READY || this.data.unavailable || !this.data.membership.enabled) {
       wx.showToast({ title: '会员开通暂未开放', icon: 'none' });
       return;
     }
@@ -49,7 +69,16 @@ Page({
       .then((paidRes) => {
         wx.hideLoading();
         this.setData({ paying: false });
-        if (paidRes && paidRes.membership) {
+        const paid = !!(
+          paidRes
+          && (paidRes.status === 'paid' || (paidRes.membership && paidRes.membership.active))
+        );
+        if (!paid) {
+          wx.showToast({ title: '支付结果确认中，请稍后刷新查看', icon: 'none', duration: 2500 });
+          this.load();
+          return;
+        }
+        if (paidRes.membership) {
           this.setData({ membership: paidRes.membership });
         } else {
           this.load();

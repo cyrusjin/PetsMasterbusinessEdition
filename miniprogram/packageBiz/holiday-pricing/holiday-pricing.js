@@ -102,11 +102,12 @@ Page({
   },
 
   _load() {
-    if (this.data.loading) return;
-    this.setData({ loading: true });
+    const reqId = (this._loadReqId = (this._loadReqId || 0) + 1);
     const preferredYear = this.data.year;
+    this.setData({ loading: true });
     fetchRestDayCalendar(preferredYear)
       .then((res) => {
+        if (reqId !== this._loadReqId || this.data.year !== preferredYear) return;
         const years = (res && res.years && res.years.length)
           ? res.years
           : getAvailableHolidayYears();
@@ -129,6 +130,7 @@ Page({
         });
       })
       .catch(() => {
+        if (reqId !== this._loadReqId || this.data.year !== preferredYear) return;
         const years = getAvailableHolidayYears();
         const year = resolveHolidayYear(preferredYear, years);
         const holidayPricing = this._readHolidayPricing();
@@ -149,7 +151,8 @@ Page({
     const index = Number(e.detail.value);
     const year = this.data.yearOptions[index];
     if (!year || year === this.data.year) return;
-    this.setData({ year, yearIndex: index }, () => this._load());
+    // 允许覆盖进行中的加载，避免切年请求被 loading 挡掉
+    this.setData({ year, yearIndex: index, loading: false }, () => this._load());
   },
 
   _setGroupDays(groupIndex, days) {

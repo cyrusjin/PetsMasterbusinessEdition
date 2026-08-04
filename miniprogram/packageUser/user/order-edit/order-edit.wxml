@@ -66,7 +66,11 @@
       </view>
     </view>
 
-    <view class="card" wx:if="{{store.hasPickup}}">
+    <view class="card" wx:if="{{store.hasPickup && !canEditPickup && pickupSharedTip}}">
+      <text class="tip-text">{{pickupSharedTip}}</text>
+    </view>
+
+    <view class="card" wx:if="{{store.hasPickup && canEditPickup}}">
       <view class="pickup-row">
         <text class="form-label" style="margin:0;">接送服务</text>
         <switch checked="{{needPickup}}" bindchange="onPickupChange" color="#E98657" />

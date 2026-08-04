@@ -1,6 +1,5 @@
 const app = getApp();
-const util = require('../../../utils/util');
-const { calcStayFeeBreakdown, formatMoney } = require('../../../utils/billing');
+const { formatMoney } = require('../../../utils/billing');
 const timePicker = require('../../utils/timePicker');
 const { validateReserveContact, validateContactIdCard } = require('../../utils/reserveContact');
 const { validatePickupInfo, buildPickupPayload } = require('../../utils/pickupInfo');
@@ -11,7 +10,7 @@ const { choosePickupLocation, formatLocationAddress, getPickupLocationValidation
 const { isOrderEditTimeOnly } = require('../../utils/orderActions');
 const { showValidationAlert } = require('../../../utils/formAlert');
 const { getPetBookingConflictMessage, toRangeMs } = require('../../utils/bookingOverlap');
-const { applyLongTermDiscount } = require('../../../utils/longTermDiscount');
+const { calcMultiPetBoardingFees } = require('../../../utils/multiPetPricing');
 
 function getTodayStr() {
   const today = new Date();
@@ -35,6 +34,8 @@ Page({
     emergencyPhone: '',
     specialNeeds: '',
     needPickup: false,
+    canEditPickup: true,
+    pickupSharedTip: '',
     needWash: false,
     washPricingSummary: '',
     pickupAddress: '',
@@ -81,6 +82,7 @@ Page({
     const minEndDate = order.startDate && order.startDate > today ? order.startDate : today;
     const pending = order.editPendingConfirm && order.pendingEdit ? order.pendingEdit : null;
     const formOrder = pending ? { ...order, ...pending } : order;
+    const canEditPickup = this._isPickupHostOrder(order);
     this.setData({
       order,
       store,
@@ -95,7 +97,11 @@ Page({
       contactIdCard: formOrder.contactIdCard || '',
       emergencyPhone: formOrder.emergencyPhone || '',
       specialNeeds: formOrder.specialNeeds || '',
-      needPickup: !!formOrder.needPickup,
+      canEditPickup,
+      pickupSharedTip: canEditPickup
+        ? ''
+        : '同组多宠订单的接送费记在主订单，本单不重复收取',
+      needPickup: canEditPickup ? !!formOrder.needPickup : false,
       needWash: !!formOrder.needWash,
       washPricingSummary: formatWashPricingSummary(store),
       pickupAddress: formOrder.pickupAddress || '',
@@ -108,6 +114,38 @@ Page({
         : (formOrder.pickupIncludeReturn === false ? 'outbound' : 'both')
     });
     this.calcFee();
+  },
+
+  /** 同组订单（用于多宠折扣重算）；无组则仅当前单 */
+  _getGroupOrders(order) {
+    const current = order || this.data.order || {};
+    const all = app.getOrders() || [];
+    const groupId = current.orderGroupId;
+    if (!groupId) return [current];
+    const group = all.filter((o) => (
+      o
+      && o.orderGroupId === groupId
+      && o.status !== 'cancelled'
+      && o.status !== 'rejected'
+    ));
+    if (!group.length) return [current];
+    if (!group.some((o) => String(o.id) === String(current.id))) {
+      return group.concat([current]);
+    }
+    return group;
+  },
+
+  /** 接送只挂在同组主订单上，避免多宠各收一次 */
+  _isPickupHostOrder(order) {
+    const current = order || this.data.order || {};
+    const group = this._getGroupOrders(current);
+    if (group.length <= 1) return true;
+    const marked = group.find((o) => o.isGroupPrimary === true);
+    if (marked) return String(marked.id) === String(current.id);
+    // 兼容旧数据：有接送的那张视为主单；都没有则取组内第一张
+    const withPickup = group.find((o) => o.needPickup);
+    if (withPickup) return String(withPickup.id) === String(current.id);
+    return String(group[0].id) === String(current.id);
   },
 
   _getPickupFlags() {
@@ -262,7 +300,7 @@ Page({
   calcFee() {
     const {
       order, timeOnly, startDate, endDate, startTime, endTime, needPickup, needWash, store,
-      pickupLatitude, pickupLongitude, pickupDrivingDistanceKm, pickupDistanceMode
+      pickupLatitude, pickupLongitude, pickupDrivingDistanceKm, pickupDistanceMode, canEditPickup
     } = this.data;
     const useStartDate = timeOnly ? order.startDate : startDate;
     const useStartTime = timeOnly ? order.startTime : startTime;
@@ -274,35 +312,59 @@ Page({
     }
 
     const rules = app.getStoreBillingRules();
-    const basePrice = order.basePrice || util.getPriceByMode(rules, order.petWeight, order.roomType);
-    const breakdown = calcStayFeeBreakdown(
-      useStartDate, endDate, useStartTime, endTime, rules, basePrice
-    );
-    const longTerm = applyLongTermDiscount(
-      breakdown.baseFee,
-      rules && rules.longTermDiscount,
-      breakdown.days
-    );
-    const boardingFee = longTerm.boardingFee;
+    const groupOrders = this._getGroupOrders(order);
+    const pets = groupOrders.map((o) => ({
+      id: o.petId || o.id,
+      name: o.petName || '',
+      weight: o.petWeight,
+      type: o.petType || ''
+    }));
+    const petRoomTypes = {};
+    groupOrders.forEach((o) => {
+      const key = o.petId || o.id;
+      if (key != null) petRoomTypes[key] = o.roomType || '';
+    });
+    const multiResult = calcMultiPetBoardingFees({
+      pets,
+      rules,
+      startDate: useStartDate,
+      endDate,
+      startTime: useStartTime,
+      endTime,
+      petRoomTypes,
+      extrasFeePerDay: 0
+    });
+    const currentPetKey = order.petId || order.id;
+    const myItem = (multiResult.items || []).find((item) => (
+      item.pet && String(item.pet.id) === String(currentPetKey)
+    )) || (multiResult.items || [])[0];
+    if (!myItem || !myItem.breakdown) {
+      this.setData({ feeReady: false, totalFeeText: '0', _feePayload: null });
+      return;
+    }
+    const breakdown = myItem.breakdown;
+    const boardingFee = myItem.boardingFee;
+    const basePrice = myItem.basePrice;
+    const chargePickup = !!(canEditPickup && needPickup);
     const storeView = store || {};
     const pickupFlags = this._getPickupFlags();
     const isDistanceMode = storeView.pickupPricingMode === 'distance';
     const storeHasLocation = !!parseStoreCoords(storeView);
     const hasPickupCoords = !!(pickupLatitude && pickupLongitude);
-    const needsDrivingDistance = !!(needPickup && isDistanceMode && storeHasLocation && hasPickupCoords);
+    const needsDrivingDistance = !!(chargePickup && isDistanceMode && storeHasLocation && hasPickupCoords);
     // 店铺开通时可勾选；已选洗护的订单在店铺关闭洗护后仍可取消
     const orderNeedWash = !!needWash && (!!storeView.hasWash || !!order.needWash);
 
     const applyFeeUi = (distanceKm, distanceError, distanceMode) => {
       if (feeToken !== this._feeCalcToken) return;
       const resolvedMode = distanceMode === 'straight' ? 'straight' : (distanceKm != null ? 'driving' : '');
-      const pickupReady = !needPickup
+      const pickupReady = !chargePickup
         || isPickupFreeByStayDays(storeView, breakdown.days)
         || !isDistanceMode
         || canCalcDistancePickupFee(
           storeView, pickupLatitude, pickupLongitude, distanceKm, breakdown.days
         );
-      const pickupFee = needPickup && pickupReady
+      const pickupFee = chargePickup && pickupReady
         ? calcPickupShippingFee({
           store: storeView,
           ...pickupFlags,
@@ -350,7 +412,8 @@ Page({
         }
       }
       const totalFee = boardingFee + pickupFee + washFee;
-      const feeReady = breakdown.ready && (!needPickup || pickupReady);
+      const feeReady = breakdown.ready && (!chargePickup || pickupReady);
+      const prevSnap = order.feeSnapshot || {};
 
       this.setData({
         feeReady,
@@ -370,12 +433,16 @@ Page({
             dailyBreakdown: breakdown.dailyBreakdown,
             chargeSummary: breakdown.chargeSummary,
             daysText: breakdown.daysText,
-            longTermDiscount: longTerm.discount,
-            originalBoardingFee: breakdown.baseFee,
-            longTermDiscountAmount: longTerm.discountAmount,
-            discountAmount: longTerm.discountAmount,
-            pickupDistanceKm: distanceKm != null ? distanceKm : undefined,
-            pickupDistanceMode: isDistanceMode ? (resolvedMode || 'driving') : undefined,
+            multiPetDiscount: multiResult.discount || prevSnap.multiPetDiscount,
+            longTermDiscount: multiResult.longTermDiscount,
+            originalBoardingFee: myItem.originalBoardingFee,
+            discountAmount: myItem.discountAmount,
+            multiPetDiscountAmount: myItem.multiPetDiscountAmount,
+            longTermDiscountAmount: myItem.longTermDiscountAmount,
+            petIndex: prevSnap.petIndex,
+            petCount: multiResult.petCount || prevSnap.petCount || groupOrders.length,
+            pickupDistanceKm: chargePickup && distanceKm != null ? distanceKm : undefined,
+            pickupDistanceMode: chargePickup && isDistanceMode ? (resolvedMode || 'driving') : undefined,
             wash: washSnap || undefined
           },
           basePrice
@@ -431,7 +498,7 @@ Page({
         showValidationAlert(idCardErr);
         return;
       }
-      if (this.data.needPickup) {
+      if (this.data.canEditPickup && this.data.needPickup) {
         const pickupErr = validatePickupInfo({
           needPickup: true,
           pickupAddress: this.data.pickupAddress,
@@ -464,7 +531,8 @@ Page({
         emergencyPhone: this.data.emergencyPhone,
         specialNeeds: this.data.specialNeeds,
         ...buildPickupPayload({
-          needPickup: this.data.needPickup,
+          // 非主单禁止写入接送，避免同组多宠各收一次
+          needPickup: !!(this.data.canEditPickup && this.data.needPickup),
           pickupAddress: this.data.pickupAddress,
           pickupLocationName: this.data.pickupLocationName,
           pickupLatitude: this.data.pickupLatitude,

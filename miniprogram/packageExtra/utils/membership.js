@@ -93,7 +93,9 @@ function pollMembershipPaid(orderId, tries = 6) {
       return res;
     }
     left -= 1;
-    if (left <= 0) return res;
+    if (left <= 0) {
+      return Promise.reject(new Error('支付结果确认超时，请稍后刷新会员页查看'));
+    }
     return new Promise((resolve) => {
       setTimeout(() => resolve(tick()), 1200);
     });
