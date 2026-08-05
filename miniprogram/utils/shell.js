@@ -3,6 +3,7 @@
  */
 
 const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
+const { isMerchantUiBlocked } = require('./merchantSwitch');
 
 const USER_TAB_ROUTES = [
   'pages/index/index',
@@ -36,6 +37,7 @@ function isUserTabRoute(route) {
 
 function hasMerchantBackendAccess() {
   try {
+    if (isMerchantUiBlocked()) return false;
     const app = getApp();
     if (app.isUserClientMode && app.isUserClientMode()) return false;
     if (app.isMerchantApproved && app.isMerchantApproved()) return true;
@@ -47,6 +49,7 @@ function hasMerchantBackendAccess() {
 
 function canUseMerchantShell() {
   try {
+    if (isMerchantUiBlocked()) return false;
     const app = getApp();
     if (app.isUserClientMode && app.isUserClientMode()) return false;
     const user = app.globalData && app.globalData.userInfo;
@@ -55,6 +58,19 @@ function canUseMerchantShell() {
     if (app.globalData && app.globalData.role === 'merchant') return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
     return false;
+  } catch (err) {
+    return false;
+  }
+}
+
+/** 非正式版误入商家页时踢回用户首页；返回 true 表示已发起跳转 */
+function redirectToUserIfMerchantUiBlocked() {
+  try {
+    if (!isMerchantUiBlocked()) return false;
+    const route = getCurrentRoute();
+    if (!route || route.indexOf('pages/merchant/') !== 0) return false;
+    wx.switchTab({ url: USER_HOME });
+    return true;
   } catch (err) {
     return false;
   }
@@ -73,6 +89,7 @@ function getMerchantLandingUrl() {
 /** 未审核通过时强制回到门店授权页；返回 true 表示已发起跳转 */
 function redirectToStoreAuthIfNeeded() {
   try {
+    if (redirectToUserIfMerchantUiBlocked()) return true;
     const app = getApp();
     if (!app) return false;
     if (app.isUserClientMode && app.isUserClientMode()) return false;
@@ -137,5 +154,6 @@ module.exports = {
   canUseMerchantShell,
   getMerchantLandingUrl,
   getUserLandingUrl,
-  redirectToStoreAuthIfNeeded
+  redirectToStoreAuthIfNeeded,
+  redirectToUserIfMerchantUiBlocked
 };

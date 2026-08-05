@@ -1,6 +1,7 @@
 const app = getApp();
 const { STORAGE_KEYS } = require('../../../utils/constants');
 const storeApi = require('../../../utils/store');
+const { redirectToUserIfMerchantUiBlocked } = require('../../../utils/shell');
 const {
   validateApplyForm,
   createEmptyApplyShop,
@@ -37,7 +38,10 @@ Page({
   },
 
   onShow() {
+    // 非正式版禁止进入入驻/商家页
+    if (redirectToUserIfMerchantUiBlocked()) return;
     app.ensureCloudAndLogin().then(() => {
+      if (redirectToUserIfMerchantUiBlocked()) return;
       if (app.isMerchantApproved()) {
         wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
         return;

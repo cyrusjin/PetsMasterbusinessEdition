@@ -717,20 +717,11 @@ Page({
   },
 
   onSwitchToMerchant() {
-    const go = () => {
-      if (app.enterMerchantMode) {
-        app.enterMerchantMode();
-        return;
-      }
-      wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
-    };
-
-    // 已入驻商家始终可进；未入驻受线上开关控制
-    if (app.isMerchantApproved && app.isMerchantApproved()) {
-      go();
+    // 统一走 enterMerchantMode：非正式版 / 开关关闭都会拦截（含已入驻）
+    if (app.enterMerchantMode) {
+      app.enterMerchantMode();
       return;
     }
-
     fetchRemoteAppConfig({ force: true }).then((cfg) => {
       applyRemoteConfigToApp(app, cfg);
       this.setData({ showMerchantSwitch: !!cfg.merchantSwitchEnabled });
@@ -739,7 +730,7 @@ Page({
         wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
         return;
       }
-      go();
+      wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
     });
   },
 

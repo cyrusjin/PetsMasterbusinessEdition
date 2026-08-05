@@ -2,6 +2,7 @@ const app = getApp();
 const { STORAGE_KEYS } = require('../../../utils/constants');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
+const { redirectToUserIfMerchantUiBlocked } = require('../../../utils/shell');
 const storeApi = require('../../../utils/store');
 const merchantDemo = require('../../../utils/merchantDemo');
 const {
@@ -430,6 +431,8 @@ Page({
   onShow() {
     hideHomeButton();
     this._syncTabBar();
+    // 非正式版（审核/体验/开发）禁止停留商家界面
+    if (redirectToUserIfMerchantUiBlocked()) return;
     if (app.isUserClientMode && app.isUserClientMode()) {
       wx.switchTab({ url: '/pages/index/index' });
       return;

@@ -22,7 +22,9 @@ const badgeUtil = require('./utils/badge');
 const userFeed = require('./utils/userFeed');
 const {
   fetchRemoteAppConfig,
-  applyRemoteConfigToApp
+  applyRemoteConfigToApp,
+  isMerchantUiBlocked,
+  isReleaseEnv
 } = require('./utils/merchantSwitch');
 
 const USER_INFO_TTL = 5 * 60 * 1000;
@@ -197,6 +199,12 @@ App({
 
   _hydrateRoleFromUser(user) {
     if (!user) return;
+    // 非正式版强制用户壳，避免已入驻账号冷启动进商家界面
+    if (isMerchantUiBlocked()) {
+      this.globalData.isMerchant = false;
+      this.globalData.role = 'user';
+      return;
+    }
     if (isMerchantApproved(user) && !this.isUserClientMode()) {
       this.globalData.isMerchant = true;
       this.globalData.role = 'merchant';
@@ -217,12 +225,19 @@ App({
   },
 
   _prefersMerchantShell(user) {
+    // 非正式版（develop/trial/空）禁止停留商家壳，避免审核误入
+    if (isMerchantUiBlocked()) return false;
     if (this.getData(STORAGE_KEYS.MERCHANT_SHELL_MODE)) return true;
     const current = user || this.globalData.userInfo || {};
     return current.role === 'merchant';
   },
 
   _enterMerchantShellMode(options = {}) {
+    if (isMerchantUiBlocked()) {
+      this._exitMerchantShellMode();
+      this.globalData.role = 'user';
+      return;
+    }
     const { persist = true } = options;
     this.globalData.role = 'merchant';
     if (persist) {
@@ -250,12 +265,19 @@ App({
     const entry = this._normalizeEntryOptions(options);
     const staffInviteId = this._parseStaffInviteStoreId(entry);
     const merchantApplyEntry = this._isMerchantApplyEntry(entry);
+    const merchantUiBlocked = isMerchantUiBlocked();
+    // 非正式版：清掉商家壳偏好，避免缓存把审核员带进商家界面
+    if (merchantUiBlocked) {
+      this.globalData.pendingMerchantApplyEntry = false;
+      this._exitMerchantShellMode();
+      this.globalData.role = 'user';
+    }
     // 员工邀请优先：立刻退出用户版，避免商家页 onShow 把人踢回首页
-    if (staffInviteId && !this.shouldIgnoreShareEntry()) {
+    if (!merchantUiBlocked && staffInviteId && !this.shouldIgnoreShareEntry()) {
       this.globalData.pendingStaffInviteStoreId = staffInviteId;
       this.globalData.pendingEntryStoreId = '';
       this._exitUserClientMode();
-    } else if (merchantApplyEntry) {
+    } else if (!merchantUiBlocked && merchantApplyEntry) {
       // 入驻小程序码：强制商家壳，避免新用户被踢回用户首页
       this.globalData.pendingMerchantApplyEntry = true;
       this._exitUserClientMode();
@@ -266,7 +288,10 @@ App({
     }
     return this.ensureCloudAndLogin(force ? { force: true } : {})
       .then(() => {
-        if (this.globalData.pendingMerchantApplyEntry || this._isMerchantApplyEntry(entry)) {
+        if (
+          !isMerchantUiBlocked()
+          && (this.globalData.pendingMerchantApplyEntry || this._isMerchantApplyEntry(entry))
+        ) {
           this._exitUserClientMode();
           this._enterMerchantShellMode();
         }
@@ -276,8 +301,7 @@ App({
       .then(() => {
         this._applyEntrySideEffects(entry);
         applyTabShell();
-        this.refreshUserBadges();
-        return this._flushPendingStoreBinding();
+        this.refreshUserBadges();        return this._flushPendingStoreBinding();
       })
       .then(() => {
         if (!this.canAccessMerchantBackend() || this.isUserClientMode()) {
@@ -309,6 +333,14 @@ App({
   },
 
   _reconcileClientModeFromCloudUser() {
+    // 非正式版始终留在用户壳
+    if (isMerchantUiBlocked()) {
+      this.globalData.pendingStaffInviteStoreId = '';
+      this.globalData.isMerchant = false;
+      this.globalData.role = 'user';
+      this._exitMerchantShellMode();
+      return;
+    }
     // 员工邀请进行中：不要被 USER_CLIENT_MODE 本地标记拉回用户版
     if (this.globalData.pendingStaffInviteStoreId) {
       this._exitUserClientMode();
@@ -339,14 +371,27 @@ App({
   },
 
   _ensureDefaultLanding(options) {
+    const pages = getCurrentPages();
+    const route = pages.length ? pages[pages.length - 1].route : '';
+
+    // 非正式版：任何路径都不进商家界面（含入驻码 / 员工邀请 / 已入驻冷启动）
+    if (isMerchantUiBlocked()) {
+      this.globalData.pendingMerchantApplyEntry = false;
+      this.globalData.pendingStaffInviteStoreId = '';
+      this._exitMerchantShellMode();
+      this.globalData.role = 'user';
+      if (route && route.indexOf('pages/merchant/') === 0) {
+        wx.switchTab({ url: getUserLandingUrl() });
+      }
+      return;
+    }
+
     const staffStoreId = this._parseStaffInviteStoreId(options)
       || String(this.globalData.pendingStaffInviteStoreId || '').trim();
     if (staffStoreId) return;
     const storeId = this._extractStoreId(options);
     if (storeId && this._isUserEntryPath(options)) return;
 
-    const pages = getCurrentPages();
-    const route = pages.length ? pages[pages.length - 1].route : '';
     const merchantApplyEntry = !!(
       this.globalData.pendingMerchantApplyEntry
       || this._isMerchantApplyEntry(options)
@@ -402,6 +447,8 @@ App({
   },
 
   _hasMerchantWorkspace() {
+    // 非正式版硬拦截，优先于商家身份 / 入驻码 / 本地壳缓存
+    if (isMerchantUiBlocked()) return false;
     const user = this.globalData.userInfo;
     if (isMerchantApproved(user)) return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
@@ -435,6 +482,10 @@ App({
   },
 
   _redirectStaffInviteIfNeeded(storeId) {
+    if (isMerchantUiBlocked()) {
+      this.globalData.pendingStaffInviteStoreId = '';
+      return;
+    }
     const pages = getCurrentPages();
     const route = pages.length ? pages[pages.length - 1].route : '';
     if (route === 'pages/merchant/tab-daily/tab-daily') return;
@@ -569,6 +620,12 @@ App({
   },
 
   enterMerchantMode() {
+    // 非正式版一律不可进（含已入驻账号），保障审核环境看不到商家界面
+    if (isMerchantUiBlocked() || !isReleaseEnv()) {
+      wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
+      return;
+    }
+
     const approved = isMerchantApproved(this.globalData.userInfo);
     if (!approved && this.globalData.merchantSwitchEnabled === false) {
       wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
@@ -576,6 +633,10 @@ App({
     }
 
     const proceed = () => {
+      if (isMerchantUiBlocked()) {
+        wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
+        return;
+      }
       // 切商家前记住用户端正在访问的店，回来时恢复，避免被自家店/测试店覆盖
       this._rememberUserVisitStore();
       this._exitUserClientMode();
@@ -602,7 +663,7 @@ App({
 
     fetchRemoteAppConfig({ force: true }).then((cfg) => {
       applyRemoteConfigToApp(this, cfg);
-      if (!cfg.merchantSwitchEnabled) {
+      if (!cfg.merchantSwitchEnabled || isMerchantUiBlocked()) {
         wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
         return;
       }
@@ -1577,6 +1638,11 @@ App({
   },
 
   _keepStaffMerchantMode() {
+    if (isMerchantUiBlocked()) {
+      this.globalData.role = 'user';
+      this._exitMerchantShellMode();
+      return;
+    }
     this._exitUserClientMode();
     this.globalData.isMerchant = true;
     this._enterMerchantShellMode();
@@ -1595,6 +1661,10 @@ App({
   acceptStaffInvite(storeId) {
     const id = (storeId || '').trim();
     if (!id) return Promise.resolve(false);
+    if (isMerchantUiBlocked()) {
+      wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
+      return Promise.resolve(false);
+    }
     if (!this.globalData.env) {
       wx.showToast({ title: '请先配置 API 地址', icon: 'none' });
       return Promise.resolve(false);

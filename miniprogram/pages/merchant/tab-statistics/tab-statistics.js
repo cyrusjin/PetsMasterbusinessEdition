@@ -4,7 +4,7 @@ const { PERIOD_OPTIONS, buildMerchantStatistics } = require('../../../utils/merc
 const ledgerApi = require('../../../utils/ledger');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
-const { redirectToStoreAuthIfNeeded } = require('../../../utils/shell');
+const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked } = require('../../../utils/shell');
 
 Page({
   data: {
@@ -30,6 +30,7 @@ Page({
   onShow() {
     hideHomeButton();
     this._syncTabBar();
+    if (redirectToUserIfMerchantUiBlocked()) return;
     if (app.isUserClientMode && app.isUserClientMode()) {
       wx.switchTab({ url: '/pages/index/index' });
       return;
