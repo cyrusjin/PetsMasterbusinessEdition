@@ -8,10 +8,49 @@
     linear-gradient(180deg, #F3F7F1 0%, #FFF8F0 45%, #FFFDF9 100%);
 }
 
+.ai-gen-banner {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  flex-shrink: 0;
+  padding: 16rpx 20rpx;
+  background: #FFF3E0;
+  border-bottom: 2rpx solid #F0C28A;
+}
+
+.ai-gen-badge {
+  flex-shrink: 0;
+  padding: 6rpx 14rpx;
+  border-radius: 8rpx;
+  background: #E98657;
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ai-gen-banner-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #8A4B1F;
+}
+
 .chat-scroll {
   flex: 1;
   min-height: 0;
   height: 0;
+}
+
+.ai-bubble-tag {
+  display: block;
+  margin-bottom: 10rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #E98657;
+  letter-spacing: 1rpx;
 }
 
 .chat-inner {

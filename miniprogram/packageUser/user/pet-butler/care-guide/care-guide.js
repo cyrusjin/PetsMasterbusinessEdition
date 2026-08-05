@@ -1,4 +1,5 @@
 const butler = require('../../../../utils/petButler');
+const { syncAiConsultFlag, guardOpenAiConsult } = require('../../../../utils/merchantSwitch');
 
 Page({
   data: {
@@ -6,11 +7,17 @@ Page({
     typeOptions: ['全部', '狗', '猫'],
     typeIndex: 0,
     list: [],
-    detail: null
+    detail: null,
+    showAiConsult: true
   },
 
   onLoad() {
+    syncAiConsultFlag(this);
     this._search();
+  },
+
+  onShow() {
+    syncAiConsultFlag(this);
   },
 
   _search() {
@@ -38,12 +45,14 @@ Page({
   },
 
   onAskAi() {
+    if (!guardOpenAiConsult()) return;
     const kw = String(this.data.keyword || '').trim();
     const q = encodeURIComponent(kw ? `${kw} 怎么养护比较好？` : '常见犬猫日常养护要注意什么？');
     wx.navigateTo({ url: `/packageUser/user/pet-butler/ai-consult/ai-consult?q=${q}` });
   },
 
   onAskAiDetail() {
+    if (!guardOpenAiConsult()) return;
     const name = (this.data.detail && this.data.detail.name) || '宠物';
     const q = encodeURIComponent(`${name} 日常护理和饮食要注意什么？`);
     wx.navigateTo({ url: `/packageUser/user/pet-butler/ai-consult/ai-consult?q=${q}` });

@@ -1,5 +1,6 @@
 const app = getApp();
 const butler = require('../../../../utils/petButler');
+const { syncAiConsultFlag, guardOpenAiConsult } = require('../../../../utils/merchantSwitch');
 
 Page({
   data: {
@@ -10,10 +11,12 @@ Page({
     typeIndex: 0,
     breed: '',
     weight: '',
-    result: null
+    result: null,
+    showAiConsult: true
   },
 
   onShow() {
+    syncAiConsultFlag(this);
     const pets = app.getPets() || [];
     this.setData({
       pets,
@@ -48,6 +51,7 @@ Page({
   },
 
   onAskAi() {
+    if (!guardOpenAiConsult()) return;
     const label = (this.data.result && this.data.result.label) || '';
     const type = this.data.typeOptions[this.data.typeIndex] || '宠物';
     const q = encodeURIComponent(

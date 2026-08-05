@@ -21,8 +21,8 @@ const { attachOrderDisplayNo, attachStoreDisplayNo, buildOrderDisplayNo } = requ
 const badgeUtil = require('./utils/badge');
 const userFeed = require('./utils/userFeed');
 const {
-  fetchMerchantSwitchEnabled,
-  applyMerchantSwitchToApp
+  fetchRemoteAppConfig,
+  applyRemoteConfigToApp
 } = require('./utils/merchantSwitch');
 
 const USER_INFO_TTL = 5 * 60 * 1000;
@@ -74,9 +74,9 @@ App({
       this._hydrateRoleFromUser(cachedUser);
     }
     this._userInfoFetchedAt = 0;
-    // 提前拉取商家入口开关，供首页与冷启动路由使用
-    fetchMerchantSwitchEnabled().then((enabled) => {
-      applyMerchantSwitchToApp(this, enabled);
+    // 提前拉取商家入口开关与审核态，供首页与冷启动路由使用
+    fetchRemoteAppConfig().then((cfg) => {
+      applyRemoteConfigToApp(this, cfg);
     });
     // 标记冷启动：紧随其后的 onShow 不再重复 bootstrap
     this._skipNextAppShowBootstrap = true;
@@ -600,9 +600,9 @@ App({
       return;
     }
 
-    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
-      applyMerchantSwitchToApp(this, enabled);
-      if (!enabled) {
+    fetchRemoteAppConfig({ force: true }).then((cfg) => {
+      applyRemoteConfigToApp(this, cfg);
+      if (!cfg.merchantSwitchEnabled) {
         wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
         return;
       }

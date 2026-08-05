@@ -1,5 +1,6 @@
 const app = getApp();
 const butler = require('../../../../utils/petButler');
+const { syncAiConsultFlag, guardOpenAiConsult } = require('../../../../utils/merchantSwitch');
 
 Page({
   data: {
@@ -11,10 +12,12 @@ Page({
     editingKey: '',
     editLastDate: '',
     editInterval: '',
-    today: butler.todayStr()
+    today: butler.todayStr(),
+    showAiConsult: true
   },
 
   onShow() {
+    syncAiConsultFlag(this);
     this._loadPets();
   },
 
@@ -124,6 +127,7 @@ Page({
   },
 
   onAskAi() {
+    if (!guardOpenAiConsult()) return;
     wx.navigateTo({
       url: '/packageUser/user/pet-butler/ai-consult/ai-consult'
     });

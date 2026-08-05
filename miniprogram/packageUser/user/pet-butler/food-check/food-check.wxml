@@ -32,7 +32,7 @@
     </view>
     <view wx:else class="empty card">
       <text class="empty-line">暂未收录「{{keyword}}」。拿不准时请勿投喂。</text>
-      <text class="ask-ai" bindtap="onAskAi">去 AI 问诊问问 ›</text>
+      <text class="ask-ai" wx:if="{{showAiConsult}}" bindtap="onAskAi">去 AI 问诊问问 ›</text>
     </view>
   </view>
 

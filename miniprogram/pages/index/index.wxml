@@ -93,7 +93,7 @@
   <view class="status-grid">
     <view class="info-card" bindtap="onGoPetButler">
       <view class="info-card-top">
-        <text class="info-title">AI 宠物管家</text>
+        <text class="info-title">{{butlerTitle}}</text>
         <text class="section-arrow">›</text>
       </view>
       <text class="info-sub">{{butlerSubText}}</text>

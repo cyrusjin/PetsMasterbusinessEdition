@@ -23,7 +23,7 @@
     <text class="result-age">{{result.human}} <text class="unit">岁</text></text>
     <text class="result-stage">正处在「{{result.stage}}」阶段</text>
     <text class="result-tip">这是趣味换算，不同体型衰老速度不同，仅供娱乐参考～</text>
-    <text class="ask-ai" bindtap="onAskAi">想了解这个阶段的护理要点？问 AI ›</text>
+    <text class="ask-ai" wx:if="{{showAiConsult}}" bindtap="onAskAi">想了解这个阶段的护理要点？问 AI ›</text>
   </view>
 
   <view class="card tips">

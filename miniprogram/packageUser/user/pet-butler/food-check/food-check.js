@@ -1,4 +1,5 @@
 const butler = require('../../../../utils/petButler');
+const { syncAiConsultFlag, guardOpenAiConsult } = require('../../../../utils/merchantSwitch');
 
 const HOT = [
   '巧克力', '葡萄', '洋葱', '大蒜', '牛奶', '鸡胸肉', '骨头', '苹果',
@@ -18,16 +19,22 @@ Page({
     results: [],
     hot: HOT,
     autoFocus: false,
-    browsed: withLabels(butler.FOOD_DB.slice(0, 18))
+    browsed: withLabels(butler.FOOD_DB.slice(0, 18)),
+    showAiConsult: true
   },
 
   onLoad(query) {
+    syncAiConsultFlag(this);
     const keyword = query && query.q ? decodeURIComponent(query.q) : '';
     if (keyword) {
       this.setData({ keyword, results: withLabels(butler.checkFood(keyword)) });
     } else {
       this.setData({ autoFocus: true });
     }
+  },
+
+  onShow() {
+    syncAiConsultFlag(this);
   },
 
   onInput(e) {
@@ -57,6 +64,7 @@ Page({
   },
 
   onAskAi() {
+    if (!guardOpenAiConsult()) return;
     const keyword = String(this.data.keyword || '').trim();
     const q = encodeURIComponent(keyword ? `「${keyword}」能给宠物吃吗？` : '哪些人类食物宠物不能吃？');
     wx.navigateTo({

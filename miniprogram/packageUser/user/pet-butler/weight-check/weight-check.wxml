@@ -27,7 +27,7 @@
     <text class="result-status">{{result.label}}</text>
     <text class="result-range">参考区间 {{result.min}}–{{result.max}} kg（{{result.size}}）</text>
     <text class="result-tip">{{result.tip}}</text>
-    <text class="ask-ai" bindtap="onAskAi">体重管理怎么做？问 AI ›</text>
+    <text class="ask-ai" wx:if="{{showAiConsult}}" bindtap="onAskAi">体重管理怎么做？问 AI ›</text>
   </view>
 
   <view class="card tips">

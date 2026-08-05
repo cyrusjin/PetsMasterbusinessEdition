@@ -952,8 +952,9 @@ function statusLabel(status) {
   return '正常';
 }
 
-function getTools() {
-  return [
+function getTools(options = {}) {
+  const includeAi = !options || options.includeAi !== false;
+  const tools = [
     {
       id: 'ai',
       title: 'AI 问诊',
@@ -981,7 +982,7 @@ function getTools() {
     },
     {
       id: 'care',
-      title: 'AI 养护指南',
+      title: '养护指南',
       desc: '按品种看喂养与护理',
       emoji: '📘',
       path: '/packageUser/user/pet-butler/care-guide/care-guide',
@@ -990,7 +991,7 @@ function getTools() {
     {
       id: 'food',
       title: '能不能吃',
-      desc: 'AI 速查食物安不安全',
+      desc: '速查食物安不安全',
       emoji: '🥗',
       path: '/packageUser/user/pet-butler/food-check/food-check',
       color: '#5B8C5A'
@@ -1006,7 +1007,7 @@ function getTools() {
     {
       id: 'weight',
       title: '体重评估',
-      desc: 'AI 粗评偏瘦或超重',
+      desc: '粗评偏瘦或超重',
       emoji: '⚖️',
       path: '/packageUser/user/pet-butler/weight-check/weight-check',
       color: '#6B8FCE'
@@ -1028,6 +1029,8 @@ function getTools() {
       color: '#C47B4A'
     }
   ];
+  if (includeAi) return tools;
+  return tools.filter((item) => item.id !== 'ai');
 }
 
 module.exports = {

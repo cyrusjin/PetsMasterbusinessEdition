@@ -63,7 +63,7 @@
       <text class="tip-line">· 可准备生理裤，保持外阴清洁干燥</text>
       <text class="tip-line">· 情绪敏感时多陪伴，减少压力源</text>
       <text class="tip-line">· 周期个体差异大，本工具仅供参考</text>
-      <text class="ask-ai" bindtap="onAskAi">发情期护理还有疑问？问 AI ›</text>
+      <text class="ask-ai" wx:if="{{showAiConsult}}" bindtap="onAskAi">发情期护理还有疑问？问 AI ›</text>
     </view>
 
     <view class="card" wx:if="{{cycle && cycle.history.length}}">

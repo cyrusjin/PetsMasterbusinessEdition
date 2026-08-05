@@ -6,6 +6,11 @@ const {
   saveChatHistory,
   clearChatHistory
 } = require('../../../utils/aiConsult');
+const {
+  fetchMerchantSwitchEnabled,
+  applyMerchantSwitchToApp,
+  isAiConsultVisible
+} = require('../../../utils/merchantSwitch');
 
 let msgSeq = 0;
 
@@ -18,7 +23,7 @@ const SAFE_HOSPITAL_REPLY =
   '我这边暂时没能给出更细的判断，但为了毛孩子安全，建议尽快去宠物医院做一次全面检查，让医生当面评估。\n\n路上保持安静，记下症状开始时间、饮食与大小便情况，方便医生问诊。\n\n线上问答不能替代面诊。';
 
 const WELCOME_TEXT =
-  '你好，我是 AI 养宠助手。可以问饮食、护理、常见不适等日常问题。\n\n紧急情况（呼吸困难、持续抽搐、大量出血等）请立刻线下就医。';
+  '你好，我是 AI 养宠助手。以下回复均由人工智能生成，仅供日常参考，不能替代专业诊疗。\n\n可以问饮食、护理、常见不适等日常问题。紧急情况（呼吸困难、持续抽搐、大量出血等）请立刻线下就医。';
 
 Page({
   data: {
@@ -33,13 +38,43 @@ Page({
   },
 
   onLoad(query) {
-    this._boot();
-    const prefill = query && query.q ? decodeURIComponent(query.q) : '';
-    if (prefill) {
-      this.setData({ inputText: prefill.slice(0, 200) }, () => {
-        setTimeout(() => this.onSend(), 200);
-      });
+    const app = getApp();
+    const blockAndBack = () => {
+      wx.showToast({ title: '功能暂未开放', icon: 'none' });
+      setTimeout(() => {
+        const pages = getCurrentPages();
+        if (pages && pages.length > 1) {
+          wx.navigateBack({ delta: 1 });
+        } else {
+          wx.switchTab({ url: '/pages/index/index' });
+        }
+      }, 400);
+    };
+
+    const boot = () => {
+      this._boot();
+      const prefill = query && query.q ? decodeURIComponent(query.q) : '';
+      if (prefill) {
+        this.setData({ inputText: prefill.slice(0, 200) }, () => {
+          setTimeout(() => this.onSend(), 200);
+        });
+      }
+    };
+
+    // 商家开关明确为 false 时立刻拦截；否则先拉远程配置再决定
+    if (app && app.globalData && app.globalData.merchantSwitchEnabled === false) {
+      blockAndBack();
+      return;
     }
+
+    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
+      applyMerchantSwitchToApp(app, enabled);
+      if (!enabled || !isAiConsultVisible(app)) {
+        blockAndBack();
+        return;
+      }
+      boot();
+    });
   },
 
   onShow() {

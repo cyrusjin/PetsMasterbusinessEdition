@@ -15,9 +15,10 @@ const petApi = require('../../utils/pet');
 const butler = require('../../utils/petButler');
 const {
   getMiniProgramMeta,
-  fetchMerchantSwitchEnabled,
-  applyMerchantSwitchToApp,
-  readCachedEnabled
+  fetchRemoteAppConfig,
+  applyRemoteConfigToApp,
+  readCachedEnabled,
+  isAuditMode
 } = require('../../utils/merchantSwitch');
 
 /** 超过该字数时首页店铺介绍截断，点击查看完整 */
@@ -42,9 +43,11 @@ Page({
     petsMoreCount: 0,
     petPreviewSize: 'single',
     butlerDueCount: 0,
+    butlerTitle: 'AI 宠物管家',
     butlerSubText: 'AI 问诊 · 提醒 · 小工具',
     butlerFootText: '点开看看',
     showMerchantSwitch: false,
+    auditMode: false,
     introExpandable: false,
     introPreviewVisible: false,
     introPreviewContent: '',
@@ -107,6 +110,16 @@ Page({
     return this._storeEntryPromise;
   },
 
+  _applyAuditUi() {
+    // 与商家开关同源：false 去 AI 字样，true 展示 AI
+    const auditMode = isAuditMode(app);
+    this.setData({
+      auditMode,
+      butlerTitle: auditMode ? '宠物管家' : 'AI 宠物管家'
+    });
+    return auditMode;
+  },
+
   _syncMerchantSwitch(options = {}) {
     const meta = getMiniProgramMeta();
     console.log('[首页] 当前小程序版本信息', {
@@ -115,13 +128,22 @@ Page({
       tip: meta.version ? '已拿到版本号' : '未拿到版本号（开发版/体验版常见为空，正式版才有）'
     });
 
-    const cached = readCachedEnabled();
-    if (cached !== null) {
-      this.setData({ showMerchantSwitch: applyMerchantSwitchToApp(app, cached) });
+    const cachedEnabled = readCachedEnabled();
+    if (cachedEnabled !== null) {
+      applyRemoteConfigToApp(app, {
+        merchantSwitchEnabled: cachedEnabled,
+        auditMode: !cachedEnabled
+      });
+      this.setData({ showMerchantSwitch: cachedEnabled });
+      this._applyAuditUi();
     }
-    return fetchMerchantSwitchEnabled(options).then((enabled) => {
-      this.setData({ showMerchantSwitch: applyMerchantSwitchToApp(app, enabled) });
-      return enabled;
+    return fetchRemoteAppConfig(options).then((cfg) => {
+      applyRemoteConfigToApp(app, cfg);
+      this.setData({ showMerchantSwitch: !!cfg.merchantSwitchEnabled });
+      this._applyAuditUi();
+      // 开关会影响管家标题/副文案，重新铺一遍缓存数据
+      this._refreshPageFromCache();
+      return cfg.merchantSwitchEnabled;
     });
   },
 
@@ -328,16 +350,19 @@ Page({
 
     const upcoming = butler.collectUpcoming(list, 7);
     const dueCount = upcoming.length;
-    let butlerSubText = 'AI 问诊 · 提醒 · 小工具';
+    const auditMode = isAuditMode(app);
+    let butlerSubText = auditMode ? '提醒 · 指南 · 小工具' : 'AI 问诊 · 提醒 · 小工具';
     let butlerFootText = '点开看看';
     if (list.length === 0) {
-      butlerSubText = 'AI 问诊 · 指南 · 趣味工具';
+      butlerSubText = auditMode ? '提醒 · 指南 · 趣味工具' : 'AI 问诊 · 指南 · 趣味工具';
       butlerFootText = '养宠小帮手';
     } else if (dueCount > 0) {
       butlerSubText = `${dueCount} 项近期待办`;
       butlerFootText = upcoming[0].status === 'overdue' ? '有逾期事项' : '记得打卡哦';
     } else {
-      butlerSubText = `${list.length} 只宝贝的 AI 管家`;
+      butlerSubText = auditMode
+        ? `${list.length} 只宝贝的管家`
+        : `${list.length} 只宝贝的 AI 管家`;
       butlerFootText = '一切安好';
     }
 
@@ -347,8 +372,10 @@ Page({
       petsMoreCount: Math.max(0, list.length - maxShow),
       petPreviewSize: sizeMap[count] || 'triple',
       butlerDueCount: dueCount,
+      butlerTitle: auditMode ? '宠物管家' : 'AI 宠物管家',
       butlerSubText,
-      butlerFootText
+      butlerFootText,
+      auditMode
     };
   },
 
@@ -363,8 +390,12 @@ Page({
       petsMoreCount: payload.petsMoreCount || 0,
       petPreviewSize: payload.petPreviewSize || 'single',
       butlerDueCount: payload.butlerDueCount || 0,
-      butlerSubText: payload.butlerSubText || 'AI 问诊 · 提醒 · 小工具',
+      butlerTitle: payload.butlerTitle || (isAuditMode(app) ? '宠物管家' : 'AI 宠物管家'),
+      butlerSubText:
+        payload.butlerSubText ||
+        (isAuditMode(app) ? '提醒 · 指南 · 小工具' : 'AI 问诊 · 提醒 · 小工具'),
       butlerFootText: payload.butlerFootText || '点开看看',
+      auditMode: typeof payload.auditMode === 'boolean' ? payload.auditMode : isAuditMode(app),
       introExpandable: isIntroExpandable(currentStore && currentStore.intro)
     });
     this._syncNavTitle(currentStore);
@@ -700,9 +731,11 @@ Page({
       return;
     }
 
-    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
-      this.setData({ showMerchantSwitch: applyMerchantSwitchToApp(app, enabled) });
-      if (!enabled) {
+    fetchRemoteAppConfig({ force: true }).then((cfg) => {
+      applyRemoteConfigToApp(app, cfg);
+      this.setData({ showMerchantSwitch: !!cfg.merchantSwitchEnabled });
+      this._applyAuditUi();
+      if (!cfg.merchantSwitchEnabled) {
         wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
         return;
       }

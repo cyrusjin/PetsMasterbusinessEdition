@@ -2,7 +2,7 @@
   <view class="hero-card">
     <view class="hero-copy">
       <view class="hero-title-row">
-        <text class="hero-badge">AI</text>
+        <text class="hero-badge" wx:if="{{showAiBadge}}">AI</text>
         <text class="hero-title">宠物管家</text>
       </view>
       <text class="hero-sub">{{tip}}</text>
@@ -20,10 +20,13 @@
           <text class="stat-label">连遛天</text>
         </view>
       </view>
-      <view class="ai-entry" bindtap="onOpenAi">
+      <view class="ai-entry" wx:if="{{showAiConsult}}" bindtap="onOpenAi">
         <view class="ai-entry-copy">
-          <text class="ai-entry-title">AI 问诊</text>
-          <text class="ai-entry-sub">描述症状，获取养护建议</text>
+          <view class="ai-entry-title-row">
+            <text class="ai-entry-title">AI 问诊</text>
+            <text class="ai-entry-gen-tag">人工智能生成</text>
+          </view>
+          <text class="ai-entry-sub">描述症状，获取养护建议（内容由 AI 生成）</text>
         </view>
         <text class="ai-entry-arrow">去问问 ›</text>
       </view>

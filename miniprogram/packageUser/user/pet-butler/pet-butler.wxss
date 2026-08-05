@@ -54,11 +54,28 @@
   opacity: 0.9;
 }
 
+.ai-entry-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
 .ai-entry-title {
-  display: block;
   font-size: 28rpx;
   font-weight: 750;
   color: #4E3729;
+}
+
+.ai-entry-gen-tag {
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
+  background: #FFF1E7;
+  border: 1rpx solid rgba(233, 134, 87, 0.45);
+  color: #E98657;
+  font-size: 18rpx;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .ai-entry-sub {

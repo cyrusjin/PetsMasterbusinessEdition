@@ -1,5 +1,6 @@
 const app = getApp();
 const butler = require('../../../../utils/petButler');
+const { syncAiConsultFlag, guardOpenAiConsult } = require('../../../../utils/merchantSwitch');
 
 Page({
   data: {
@@ -13,10 +14,12 @@ Page({
     cycleDays: '180',
     duration: '21',
     notes: '',
-    today: butler.todayStr()
+    today: butler.todayStr(),
+    showAiConsult: true
   },
 
   onShow() {
+    syncAiConsultFlag(this);
     this._boot();
   },
 
@@ -91,6 +94,7 @@ Page({
   },
 
   onAskAi() {
+    if (!guardOpenAiConsult()) return;
     const q = encodeURIComponent('母犬发情期护理要注意什么？');
     wx.navigateTo({ url: `/packageUser/user/pet-butler/ai-consult/ai-consult?q=${q}` });
   }
