@@ -23,11 +23,11 @@
   </view>
 
   <view class="result-card {{result.status}}" wx:if="{{result}}">
-    <text class="result-label">AI 粗评结果</text>
+    <text class="result-label">{{resultLabel}}</text>
     <text class="result-status">{{result.label}}</text>
     <text class="result-range">参考区间 {{result.min}}–{{result.max}} kg（{{result.size}}）</text>
     <text class="result-tip">{{result.tip}}</text>
-    <text class="ask-ai" wx:if="{{showAiConsult}}" bindtap="onAskAi">体重管理怎么做？问 AI ›</text>
+    <text class="ask-ai" wx:if="{{showAiConsult && askAiText}}" bindtap="onAskAi">{{askAiText}}</text>
   </view>
 
   <view class="card tips">

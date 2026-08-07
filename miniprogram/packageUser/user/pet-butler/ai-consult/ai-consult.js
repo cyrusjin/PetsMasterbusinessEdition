@@ -22,8 +22,36 @@ function nextId() {
 const SAFE_HOSPITAL_REPLY =
   '我这边暂时没能给出更细的判断，但为了毛孩子安全，建议尽快去宠物医院做一次全面检查，让医生当面评估。\n\n路上保持安静，记下症状开始时间、饮食与大小便情况，方便医生问诊。\n\n线上问答不能替代面诊。';
 
-const WELCOME_TEXT =
-  '你好，我是 AI 养宠助手。以下回复均由人工智能生成，仅供日常参考，不能替代专业诊疗。\n\n可以问饮食、护理、常见不适等日常问题。紧急情况（呼吸困难、持续抽搐、大量出血等）请立刻线下就医。';
+/** 非审核态才写入的文案（勿放进 wxml/json，避免静态扫包） */
+function buildUnlockedCopy() {
+  return {
+    bannerVisible: true,
+    bannerBadge: 'AI 生成',
+    bannerText: '本页内容由人工智能生成，仅供参考，不能替代专业诊疗',
+    bubbleTag: '人工智能生成',
+    metaRemote: ' · 云端 · AI生成',
+    metaLocal: ' · AI生成',
+    safeTip: '内容由 AI 生成，仅供日常参考；紧急情况请立即就医',
+    navTitle: 'AI 问诊',
+    welcomeText:
+      '你好，我是 AI 养宠助手。以下回复均由人工智能生成，仅供日常参考，不能替代专业诊疗。\n\n可以问饮食、护理、常见不适等日常问题。紧急情况（呼吸困难、持续抽搐、大量出血等）请立刻线下就医。'
+  };
+}
+
+function withMetaSuffix(messages, copy) {
+  const list = Array.isArray(messages) ? messages : [];
+  const remote = (copy && copy.metaRemote) || '';
+  const local = (copy && copy.metaLocal) || '';
+  return list.map((m) => {
+    if (!m || m.pending || m.role !== 'ai') {
+      return { ...m, metaSuffix: '' };
+    }
+    return {
+      ...m,
+      metaSuffix: m.source === 'remote' ? remote : local
+    };
+  });
+}
 
 Page({
   data: {
@@ -34,7 +62,16 @@ Page({
     scrollTop: 0,
     quick: getQuickQuestions(),
     conversationId: '',
-    hasHistory: false
+    hasHistory: false,
+    // 默认中性对话框：无 AI 字样，确认非审核后再赋值
+    bannerVisible: false,
+    bannerBadge: '',
+    bannerText: '',
+    bubbleTag: '',
+    metaRemote: '',
+    metaLocal: '',
+    safeTip: '',
+    welcomeText: '你好，有什么养宠问题可以问我。'
   },
 
   onLoad(query) {
@@ -73,6 +110,8 @@ Page({
         blockAndBack();
         return;
       }
+      // 确认非审核后，再写入 AI 相关文案
+      this._unlockCopy();
       boot();
     });
   },
@@ -81,16 +120,33 @@ Page({
     // 从其它页返回时，若本地有更新则以本地为准（通常本页独占）
   },
 
+  _unlockCopy() {
+    const copy = buildUnlockedCopy();
+    this._copy = copy;
+    this.setData({
+      bannerVisible: copy.bannerVisible,
+      bannerBadge: copy.bannerBadge,
+      bannerText: copy.bannerText,
+      bubbleTag: copy.bubbleTag,
+      metaRemote: copy.metaRemote,
+      metaLocal: copy.metaLocal,
+      safeTip: copy.safeTip,
+      welcomeText: copy.welcomeText
+    });
+    wx.setNavigationBarTitle({ title: copy.navTitle });
+  },
+
   _boot() {
+    const welcomeText = this.data.welcomeText;
     const stored = loadChatHistory();
-    const messages =
+    let messages =
       stored.messages && stored.messages.length
         ? stored.messages
         : [
             {
               id: nextId(),
               role: 'ai',
-              content: WELCOME_TEXT,
+              content: welcomeText,
               time: this._timeStr(),
               source: 'local'
             }
@@ -101,6 +157,8 @@ Page({
       const n = Number(String(m.id || '').split('_').pop());
       if (n > msgSeq) msgSeq = n;
     });
+
+    messages = withMetaSuffix(messages, this._copy || this.data);
 
     this.setData(
       {
@@ -126,8 +184,9 @@ Page({
     const list = messages || this.data.messages;
     const cid = conversationId != null ? conversationId : this.data.conversationId;
     saveChatHistory(list, cid);
+    const welcomeText = this.data.welcomeText;
     const realCount = (list || []).filter((m) => m && !m.pending).length;
-    this.setData({ hasHistory: realCount > 1 || (realCount === 1 && list[0].content !== WELCOME_TEXT) });
+    this.setData({ hasHistory: realCount > 1 || (realCount === 1 && list[0].content !== welcomeText) });
   },
 
   _scrollToBottom() {
@@ -166,18 +225,19 @@ Page({
         const welcome = {
           id: nextId(),
           role: 'ai',
-          content: WELCOME_TEXT,
+          content: this.data.welcomeText,
           time: this._timeStr(),
           source: 'local'
         };
+        const messages = withMetaSuffix([welcome], this._copy || this.data);
         this.setData(
           {
-            messages: [welcome],
+            messages,
             conversationId: '',
             hasHistory: false
           },
           () => {
-            this._persist([welcome], '');
+            this._persist(messages, '');
             this._scrollToBottom();
           }
         );
@@ -197,7 +257,8 @@ Page({
       id: nextId(),
       role: 'user',
       content: text,
-      time: this._timeStr()
+      time: this._timeStr(),
+      metaSuffix: ''
     };
     const placeholderId = nextId();
     const thinking = {
@@ -205,7 +266,8 @@ Page({
       role: 'ai',
       content: '正在分析…',
       pending: true,
-      time: this._timeStr()
+      time: this._timeStr(),
+      metaSuffix: ''
     };
 
     const messages = this.data.messages.concat([userMsg, thinking]);
@@ -232,8 +294,9 @@ Page({
           source: (res && res.source) || 'local',
           time: this._timeStr()
         };
-        const next = this.data.messages.map((m) =>
-          m.id === placeholderId ? reply : m
+        const next = withMetaSuffix(
+          this.data.messages.map((m) => (m.id === placeholderId ? reply : m)),
+          this._copy || this.data
         );
         const conversationId = (res && res.conversationId) || this.data.conversationId;
         this.setData(
@@ -257,8 +320,9 @@ Page({
           source: 'local',
           time: this._timeStr()
         };
-        const next = this.data.messages.map((m) =>
-          m.id === placeholderId ? reply : m
+        const next = withMetaSuffix(
+          this.data.messages.map((m) => (m.id === placeholderId ? reply : m)),
+          this._copy || this.data
         );
         this.setData(
           {

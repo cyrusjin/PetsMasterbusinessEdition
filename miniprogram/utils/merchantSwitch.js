@@ -274,8 +274,12 @@ function syncAiConsultFlag(page, options = {}) {
     if (page && page.setData) page.setData({ showAiConsult: !!visible });
     return !!visible;
   };
-  apply(isAiConsultVisible(app));
-  if (options && options.fetch === false) return Promise.resolve(isAiConsultVisible(app));
+  // 未确认前一律按关闭展示，避免首屏 / 扫包渲染出 AI 文案
+  apply(false);
+  if (options && options.fetch === false) {
+    const known = isAiConsultVisible(app);
+    return Promise.resolve(apply(known));
+  }
   return fetchMerchantSwitchEnabled(options).then((enabled) => {
     applyMerchantSwitchToApp(app, enabled);
     return apply(!!enabled);

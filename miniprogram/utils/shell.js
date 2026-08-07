@@ -3,7 +3,7 @@
  */
 
 const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
-const { isMerchantUiBlocked } = require('./merchantSwitch');
+const { isMerchantUiBlocked, fetchMerchantSwitchEnabled, applyMerchantSwitchToApp } = require('./merchantSwitch');
 
 const USER_TAB_ROUTES = [
   'pages/index/index',
@@ -63,17 +63,50 @@ function canUseMerchantShell() {
   }
 }
 
-/** 非正式版误入商家页时踢回用户首页；返回 true 表示已发起跳转 */
+/**
+ * 审核态 / 商家开关已明确关闭 / 非正式环境误入商家页时踢回用户首页。
+ * 注意：未拉取远程前不按「默认关闭」误踢（develop 默认关，需等 fetch）。
+ * 返回 true 表示已发起跳转。
+ */
 function redirectToUserIfMerchantUiBlocked() {
   try {
-    if (!isMerchantUiBlocked()) return false;
     const route = getCurrentRoute();
     if (!route || route.indexOf('pages/merchant/') !== 0) return false;
-    wx.switchTab({ url: USER_HOME });
-    return true;
+    if (isMerchantUiBlocked()) {
+      wx.switchTab({ url: USER_HOME });
+      return true;
+    }
+    // 仅当开关已明确为 false 时拦截（路径直达扫包）
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (app && app.globalData && app.globalData.merchantSwitchEnabled === false) {
+      wx.switchTab({ url: USER_HOME });
+      return true;
+    }
+    return false;
   } catch (err) {
     return false;
   }
+}
+
+/**
+ * 先拉远程开关再决定是否拦截商家页；用于避免默认值误放行。
+ * resolve(true) 表示已跳走 / 应中止页面逻辑。
+ */
+function ensureMerchantPageAllowed() {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  if (redirectToUserIfMerchantUiBlocked()) return Promise.resolve(true);
+  return fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
+    applyMerchantSwitchToApp(app, enabled);
+    if (!enabled || isMerchantUiBlocked()) {
+      try {
+        wx.switchTab({ url: USER_HOME });
+      } catch (err) {
+        // ignore
+      }
+      return true;
+    }
+    return false;
+  });
 }
 
 function hasMerchantStore() {
@@ -155,5 +188,6 @@ module.exports = {
   getMerchantLandingUrl,
   getUserLandingUrl,
   redirectToStoreAuthIfNeeded,
-  redirectToUserIfMerchantUiBlocked
+  redirectToUserIfMerchantUiBlocked,
+  ensureMerchantPageAllowed
 };

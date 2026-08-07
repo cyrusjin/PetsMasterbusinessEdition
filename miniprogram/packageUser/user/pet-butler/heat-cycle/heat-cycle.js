@@ -15,11 +15,26 @@ Page({
     duration: '21',
     notes: '',
     today: butler.todayStr(),
-    showAiConsult: true
+    showAiConsult: false,
+    askAiText: ''
+  },
+
+  _applyAiCopy(visible) {
+    this.setData(
+      visible
+        ? {
+            showAiConsult: true,
+            askAiText: '发情期护理还有疑问？问 AI ›'
+          }
+        : {
+            showAiConsult: false,
+            askAiText: ''
+          }
+    );
   },
 
   onShow() {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
     this._boot();
   },
 

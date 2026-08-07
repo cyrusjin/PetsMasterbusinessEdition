@@ -1,7 +1,7 @@
 const app = getApp();
 const { STORAGE_KEYS } = require('../../../utils/constants');
 const storeApi = require('../../../utils/store');
-const { redirectToUserIfMerchantUiBlocked } = require('../../../utils/shell');
+const { redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
 const {
   validateApplyForm,
   createEmptyApplyShop,
@@ -38,15 +38,18 @@ Page({
   },
 
   onShow() {
-    // 非正式版禁止进入入驻/商家页
+    // 非正式版 / 开关关闭：禁止进入入驻/商家页
     if (redirectToUserIfMerchantUiBlocked()) return;
-    app.ensureCloudAndLogin().then(() => {
-      if (redirectToUserIfMerchantUiBlocked()) return;
-      if (app.isMerchantApproved()) {
-        wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
-        return;
-      }
-      wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
+    ensureMerchantPageAllowed().then((blocked) => {
+      if (blocked) return;
+      app.ensureCloudAndLogin().then(() => {
+        if (redirectToUserIfMerchantUiBlocked()) return;
+        if (app.isMerchantApproved()) {
+          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+          return;
+        }
+        wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
+      });
     });
   },
 

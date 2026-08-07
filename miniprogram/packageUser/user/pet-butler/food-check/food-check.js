@@ -20,11 +20,29 @@ Page({
     hot: HOT,
     autoFocus: false,
     browsed: withLabels(butler.FOOD_DB.slice(0, 18)),
-    showAiConsult: true
+    showAiConsult: false,
+    heroSub: '做饭前查一下更安心',
+    askAiText: ''
+  },
+
+  _applyAiCopy(visible) {
+    this.setData(
+      visible
+        ? {
+            showAiConsult: true,
+            heroSub: 'AI 速查 · 做饭前查一下更安心',
+            askAiText: '去 AI 问诊问问 ›'
+          }
+        : {
+            showAiConsult: false,
+            heroSub: '做饭前查一下更安心',
+            askAiText: ''
+          }
+    );
   },
 
   onLoad(query) {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
     const keyword = query && query.q ? decodeURIComponent(query.q) : '';
     if (keyword) {
       this.setData({ keyword, results: withLabels(butler.checkFood(keyword)) });
@@ -34,7 +52,7 @@ Page({
   },
 
   onShow() {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
   },
 
   onInput(e) {

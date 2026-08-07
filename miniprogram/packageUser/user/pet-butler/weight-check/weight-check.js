@@ -12,11 +12,29 @@ Page({
     breed: '',
     weight: '',
     result: null,
-    showAiConsult: true
+    showAiConsult: false,
+    resultLabel: '粗评结果',
+    askAiText: ''
+  },
+
+  _applyAiCopy(visible) {
+    this.setData(
+      visible
+        ? {
+            showAiConsult: true,
+            resultLabel: 'AI 粗评结果',
+            askAiText: '体重管理怎么做？问 AI ›'
+          }
+        : {
+            showAiConsult: false,
+            resultLabel: '粗评结果',
+            askAiText: ''
+          }
+    );
   },
 
   onShow() {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
     const pets = app.getPets() || [];
     this.setData({
       pets,

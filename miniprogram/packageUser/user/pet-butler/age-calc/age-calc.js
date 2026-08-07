@@ -11,11 +11,29 @@ Page({
     typeIndex: 0,
     age: '',
     result: null,
-    showAiConsult: true
+    showAiConsult: false,
+    resultLabel: '趣味换算 · 相当于人类',
+    askAiText: ''
+  },
+
+  _applyAiCopy(visible) {
+    this.setData(
+      visible
+        ? {
+            showAiConsult: true,
+            resultLabel: 'AI 趣味换算 · 相当于人类',
+            askAiText: '想了解这个阶段的护理要点？问 AI ›'
+          }
+        : {
+            showAiConsult: false,
+            resultLabel: '趣味换算 · 相当于人类',
+            askAiText: ''
+          }
+    );
   },
 
   onShow() {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
     const pets = app.getPets() || [];
     this.setData({
       pets,

@@ -34,8 +34,8 @@
     </view>
 
     <view class="ai-hint card" wx:if="{{showAiConsult}}" bindtap="onAskAi">
-      <text class="ai-hint-title">不确定周期？问问 AI</text>
-      <text class="ai-hint-sub">驱虫、疫苗间隔可咨询智能助手 ›</text>
+      <text class="ai-hint-title">{{aiHintTitle}}</text>
+      <text class="ai-hint-sub">{{aiHintSub}}</text>
     </view>
   </block>
 </view>

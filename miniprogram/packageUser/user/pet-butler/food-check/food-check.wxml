@@ -1,7 +1,7 @@
 <view class="page">
   <view class="hero card">
     <text class="hero-title">这能给毛孩子吃吗？</text>
-    <text class="hero-sub">AI 速查 · 做饭前查一下更安心</text>
+    <text class="hero-sub">{{heroSub}}</text>
     <view class="search-row">
       <input
         class="search-input"
@@ -32,7 +32,7 @@
     </view>
     <view wx:else class="empty card">
       <text class="empty-line">暂未收录「{{keyword}}」。拿不准时请勿投喂。</text>
-      <text class="ask-ai" wx:if="{{showAiConsult}}" bindtap="onAskAi">去 AI 问诊问问 ›</text>
+      <text class="ask-ai" wx:if="{{showAiConsult && askAiText}}" bindtap="onAskAi">{{askAiText}}</text>
     </view>
   </view>
 

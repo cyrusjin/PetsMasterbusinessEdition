@@ -1089,8 +1089,9 @@ function statusLabel(status) {
 
 function getTools(options = {}) {
   const includeAi = !options || options.includeAi !== false;
-  const tools = [
-    {
+  const tools = [];
+  if (includeAi) {
+    tools.push({
       id: 'ai',
       title: 'AI 问诊',
       desc: '症状与养护智能解答',
@@ -1098,7 +1099,9 @@ function getTools(options = {}) {
       path: '/packageUser/user/pet-butler/ai-consult/ai-consult',
       color: '#6FA462',
       featured: true
-    },
+    });
+  }
+  tools.push(
     {
       id: 'reminders',
       title: '健康提醒',
@@ -1163,9 +1166,8 @@ function getTools(options = {}) {
       path: '/packageUser/user/pet-butler/milestones/milestones',
       color: '#C47B4A'
     }
-  ];
-  if (includeAi) return tools;
-  return tools.filter((item) => item.id !== 'ai');
+  );
+  return tools;
 }
 
 module.exports = {

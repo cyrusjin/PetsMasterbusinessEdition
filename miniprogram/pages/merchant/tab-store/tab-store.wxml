@@ -1,5 +1,5 @@
 <view class="merchant-page {{hideMerchantTabBar ? 'apply-only' : 'has-tab-bar'}}" style="{{hideMerchantTabBar ? '' : 'padding-bottom: 160rpx;'}}">
-  <view class="container">
+  <view class="container" wx:if="{{merchantUiReady}}">
     <view class="mode-switch-row">
       <cs-contact />
       <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
@@ -7,28 +7,28 @@
     <oa-follow-banner scene="merchant" />
     <block wx:if="{{isAdminDisabled}}">
       <view class="card apply-disabled-card">
-        <view class="card-title">店铺已关闭</view>
-        <text class="apply-tip">{{adminDisableReason || '您的店铺已被平台关闭，如有疑问请联系客服。'}}</text>
+        <view class="card-title">{{applyDisabledTitle}}</view>
+        <text class="apply-tip">{{adminDisableReason || applyDisabledTip}}</text>
       </view>
     </block>
 
     <!-- 门店授权：入驻申请表单 -->
     <block wx:elif="{{isDemoMode}}">
       <view class="card apply-pending-card" wx:if="{{applyStatus === 'pending'}}">
-        <view class="card-title">审核中</view>
-        <text class="apply-tip">您的入驻申请已提交，请等待管理员审核。审核通过后即可使用商家端完整功能。</text>
+        <view class="card-title">{{applyPendingTitle}}</view>
+        <text class="apply-tip">{{applyPendingTip}}</text>
       </view>
       <view class="card apply-rejected-card" wx:if="{{applyStatus === 'rejected'}}">
-        <view class="card-title">审核未通过</view>
-        <text class="apply-tip">您的入驻申请未通过审核，请按驳回理由修改资料后重新提交。</text>
+        <view class="card-title">{{applyRejectedTitle}}</view>
+        <text class="apply-tip">{{applyRejectedTip}}</text>
         <view class="apply-reject-reason" wx:if="{{applyRejectReason}}">
           <text class="apply-reject-label">驳回理由</text>
           <text class="apply-reject-text">{{applyRejectReason}}</text>
         </view>
       </view>
       <view class="card">
-        <view class="card-title">申请入驻</view>
-        <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">请填写以下信息提交入驻申请，审核通过后即可使用商家端完整功能。</text>
+        <view class="card-title">{{applyFormTitle}}</view>
+        <text class="apply-tip" wx:if="{{applyStatus !== 'pending'}}">{{applyFormTip}}</text>
         <view class="form-group">
           <text class="form-label">微信昵称 <text class="required-star">*</text></text>
 
@@ -169,19 +169,19 @@
       </view>
 
       <view class="card" wx:if="{{applyStatus !== 'pending'}}">
-        <view class="card-title"><text>入驻合作协议 <text class="required-star">*</text></text></view>
+        <view class="card-title"><text>{{applyContractTitle}} <text class="required-star">*</text></text></view>
         <view class="contract-agreement">
           <view class="contract-preview" bindtap="onViewCoopContract">
             <text class="contract-icon">📄</text>
             <view class="contract-info">
-              <text class="contract-title">商家入驻平台合作协议</text>
+              <text class="contract-title">{{applyContractName}}</text>
               <text class="contract-desc">含平台合作性质、各方责任及免责条款</text>
             </view>
             <text class="contract-link">预览</text>
           </view>
           <view class="contract-sign-row" wx:if="{{!agreedToCoopContract}}">
             <button class="btn-contract-sign" bindtap="onGoSignCoopContract">阅读并签署协议</button>
-            <text class="contract-sign-hint">签署后方可提交入驻申请</text>
+            <text class="contract-sign-hint">{{applyContractHint}}</text>
           </view>
           <view class="contract-signed-row" wx:else>
             <text class="contract-signed-icon">✓</text>
@@ -194,7 +194,7 @@
         </view>
       </view>
 
-      <button class="btn-primary {{agreedToCoopContract ? '' : 'btn-disabled'}}" bindtap="onSubmitApply" loading="{{submitting}}" disabled="{{submitting || applyStatus === 'pending' || !agreedToCoopContract}}">{{applyStatus === 'pending' ? '等待审核' : (applyStatus === 'rejected' ? '重新提交申请' : '申请入驻')}}</button>
+      <button class="btn-primary {{agreedToCoopContract ? '' : 'btn-disabled'}}" bindtap="onSubmitApply" loading="{{submitting}}" disabled="{{submitting || applyStatus === 'pending' || !agreedToCoopContract}}">{{applySubmitText}}</button>
     </block>
 
     <!-- 已审核商家：完整店铺设置 -->

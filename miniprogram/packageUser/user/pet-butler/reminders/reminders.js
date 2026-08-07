@@ -13,11 +13,29 @@ Page({
     editLastDate: '',
     editInterval: '',
     today: butler.todayStr(),
-    showAiConsult: true
+    showAiConsult: false,
+    aiHintTitle: '',
+    aiHintSub: ''
+  },
+
+  _applyAiCopy(visible) {
+    this.setData(
+      visible
+        ? {
+            showAiConsult: true,
+            aiHintTitle: '不确定周期？问问 AI',
+            aiHintSub: '驱虫、疫苗间隔可咨询智能助手 ›'
+          }
+        : {
+            showAiConsult: false,
+            aiHintTitle: '',
+            aiHintSub: ''
+          }
+    );
   },
 
   onShow() {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
     this._loadPets();
   },
 

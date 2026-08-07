@@ -12,7 +12,7 @@ const { hideHomeButton, getCustomNavMetrics } = require('../../../utils/navBar')
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
 const { startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../../utils/orderRefresh');
 const { isMerchantRejected } = require('../../../utils/role');
-const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked } = require('../../../utils/shell');
+const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
 const announcementApi = require('../../../utils/announcements');
 
 const STAFF_COUNT_TTL = 60 * 1000;
@@ -94,9 +94,15 @@ Page({
     this._syncTabBar();
     this._refreshAnnouncements();
 
-    // 非正式版硬拦截：含员工邀请路径也不进商家界面
+    // 非正式版 / 开关关闭：硬拦截（含员工邀请路径也不进商家界面）
     if (redirectToUserIfMerchantUiBlocked()) return;
+    ensureMerchantPageAllowed().then((blocked) => {
+      if (blocked) return;
+      this._onShowAfterGate();
+    });
+  },
 
+  _onShowAfterGate() {
     const inviteId = this._staffInviteStoreId
       || app.globalData.pendingStaffInviteStoreId
       || parseStaffInviteStoreId(this._getPageEntryQuery());

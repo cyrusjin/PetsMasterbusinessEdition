@@ -8,16 +8,38 @@ Page({
     typeIndex: 0,
     list: [],
     detail: null,
-    showAiConsult: true
+    showAiConsult: false,
+    emptyAiText: '',
+    bannerSub: '',
+    detailBannerSub: ''
+  },
+
+  _applyAiCopy(visible) {
+    const detailName = (this.data.detail && this.data.detail.name) || '';
+    this.setData(
+      visible
+        ? {
+            showAiConsult: true,
+            emptyAiText: '没有匹配的品种，试试「通用」或去 AI 问诊',
+            bannerSub: '让 AI 助手按你的描述给养护建议 ›',
+            detailBannerSub: detailName ? `关于「${detailName}」继续问 AI ›` : '继续问 AI ›'
+          }
+        : {
+            showAiConsult: false,
+            emptyAiText: '',
+            bannerSub: '',
+            detailBannerSub: ''
+          }
+    );
   },
 
   onLoad() {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
     this._search();
   },
 
   onShow() {
-    syncAiConsultFlag(this);
+    syncAiConsultFlag(this).then((v) => this._applyAiCopy(v));
   },
 
   _search() {
@@ -37,7 +59,9 @@ Page({
   onOpen(e) {
     const id = e.currentTarget.dataset.id;
     const detail = butler.getCareGuide(id);
-    this.setData({ detail });
+    this.setData({ detail }, () => {
+      if (this.data.showAiConsult) this._applyAiCopy(true);
+    });
   },
 
   onBackList() {

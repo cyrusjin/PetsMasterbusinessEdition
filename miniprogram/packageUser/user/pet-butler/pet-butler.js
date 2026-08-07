@@ -14,9 +14,13 @@ Page({
     upcoming: [],
     walkStreak: 0,
     tip: '',
-    auditMode: false,
-    showAiConsult: true,
-    showAiBadge: true
+    auditMode: true,
+    showAiConsult: false,
+    showAiBadge: false,
+    aiBadgeText: '',
+    aiEntryTitle: '',
+    aiEntryGenTag: '',
+    aiEntrySub: ''
   },
 
   onShow() {
@@ -26,21 +30,49 @@ Page({
     app.loadPets({ force: false }).then((pets) => this._applyPets(pets || []));
   },
 
+  _aiCopy(enabled) {
+    if (!enabled) {
+      return {
+        showAiConsult: false,
+        showAiBadge: false,
+        aiBadgeText: '',
+        aiEntryTitle: '',
+        aiEntryGenTag: '',
+        aiEntrySub: '',
+        navTitle: '宠物管家'
+      };
+    }
+    return {
+      showAiConsult: true,
+      showAiBadge: true,
+      aiBadgeText: 'AI',
+      aiEntryTitle: 'AI 问诊',
+      aiEntryGenTag: '人工智能生成',
+      aiEntrySub: '描述症状，获取养护建议（内容由 AI 生成）',
+      navTitle: 'AI 宠物管家'
+    };
+  },
+
   _syncAuditMode() {
     const apply = (enabled) => {
       applyMerchantSwitchToApp(app, enabled);
-      const showAiConsult = !!enabled;
-      wx.setNavigationBarTitle({ title: showAiConsult ? 'AI 宠物管家' : '宠物管家' });
+      const copy = this._aiCopy(!!enabled);
+      wx.setNavigationBarTitle({ title: copy.navTitle });
       this.setData({
-        auditMode: !showAiConsult,
-        showAiConsult,
-        showAiBadge: showAiConsult,
-        tools: butler.getTools({ includeAi: showAiConsult })
+        auditMode: !copy.showAiConsult,
+        showAiConsult: copy.showAiConsult,
+        showAiBadge: copy.showAiBadge,
+        aiBadgeText: copy.aiBadgeText,
+        aiEntryTitle: copy.aiEntryTitle,
+        aiEntryGenTag: copy.aiEntryGenTag,
+        aiEntrySub: copy.aiEntrySub,
+        tools: butler.getTools({ includeAi: copy.showAiConsult })
       });
     };
 
-    apply(isAiConsultVisible(app));
-    fetchMerchantSwitchEnabled().then((enabled) => {
+    // 未确认前按审核态展示，避免首屏闪出 AI 文案
+    apply(false);
+    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
       apply(enabled);
       this._applyPets(this.data.pets || app.getPets() || []);
     });
@@ -74,14 +106,19 @@ Page({
           '定期洗澡剪甲，毛孩子更舒适'
         ];
     const tip = tips[new Date().getDate() % tips.length];
+    const copy = this._aiCopy(showAi);
     this.setData({
       pets: list,
       upcoming,
       walkStreak,
       tip,
       tools: butler.getTools({ includeAi: showAi }),
-      showAiConsult: showAi,
-      showAiBadge: showAi,
+      showAiConsult: copy.showAiConsult,
+      showAiBadge: copy.showAiBadge,
+      aiBadgeText: copy.aiBadgeText,
+      aiEntryTitle: copy.aiEntryTitle,
+      aiEntryGenTag: copy.aiEntryGenTag,
+      aiEntrySub: copy.aiEntrySub,
       auditMode: !showAi
     });
   },

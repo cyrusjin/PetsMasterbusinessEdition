@@ -2,7 +2,7 @@ const app = getApp();
 const { STORAGE_KEYS } = require('../../../utils/constants');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
-const { redirectToUserIfMerchantUiBlocked } = require('../../../utils/shell');
+const { redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
 const storeApi = require('../../../utils/store');
 const merchantDemo = require('../../../utils/merchantDemo');
 const {
@@ -270,14 +270,57 @@ Page({
       priceYuan: '9.9',
       expireAtText: ''
     },
-    savingContractClause: false
+    savingContractClause: false,
+    // 确认非审核（商家开关开启）前不渲染入驻表单，避免路径直达扫到
+    merchantUiReady: false,
+    applyDisabledTitle: '',
+    applyDisabledTip: '',
+    applyPendingTitle: '',
+    applyPendingTip: '',
+    applyRejectedTitle: '',
+    applyRejectedTip: '',
+    applyFormTitle: '',
+    applyFormTip: '',
+    applyContractTitle: '',
+    applyContractName: '',
+    applyContractHint: '',
+    applySubmitText: ''
   },
 
   onLoad() {
     this._applyFormDirty = false;
     this._formDirty = false;
     this._syncNickNameCapability();
-    this._hydrateFromCache();
+    // 不在 onLoad 灌表单：等 onShow 确认开关后再展示
+  },
+
+  _unlockMerchantCopy() {
+    const status = this.data.applyStatus;
+    let applySubmitText = '申请入驻';
+    if (status === 'pending') applySubmitText = '等待审核';
+    else if (status === 'rejected') applySubmitText = '重新提交申请';
+    this.setData({
+      applyDisabledTitle: '店铺已关闭',
+      applyDisabledTip: '您的店铺已被平台关闭，如有疑问请联系客服。',
+      applyPendingTitle: '审核中',
+      applyPendingTip: '您的入驻申请已提交，请等待管理员审核。审核通过后即可使用商家端完整功能。',
+      applyRejectedTitle: '审核未通过',
+      applyRejectedTip: '您的入驻申请未通过审核，请按驳回理由修改资料后重新提交。',
+      applyFormTitle: '申请入驻',
+      applyFormTip: '请填写以下信息提交入驻申请，审核通过后即可使用商家端完整功能。',
+      applyContractTitle: '入驻合作协议',
+      applyContractName: '商家入驻平台合作协议',
+      applyContractHint: '签署后方可提交入驻申请',
+      applySubmitText
+    });
+  },
+
+  _syncApplySubmitText() {
+    const status = this.data.applyStatus;
+    let applySubmitText = '申请入驻';
+    if (status === 'pending') applySubmitText = '等待审核';
+    else if (status === 'rejected') applySubmitText = '重新提交申请';
+    if (this.data.merchantUiReady) this.setData({ applySubmitText });
   },
 
   _syncNickNameCapability() {
@@ -448,19 +491,25 @@ Page({
   onShow() {
     hideHomeButton();
     this._syncTabBar();
-    // 非正式版（审核/体验/开发）禁止停留商家界面
+    // 非正式版 / 开关关闭：禁止停留商家界面
     if (redirectToUserIfMerchantUiBlocked()) return;
-    if (app.isUserClientMode && app.isUserClientMode()) {
-      wx.switchTab({ url: '/pages/index/index' });
-      return;
-    }
-    // 审核中/已拒绝时强制拉用户，避免本地 pending 缓存导致界面不更新
-    this._reloadStorePage({ forceUser: this._needsForceUserRefresh() })
-      .then(() => {
-        this._syncApplyShellChrome();
-        this._syncTabBar();
-        this._refreshHolidayPricingSummary();
-      });
+    ensureMerchantPageAllowed().then((blocked) => {
+      if (blocked) return;
+      this._unlockMerchantCopy();
+      this.setData({ merchantUiReady: true });
+      if (app.isUserClientMode && app.isUserClientMode()) {
+        wx.switchTab({ url: '/pages/index/index' });
+        return;
+      }
+      // 审核中/已拒绝时强制拉用户，避免本地 pending 缓存导致界面不更新
+      this._reloadStorePage({ forceUser: this._needsForceUserRefresh() })
+        .then(() => {
+          this._syncApplySubmitText();
+          this._syncApplyShellChrome();
+          this._syncTabBar();
+          this._refreshHolidayPricingSummary();
+        });
+    });
   },
 
   _syncTabBar() {},

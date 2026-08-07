@@ -4,7 +4,7 @@ const { PERIOD_OPTIONS, buildMerchantStatistics } = require('../../../utils/merc
 const ledgerApi = require('../../../utils/ledger');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
-const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked } = require('../../../utils/shell');
+const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
 
 Page({
   data: {
@@ -31,13 +31,16 @@ Page({
     hideHomeButton();
     this._syncTabBar();
     if (redirectToUserIfMerchantUiBlocked()) return;
-    if (app.isUserClientMode && app.isUserClientMode()) {
-      wx.switchTab({ url: '/pages/index/index' });
-      return;
-    }
-    // 未入驻不再展示演示营收，统一回门店授权
-    if (redirectToStoreAuthIfNeeded()) return;
-    this._loadStats();
+    ensureMerchantPageAllowed().then((blocked) => {
+      if (blocked) return;
+      if (app.isUserClientMode && app.isUserClientMode()) {
+        wx.switchTab({ url: '/pages/index/index' });
+        return;
+      }
+      // 未入驻不再展示演示营收，统一回门店授权
+      if (redirectToStoreAuthIfNeeded()) return;
+      this._loadStats();
+    });
   },
 
   onPullDownRefresh() {
