@@ -14,7 +14,6 @@
       "root": "packageUser",
       "name": "packageUser",
       "pages": [
-        "user/login/login",
         "user/pets/pets",
         "user/pet-form/pet-form",
         "user/pet-invite/pet-invite",

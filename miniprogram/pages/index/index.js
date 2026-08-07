@@ -124,8 +124,9 @@ Page({
     const meta = getMiniProgramMeta();
     console.log('[首页] 当前小程序版本信息', {
       envVersion: meta.envVersion || '(空)',
-      version: meta.version || '(空)',
-      tip: meta.version ? '已拿到版本号' : '未拿到版本号（开发版/体验版常见为空，正式版才有）'
+      localVersion: meta.version || '(空)',
+      wxVersion: meta.wxVersion || '(空)',
+      tip: '商家入口按 localVersion 向服务器查询；后台版本管理添加同名条目即可单独开关'
     });
 
     const cachedEnabled = readCachedEnabled();

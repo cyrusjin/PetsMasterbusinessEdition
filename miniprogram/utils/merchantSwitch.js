@@ -3,28 +3,40 @@ const { request } = require('./api');
 const CACHE_KEY = 'pet_merchant_switch_enabled';
 const CACHE_AT_KEY = 'pet_merchant_switch_fetched_at';
 const CACHE_ENV_KEY = 'pet_merchant_switch_env';
+const CACHE_VER_KEY = 'pet_merchant_switch_ver';
 const CACHE_TTL = 60 * 1000;
+
+/**
+ * 本地构建版本号（提审控制用）。
+ * 每次提审前改这个号；后台「版本管理」添加同名条目并关闭「商家版」，
+ * 过审后再打开。不要依赖 getAccountInfoSync().version——
+ * 审核期微信常仍返回线上旧版或空，会误命中 default=开启。
+ */
+const LOCAL_APP_VERSION = '1.0.1';
 
 function getMiniProgramMeta() {
   try {
     const info = wx.getAccountInfoSync && wx.getAccountInfoSync();
     const mp = (info && info.miniProgram) || {};
+    const wxVersion = String(mp.version || '').trim();
     const meta = {
       envVersion: String(mp.envVersion || '').trim(),
-      version: String(mp.version || '').trim(),
+      // 始终用本地构建号请求服务端，保证可按本包单独关商家入口
+      version: LOCAL_APP_VERSION,
+      wxVersion,
       appId: String(mp.appId || '').trim()
     };
-    // 调试：开发版/体验版通常 version 为空，仅正式版有线上版本号
     console.log('[merchantSwitch] getAccountInfoSync', {
       raw: mp,
       envVersion: meta.envVersion || '(空)',
-      version: meta.version || '(空)',
+      localVersion: meta.version,
+      wxVersion: meta.wxVersion || '(空)',
       appId: meta.appId || '(空)'
     });
     return meta;
   } catch (err) {
     console.warn('[merchantSwitch] getAccountInfoSync failed', err);
-    return { envVersion: '', version: '', appId: '' };
+    return { envVersion: '', version: LOCAL_APP_VERSION, wxVersion: '', appId: '' };
   }
 }
 
@@ -62,10 +74,13 @@ function parseBool(raw) {
 
 function readCachedEnabled() {
   try {
-    const env = getMiniProgramMeta().envVersion || '';
+    const meta = getMiniProgramMeta();
+    const env = meta.envVersion || '';
+    const ver = meta.version || '';
     const cachedEnv = String(wx.getStorageSync(CACHE_ENV_KEY) || '');
-    // 跨环境缓存一律作废，避免正式版 true 污染体验版/审核版
-    if (cachedEnv !== env) return null;
+    const cachedVer = String(wx.getStorageSync(CACHE_VER_KEY) || '');
+    // 跨环境 / 跨本地构建号缓存一律作废
+    if (cachedEnv !== env || cachedVer !== ver) return null;
     const at = Number(wx.getStorageSync(CACHE_AT_KEY) || 0);
     if (!at || Date.now() - at > CACHE_TTL) return null;
     return parseBool(wx.getStorageSync(CACHE_KEY));
@@ -76,9 +91,11 @@ function readCachedEnabled() {
 
 function writeCachedEnabled(enabled) {
   try {
+    const meta = getMiniProgramMeta();
     wx.setStorageSync(CACHE_KEY, !!enabled);
     wx.setStorageSync(CACHE_AT_KEY, Date.now());
-    wx.setStorageSync(CACHE_ENV_KEY, getMiniProgramMeta().envVersion || '');
+    wx.setStorageSync(CACHE_ENV_KEY, meta.envVersion || '');
+    wx.setStorageSync(CACHE_VER_KEY, meta.version || '');
   } catch (err) {
     // ignore
   }
@@ -116,7 +133,8 @@ function fetchRemoteAppConfig(options = {}) {
     return Promise.resolve({
       merchantSwitchEnabled: false,
       auditMode: true,
-      envVersion: meta.envVersion || ''
+      envVersion: meta.envVersion || '',
+      version: meta.version
     });
   }
 
@@ -127,15 +145,17 @@ function fetchRemoteAppConfig(options = {}) {
       return Promise.resolve({
         merchantSwitchEnabled: enabled,
         auditMode: !enabled,
-        envVersion: meta.envVersion
+        envVersion: meta.envVersion,
+        version: meta.version
       });
     }
   }
 
   const query = [];
   if (meta.envVersion) query.push(`envVersion=${encodeURIComponent(meta.envVersion)}`);
-  if (meta.version) query.push(`version=${encodeURIComponent(meta.version)}`);
-  const path = `/api/config/merchant-switch${query.length ? `?${query.join('&')}` : ''}`;
+  // 始终带上本地构建号，供后台按版本精确控制
+  query.push(`version=${encodeURIComponent(meta.version || LOCAL_APP_VERSION)}`);
+  const path = `/api/config/merchant-switch?${query.join('&')}`;
 
   return request(path, {}, { method: 'GET', auth: false, timeout: 8000 })
     .then((res) => {
@@ -144,15 +164,27 @@ function fetchRemoteAppConfig(options = {}) {
           defaultMerchantSwitchEnabled(meta.envVersion),
           meta.envVersion
         );
-        return { merchantSwitchEnabled: enabled, auditMode: !enabled, envVersion: meta.envVersion };
+        return {
+          merchantSwitchEnabled: enabled,
+          auditMode: !enabled,
+          envVersion: meta.envVersion,
+          version: meta.version
+        };
       }
       const remoteEnabled = !!(res.merchantSwitchEnabled || res.merchant_switch_enabled);
       const merchantSwitchEnabled = resolveMerchantSwitchEnabled(remoteEnabled, meta.envVersion);
       writeCachedEnabled(merchantSwitchEnabled);
+      console.log('[merchantSwitch] remote', {
+        version: meta.version,
+        wxVersion: meta.wxVersion || '(空)',
+        envVersion: meta.envVersion,
+        merchantSwitchEnabled
+      });
       return {
         merchantSwitchEnabled,
         auditMode: !merchantSwitchEnabled,
-        envVersion: meta.envVersion
+        envVersion: meta.envVersion,
+        version: meta.version
       };
     })
     .catch(() => {
@@ -160,7 +192,12 @@ function fetchRemoteAppConfig(options = {}) {
         defaultMerchantSwitchEnabled(meta.envVersion),
         meta.envVersion
       );
-      return { merchantSwitchEnabled: enabled, auditMode: !enabled, envVersion: meta.envVersion };
+      return {
+        merchantSwitchEnabled: enabled,
+        auditMode: !enabled,
+        envVersion: meta.envVersion,
+        version: meta.version
+      };
     });
 }
 
@@ -252,6 +289,7 @@ function guardOpenAiConsult(app) {
 }
 
 module.exports = {
+  LOCAL_APP_VERSION,
   getMiniProgramMeta,
   isReleaseEnv,
   isDevelopEnv,
