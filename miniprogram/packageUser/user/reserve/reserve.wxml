@@ -5,17 +5,32 @@
 
   <view class="card" wx:if="{{store && store.isOpen}}">
     <view class="card-title"><text>选择宠物 <text class="required-star">*</text></text><text class="text-gray pet-multi-hint">可多选</text></view>
+    <view class="reception-range-tip" wx:if="{{hasReceptionRestriction && receptionRangeText}}">本店接待：{{receptionRangeText}}</view>
     <view wx:if="{{pets.length > 0}}">
-      <view class="pet-select-item {{selectedPetIds[item.id] ? 'selected' : ''}}" wx:for="{{pets}}" wx:key="id" bindtap="onSelectPet" data-id="{{item.id}}">
+      <view
+        class="pet-select-item {{selectedPetIds[item.id] ? 'selected' : ''}} {{item.receptionBlocked ? 'pet-blocked' : ''}}"
+        wx:for="{{pets}}"
+        wx:key="id"
+        bindtap="onSelectPet"
+        data-id="{{item.id}}"
+      >
         <view class="flex-row gap-20">
           <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-avatar-small" />
           <view wx:else class="pet-avatar-small">{{item.name[0]}}</view>
-          <view><text>{{item.name}}</text><text class="text-gray pet-meta" style="display:block;font-size:22rpx;">{{item.type}} · {{item.ageText}} · {{item.weight}}kg</text></view>
+          <view>
+            <text>{{item.name}}</text>
+            <text class="text-gray pet-meta" style="display:block;font-size:22rpx;">{{item.type}} · {{item.ageText}} · {{item.weight}}kg</text>
+            <text class="pet-blocked-tip" wx:if="{{item.receptionBlocked}}">本店不接待该类型</text>
+          </view>
         </view>
         <view wx:if="{{selectedPetIds[item.id]}}" class="tag tag-green">已选</view>
+        <view wx:elif="{{item.receptionBlocked}}" class="tag tag-gray">不可选</view>
       </view>
     </view>
-    <view wx:else class="text-gray pet-empty-tip">暂无宠物档案</view>
+    <view wx:elif="{{!pets.length}}" class="text-gray pet-empty-tip">暂无宠物档案</view>
+    <view wx:if="{{pets.length > 0 && selectablePetCount === 0}}" class="text-gray pet-empty-tip">
+      当前宠物均不在本店接待范围内，请新增符合「{{receptionRangeText}}」的宠物档案
+    </view>
     <button class="btn-add-pet" bindtap="onGoPets">+ 新增宠物档案</button>
   </view>
 

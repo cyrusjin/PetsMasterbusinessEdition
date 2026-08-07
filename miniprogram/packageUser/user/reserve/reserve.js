@@ -46,9 +46,44 @@ const {
   resolveValueAddedSelectPhotos,
   resolveStoreValueAddedServices
 } = require('../../../utils/valueAddedServices');
+const {
+  normalizeReceptionRange,
+  formatReceptionRangeText,
+  isPetAllowedByReceptionRange,
+  getReceptionRangeRejectMessage
+} = require('../../../utils/receptionRange');
 
 /** 超过该字数时预览截断，点击查看完整 */
 const NOTICE_EXPAND_CHARS = 90;
+
+function annotatePetsByReceptionRange(pets, receptionRange) {
+  const allowed = normalizeReceptionRange(receptionRange);
+  const hasRestriction = allowed.length > 0;
+  return (pets || []).map((pet) => {
+    const receptionAllowed = isPetAllowedByReceptionRange(pet && pet.type, allowed);
+    return {
+      ...pet,
+      receptionAllowed,
+      receptionBlocked: hasRestriction && !receptionAllowed
+    };
+  });
+}
+
+function findReceptionRejectError(pets, receptionRange) {
+  const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
+  for (let i = 0; i < list.length; i += 1) {
+    const pet = list[i];
+    if (isPetAllowedByReceptionRange(pet.type, receptionRange)) continue;
+    const rangeText = formatReceptionRangeText(receptionRange);
+    const name = pet.name || '宠物';
+    const type = pet.type || '该类型';
+    if (rangeText) {
+      return `「${name}」为${type}，本店仅接待：${rangeText}`;
+    }
+    return `「${name}」不在本店接待范围内`;
+  }
+  return '';
+}
 
 function isNoticeExpandable(text) {
   return String(text || '').trim().length > NOTICE_EXPAND_CHARS;
@@ -171,6 +206,9 @@ Page({
   data: {
     store: null,
     pets: [],
+    receptionRangeText: '',
+    hasReceptionRestriction: false,
+    selectablePetCount: 0,
     selectedPets: [],
     selectedPetIds: {},
     selectedPet: null,
@@ -381,18 +419,27 @@ Page({
       const chargeSummary = buildChargeSummary(rules);
 
       return app.loadPets().then((rawPets) => {
-        const pets = (rawPets || []).map((pet) => ({
-          ...pet,
-          ageText: formatAgeText(pet) || (pet.age != null ? `${pet.age}岁` : '—')
-        }));
+        const receptionRange = normalizeReceptionRange(store.receptionRange || store.range);
+        const receptionRangeText = formatReceptionRangeText(receptionRange)
+          || store.receptionRangeText
+          || '';
+        const hasReceptionRestriction = receptionRange.length > 0;
+        const pets = annotatePetsByReceptionRange(
+          (rawPets || []).map((pet) => ({
+            ...pet,
+            ageText: formatAgeText(pet) || (pet.age != null ? `${pet.age}岁` : '—')
+          })),
+          receptionRange
+        );
+        const selectablePets = pets.filter((pet) => !pet.receptionBlocked);
         let selectedPets = [];
         if (prevForm && prevForm.selectedPetIds && prevForm.selectedPetIds.length) {
           selectedPets = prevForm.selectedPetIds
-            .map((id) => pets.find((p) => p.id === id))
+            .map((id) => selectablePets.find((p) => p.id === id))
             .filter(Boolean);
         }
-        if (!selectedPets.length && pets.length > 0) {
-          selectedPets = [pets[0]];
+        if (!selectedPets.length && selectablePets.length > 0) {
+          selectedPets = [selectablePets[0]];
         }
         const selectedPet = selectedPets[0] || null;
         const selectedPetIds = buildSelectedPetIds(selectedPets);
@@ -407,6 +454,9 @@ Page({
         const patch = {
           store,
           pets,
+          receptionRangeText,
+          hasReceptionRestriction,
+          selectablePetCount: selectablePets.length,
           valueAddedList,
           billingMode: rules.billingMode || 'weight',
           pickupPricingSummary: formatPickupPricingSummary(store),
@@ -510,6 +560,15 @@ Page({
     const id = e.currentTarget.dataset.id;
     const pet = this.data.pets.find((p) => p.id === id);
     if (!pet) return;
+    if (pet.receptionBlocked) {
+      const store = this.data.store || {};
+      const msg = getReceptionRangeRejectMessage(
+        pet.type,
+        store.receptionRange || store.range || this.data.receptionRangeText
+      );
+      wx.showToast({ title: msg, icon: 'none', duration: 2500 });
+      return;
+    }
     let selectedPets = [...(this.data.selectedPets || [])];
     const idx = selectedPets.findIndex((p) => p.id === id);
     if (idx >= 0) {
@@ -1071,6 +1130,11 @@ Page({
     if (!store || !store.store_id) return '请先通过店铺分享链接进入';
     if (!store.isOpen) return '店铺当前不可预约';
     if (!pets.length) return '请选择宠物';
+    const receptionErr = findReceptionRejectError(
+      pets,
+      store.receptionRange || store.range || this.data.receptionRangeText
+    );
+    if (receptionErr) return receptionErr;
     if (!startDate || !endDate) return '请选择寄养时间';
     if (startDate < getTodayStr()) return '不能选择过去的日期';
     if (!startTime || !endTime) return '请选择入住和离店时间';
