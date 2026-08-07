@@ -1,6 +1,12 @@
 const { RECEPTION_RANGE_OPTIONS } = require('../../utils/receptionRange');
 const { uploadLocalImage } = require('../../utils/upload');
 const { clampDateString } = require('./datePicker');
+const {
+  sanitizeIntegerInput,
+  parseAgeParts,
+  formatAgeText,
+  buildAgePayload
+} = require('../../utils/petAge');
 
 const PET_TYPES = RECEPTION_RANGE_OPTIONS.map((item) => item.value);
 const YES_NO_VALUES = ['是', '否'];
@@ -50,10 +56,6 @@ function normalizePositiveDecimal(value, maxDecimals = 2) {
   return String(fixed);
 }
 
-function normalizeYesNoStatus(value, fallback = '否') {
-  return isYesNo(value) ? value : fallback;
-}
-
 function normalizePetHealthFields(pet) {
   const source = pet || {};
   let allergyStatus = isYesNo(source.allergyStatus) ? source.allergyStatus : '';
@@ -92,11 +94,16 @@ function validatePetBasicForm(data) {
   if (!(pet.breed && String(pet.breed).trim())) return '请输入品种';
   if (pet.gender !== '公' && pet.gender !== '母') return '请选择性别';
 
-  const ageText = String(pet.age == null ? '' : pet.age).trim();
-  if (!ageText) return '请输入年龄';
-  if (!isValidPositiveDecimal(ageText)) return '年龄请输入有效数字，支持小数';
-  const age = Number(ageText);
-  if (age > 50) return '年龄不能超过 50 岁';
+  const ageParts = parseAgeParts(pet);
+  const yearsText = String(ageParts.ageYears || '').trim();
+  const monthsText = String(ageParts.ageMonths || '').trim();
+  if (yearsText === '' && monthsText === '') return '请输入年龄';
+  const years = parseInt(yearsText || '0', 10);
+  const months = parseInt(monthsText || '0', 10);
+  if (!Number.isFinite(years) || years < 0) return '年龄岁数请输入有效整数';
+  if (!Number.isFinite(months) || months < 0 || months > 11) return '年龄月数请输入 0–11 的整数';
+  if (years <= 0 && months <= 0) return '请填写年龄（岁或月至少一项大于 0）';
+  if (years > 50) return '年龄不能超过 50 岁';
 
   const weightText = String(pet.weight == null ? '' : pet.weight).trim();
   if (!weightText) return '请输入体重';
@@ -132,6 +139,10 @@ function validatePetForm(data) {
 function buildPetPayload(data) {
   const pet = data || {};
   const health = normalizePetHealthFields(pet);
+  const agePayload = buildAgePayload(
+    pet.ageYears != null ? pet.ageYears : parseAgeParts(pet).ageYears,
+    pet.ageMonths != null ? pet.ageMonths : parseAgeParts(pet).ageMonths
+  );
   return {
     id: pet.id || '',
     pet_id: pet.id || pet.pet_id || '',
@@ -139,7 +150,7 @@ function buildPetPayload(data) {
     type: normalizePetType(pet.petType || pet.type),
     breed: String(pet.breed || '').trim(),
     gender: pet.gender === '母' ? '母' : '公',
-    age: normalizePositiveDecimal(pet.age, 1),
+    ...agePayload,
     weight: normalizePositiveDecimal(pet.weight, 2),
     color: String(pet.color || '').trim(),
     photo: pet.photo || '',
@@ -154,6 +165,7 @@ function buildPetPayload(data) {
     isNeutered: health.isNeutered,
     hasDogLicense: health.hasDogLicense,
     character: pet.character || '',
+    behaviorHabits: String(pet.behaviorHabits || '').trim(),
     dietTaboo: pet.dietTaboo || '',
     specialCare: pet.specialCare || '',
     remark: pet.remark || ''
@@ -168,8 +180,12 @@ module.exports = {
   PET_TYPES,
   YES_NO_VALUES,
   sanitizeDecimalInput,
+  sanitizeIntegerInput,
   isValidPositiveDecimal,
   normalizePositiveDecimal,
+  parseAgeParts,
+  formatAgeText,
+  buildAgePayload,
   normalizePetType,
   normalizePetHealthFields,
   validatePetBasicForm,

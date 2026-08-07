@@ -1,5 +1,6 @@
 const { formatOrderCreateTime, ORDER_STATUS } = require('../../utils/util');
 const { buildOrderListPetMeta } = require('../../utils/petSnapshot');
+const { formatAgeText } = require('../../utils/petAge');
 
 function trimText(value) {
   return value == null ? '' : String(value).trim();
@@ -39,7 +40,12 @@ function pickPetFromOrder(order) {
     ? order.petWeight
     : (snapshot.weight != null && snapshot.weight !== '' ? snapshot.weight : '');
   const photo = trimText(order.petPhoto || snapshot.photo);
-  const metaParts = [type, breed, gender, age !== '' && age != null ? `${age}岁` : '']
+  const ageText = formatAgeText({
+    age,
+    ageYears: snapshot.ageYears != null ? snapshot.ageYears : order.petAgeYears,
+    ageMonths: snapshot.ageMonths != null ? snapshot.ageMonths : order.petAgeMonths
+  });
+  const metaParts = [type, breed, gender, ageText]
     .map(trimText)
     .filter(Boolean);
 
@@ -51,7 +57,7 @@ function pickPetFromOrder(order) {
     breed,
     gender,
     age,
-    ageText: age !== '' && age != null ? `${age}岁` : '',
+    ageText: ageText || '',
     weight,
     weightText: weight !== '' && weight != null ? `${weight}kg` : '',
     photo,

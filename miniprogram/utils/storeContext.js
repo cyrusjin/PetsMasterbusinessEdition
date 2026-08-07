@@ -5,6 +5,7 @@ const { formatLocationAddress } = require('./location');
 const { resolveStoreDisplayUrls, isCloudFileId } = require('./mediaResolve');
 const { normalizeWeightPricing } = require('./weightPricing');
 const { normalizeRoomPricing } = require('./roomPricing');
+const { normalizeCustomPricing } = require('./customPricing');
 const { attachStoreDisplayNo } = require('./displayNo');
 const { normalizeMultiPetDiscount, getDefaultMultiPetDiscount } = require('./multiPetPricing');
 const { normalizeLongTermDiscount, getDefaultLongTermDiscount } = require('./longTermDiscount');
@@ -42,6 +43,11 @@ function mergeBillingRules(store, defaults) {
       ))
         ? fromStore.roomPricing
         : defaults.roomPricing
+    ),
+    customPricing: normalizeCustomPricing(
+      (fromStore.customPricing && fromStore.customPricing.length)
+        ? fromStore.customPricing
+        : defaults.customPricing
     ),
     extras: {
       ...defaults.extras,

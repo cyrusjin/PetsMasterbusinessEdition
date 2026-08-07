@@ -29,16 +29,28 @@ function getMiniProgramMeta() {
 }
 
 /**
- * 仅正式版（线上用户）可进商家界面。
- * develop / trial / 空值等一律视为非线上，硬拦截（不影响服务端 default 配置）。
+ * 正式版（线上用户）。
  */
 function isReleaseEnv() {
   return getMiniProgramMeta().envVersion === 'release';
 }
 
-/** 非正式版：无论远程开关如何，都不允许进入商家壳 */
+/**
+ * 开发版：跟随远程开关，方便本地调试。
+ */
+function isDevelopEnv() {
+  return getMiniProgramMeta().envVersion === 'develop';
+}
+
+/**
+ * 商家壳硬拦截：
+ * - trial / 空 env：无论远程开关如何都禁止（审核常见环境）
+ * - develop / release：不硬拦，交给远程开关
+ */
 function isMerchantUiBlocked() {
-  return !isReleaseEnv();
+  const env = getMiniProgramMeta().envVersion;
+  // develop 跟远程开关；release 跟远程开关；其余（trial/空/未知）硬拦截
+  return env !== 'release' && env !== 'develop';
 }
 
 function parseBool(raw) {
@@ -79,11 +91,12 @@ function defaultMerchantSwitchEnabled(envVersion) {
 }
 
 /**
- * 远端开关再叠加本地硬门槛：非正式版永远 false。
+ * 远端开关再叠加本地硬门槛：
+ * trial / 空环境永远 false；develop / release 尊重远端。
  */
 function resolveMerchantSwitchEnabled(remoteEnabled, envVersion) {
   const env = envVersion != null ? envVersion : getMiniProgramMeta().envVersion;
-  if (env !== 'release') return false;
+  if (env !== 'release' && env !== 'develop') return false;
   return !!remoteEnabled;
 }
 
@@ -92,14 +105,14 @@ function resolveMerchantSwitchEnabled(remoteEnabled, envVersion) {
  * 同一开关同时控制用户端 AI 文案 / AI 问诊：
  *   false → 隐藏「切换商家版」+ 隐藏 AI 字样与问诊
  *   true  → 展示商家入口 + 展示 AI 问诊
- * 非正式版客户端强制 false（服务端 default 可保持开启，不影响线上）。
+ * trial/空环境客户端强制 false；develop/release 走远端（服务端 default 可保持开启）。
  */
 function fetchRemoteAppConfig(options = {}) {
   const force = !!(options && options.force);
   const meta = getMiniProgramMeta();
 
-  // 非正式版：不依赖远端/缓存，直接关死商家入口（服务端 default 可保持开启）
-  if (meta.envVersion !== 'release') {
+  // trial / 空 / 未知：不依赖远端/缓存，直接关死商家入口
+  if (meta.envVersion !== 'release' && meta.envVersion !== 'develop') {
     return Promise.resolve({
       merchantSwitchEnabled: false,
       auditMode: true,
@@ -241,6 +254,7 @@ function guardOpenAiConsult(app) {
 module.exports = {
   getMiniProgramMeta,
   isReleaseEnv,
+  isDevelopEnv,
   isMerchantUiBlocked,
   resolveMerchantSwitchEnabled,
   fetchMerchantSwitchEnabled,

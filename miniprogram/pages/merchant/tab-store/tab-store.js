@@ -89,6 +89,16 @@ const {
   uploadRoomPricingPhotos
 } = require('../../../utils/roomPricing');
 const {
+  MAX_CUSTOM_DESCRIPTION,
+  MAX_CUSTOM_NAME,
+  getDefaultCustomPricing,
+  normalizeCustomPricing,
+  addCustomOption,
+  removeCustomOption,
+  updateCustomOptionField,
+  uploadCustomPricingPhotos
+} = require('../../../utils/customPricing');
+const {
   MAX_VALUE_ADDED_DESCRIPTION,
   MAX_VALUE_ADDED_NAME,
   normalizeValueAddedServices,
@@ -164,6 +174,10 @@ function pickBillingState(rules) {
     billingMode: (rules && rules.billingMode) || 'weight',
     weightPricing: normalizeWeightPricing((rules && rules.weightPricing) || []),
     roomPricing: normalizeRoomPricing((rules && rules.roomPricing) || []),
+    customPricing: (() => {
+      const list = normalizeCustomPricing((rules && rules.customPricing) || []);
+      return list.length ? list : getDefaultCustomPricing();
+    })(),
     multiPetDiscountEnabled,
     multiPetDiscountPercent: multiPetDiscountEnabled && multiPetPercent != null && multiPetPercent !== ''
       ? String(multiPetPercent)
@@ -195,6 +209,7 @@ Page({
     billingMode: 'weight',
     weightPricing: [],
     roomPricing: [],
+    customPricing: getDefaultCustomPricing(),
     checkInDayCharge: 'full',
     departureDayCharge: 'full',
     departureCharge: { ...DEFAULT_DEPARTURE_CHARGE },
@@ -217,6 +232,8 @@ Page({
     maxNoticeText: MAX_NOTICE_TEXT,
     maxPickupNoticeText: MAX_PICKUP_NOTICE_TEXT,
     maxRoomDescription: MAX_ROOM_DESCRIPTION,
+    maxCustomDescription: MAX_CUSTOM_DESCRIPTION,
+    maxCustomName: MAX_CUSTOM_NAME,
     maxValueAddedDescription: MAX_VALUE_ADDED_DESCRIPTION,
     maxValueAddedName: MAX_VALUE_ADDED_NAME,
     valueAddedServices: [],
@@ -1428,6 +1445,10 @@ Page({
       billingMode: this.data.billingMode,
       weightPricing: normalizeWeightPricing(this.data.weightPricing),
       roomPricing: normalizeRoomPricing(this.data.roomPricing),
+      customPricing: (() => {
+        const list = normalizeCustomPricing(this.data.customPricing);
+        return list.length ? list : getDefaultCustomPricing();
+      })(),
       valueAddedServices,
       checkInDayCharge: this.data.checkInDayCharge,
       departureDayCharge: this.data.departureDayCharge,
@@ -1578,7 +1599,13 @@ Page({
 
   onBillingMode(e) {
     this._markDirty();
-    this.setData({ billingMode: e.detail.value });
+    const billingMode = e.detail.value;
+    const patch = { billingMode };
+    if (billingMode === 'custom') {
+      const list = normalizeCustomPricing(this.data.customPricing);
+      if (!list.length) patch.customPricing = getDefaultCustomPricing();
+    }
+    this.setData(patch);
   },
 
   onCheckInDayCharge(e) {
@@ -1983,6 +2010,82 @@ Page({
     this.setData({ roomPricing: removeRoom(this.data.roomPricing, index) });
   },
 
+  onCustomField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    const customPricing = updateCustomOptionField(
+      this.data.customPricing, index, field, e.detail.value
+    );
+    this.setData({ customPricing });
+  },
+
+  onChooseCustomPhoto(e) {
+    if (this._choosingCustomPhoto) return;
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || index < 0) return;
+    this._choosingCustomPhoto = true;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res && res.tempFiles && res.tempFiles[0];
+        const path = file && file.tempFilePath;
+        if (!path) {
+          wx.showToast({ title: '未选择到图片', icon: 'none' });
+          return;
+        }
+        this._markDirty();
+        const customPricing = updateCustomOptionField(
+          this.data.customPricing, index, 'photo', path
+        );
+        this.setData({ customPricing });
+      },
+      fail: (err) => {
+        const msg = (err && err.errMsg) || '';
+        if (/cancel/i.test(msg)) return;
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
+      },
+      complete: () => {
+        this._choosingCustomPhoto = false;
+      }
+    });
+  },
+
+  onDeleteCustomPhoto(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const customPricing = updateCustomOptionField(
+      this.data.customPricing, index, 'photo', ''
+    );
+    this.setData({ customPricing });
+  },
+
+  onPreviewCustomPhoto(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = (this.data.customPricing || [])[index];
+    const url = item && item.photo;
+    if (!url) return;
+    resolveImageUrls([url]).then((urls) => {
+      const current = (urls && urls[0]) || url;
+      wx.previewImage({ current, urls: [current] });
+    });
+  },
+
+  onAddCustomOption() {
+    this._markDirty();
+    this.setData({ customPricing: addCustomOption(this.data.customPricing) });
+  },
+
+  onRemoveCustomOption(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({
+      customPricing: removeCustomOption(this.data.customPricing, index)
+    });
+  },
+
   onValueAddedField(e) {
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
@@ -2233,6 +2336,12 @@ Page({
       .then((roomPricing) => {
         billingRules.roomPricing = roomPricing;
         shop.billingRules = { ...shop.billingRules, roomPricing };
+        const fallbackCustom = ((cachedShop.billingRules || {}).customPricing) || [];
+        return uploadCustomPricingPhotos(billingRules.customPricing, fallbackCustom);
+      })
+      .then((customPricing) => {
+        billingRules.customPricing = customPricing;
+        shop.billingRules = { ...shop.billingRules, customPricing };
         const fallbackServices = cachedShop.valueAddedServices || [];
         return uploadValueAddedServicePhotos(shop.valueAddedServices, fallbackServices);
       })

@@ -12,6 +12,7 @@ const { normalizeDepartureCharge } = require('./billing');
 const { isVagueAddress } = require('./location');
 const { validateWeightPricing } = require('./weightPricing');
 const { validateRoomPricing } = require('./roomPricing');
+const { validateCustomPricing } = require('./customPricing');
 const { validatePickupPricing } = require('./pickupPricing');
 const { validateWashService } = require('./washPricing');
 const { validateMultiPetDiscount } = require('./multiPetPricing');
@@ -37,7 +38,7 @@ function validateBillingRules(billingRules) {
   const rules = billingRules || {};
   const mode = rules.billingMode;
 
-  if (mode !== 'weight' && mode !== 'room') {
+  if (mode !== 'weight' && mode !== 'room' && mode !== 'custom') {
     return '请选择收费模式';
   }
 
@@ -47,6 +48,10 @@ function validateBillingRules(billingRules) {
 
   if (mode === 'room') {
     return validateRoomPricing(rules.roomPricing);
+  }
+
+  if (mode === 'custom') {
+    return validateCustomPricing(rules.customPricing);
   }
 
   return '';

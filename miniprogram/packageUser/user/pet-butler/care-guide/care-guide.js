@@ -4,7 +4,7 @@ const { syncAiConsultFlag, guardOpenAiConsult } = require('../../../../utils/mer
 Page({
   data: {
     keyword: '',
-    typeOptions: ['全部', '狗', '猫'],
+    typeOptions: ['全部', '狗', '猫', '小宠'],
     typeIndex: 0,
     list: [],
     detail: null,
@@ -47,7 +47,7 @@ Page({
   onAskAi() {
     if (!guardOpenAiConsult()) return;
     const kw = String(this.data.keyword || '').trim();
-    const q = encodeURIComponent(kw ? `${kw} 怎么养护比较好？` : '常见犬猫日常养护要注意什么？');
+    const q = encodeURIComponent(kw ? `${kw} 怎么养护比较好？` : '常见犬猫和小宠日常养护要注意什么？');
     wx.navigateTo({ url: `/packageUser/user/pet-butler/ai-consult/ai-consult?q=${q}` });
   },
 

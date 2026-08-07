@@ -35,7 +35,7 @@
         <text class="info-box-title">寄养服务信息</text>
         <text class="info-line">寄养时间：{{doc.startDate}} {{doc.startTime}} 至 {{doc.endDate}} {{doc.endTime}}</text>
         <text class="info-line">寄养天数：{{doc.days}}天</text>
-        <text class="info-line" wx:if="{{doc.roomName}}">房间类型：{{doc.roomName}}</text>
+        <text class="info-line" wx:if="{{doc.roomName}}">{{doc.roomLabel || '房间类型'}}：{{doc.roomName}}</text>
         <text class="info-line">费用合计：¥{{doc.totalFee}}</text>
         <text class="info-line">押金：¥{{doc.deposit}}</text>
         <text class="info-line" wx:if="{{doc.needPickup}}">接送服务：需要</text>

@@ -86,7 +86,7 @@
         <view wx:else class="pet-avatar fallback">{{item.name[0] || '宠'}}</view>
         <view class="pet-meta">
           <text class="pet-name">{{item.name}}</text>
-          <text class="pet-sub">{{item.breed || item.type || '宝贝'}} · {{item.gender || ''}} · {{item.age || '?'}}岁</text>
+          <text class="pet-sub">{{item.breed || item.type || '宝贝'}} · {{item.gender || ''}} · {{item.ageText || '?'}}</text>
         </view>
       </view>
     </view>

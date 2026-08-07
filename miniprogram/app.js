@@ -1,6 +1,7 @@
 const { STORAGE_KEYS } = require('./utils/constants');
 const { getDefaultWeightPricing } = require('./utils/weightPricing');
 const { getDefaultRoomPricing } = require('./utils/roomPricing');
+const { getDefaultCustomPricing } = require('./utils/customPricing');
 const { getDefaultHolidayPricing } = require('./utils/legalHolidays');
 const auth = require('./utils/auth');
 const storeApi = require('./utils/store');
@@ -23,8 +24,7 @@ const userFeed = require('./utils/userFeed');
 const {
   fetchRemoteAppConfig,
   applyRemoteConfigToApp,
-  isMerchantUiBlocked,
-  isReleaseEnv
+  isMerchantUiBlocked
 } = require('./utils/merchantSwitch');
 
 const USER_INFO_TTL = 5 * 60 * 1000;
@@ -620,8 +620,8 @@ App({
   },
 
   enterMerchantMode() {
-    // 非正式版一律不可进（含已入驻账号），保障审核环境看不到商家界面
-    if (isMerchantUiBlocked() || !isReleaseEnv()) {
+    // trial/空环境硬拦截；develop/release 再看远程开关
+    if (isMerchantUiBlocked()) {
       wx.showToast({ title: '商家入口暂未开放', icon: 'none' });
       return;
     }
@@ -2810,6 +2810,7 @@ App({
       timeMode: 'daily',
       weightPricing: getDefaultWeightPricing(),
       roomPricing: getDefaultRoomPricing(),
+      customPricing: getDefaultCustomPricing(),
       checkInDayCharge: 'full',
       departureDayCharge: 'full',
       departureCharge: {

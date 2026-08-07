@@ -1,6 +1,6 @@
 <view class="page" wx:if="{{!detail}}">
   <view class="search-bar card">
-    <input class="search-input" placeholder="搜索品种，如柯基、英短" value="{{keyword}}" bindinput="onKeyword" />
+    <input class="search-input" placeholder="搜索品种，如柯基、英短、金丝熊" value="{{keyword}}" bindinput="onKeyword" />
     <picker mode="selector" range="{{typeOptions}}" value="{{typeIndex}}" bindchange="onTypeChange">
       <view class="type-chip">{{typeOptions[typeIndex]}} ▾</view>
     </picker>

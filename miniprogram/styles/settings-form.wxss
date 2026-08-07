@@ -1,11 +1,9 @@
-.billing-mode-group { display: flex; flex-direction: row; gap: 16rpx; }
+.billing-mode-group { display: flex; flex-direction: column; gap: 16rpx; }
 .billing-mode-item {
-  flex: 1;
-  min-width: 0;
   display: flex;
-  align-items: flex-start;
-  gap: 12rpx;
-  padding: 20rpx 16rpx;
+  align-items: center;
+  gap: 16rpx;
+  padding: 24rpx 20rpx;
   border-radius: 16rpx;
   border: 2rpx solid #F2DEC9;
   background: #F7F8FA;
@@ -14,7 +12,7 @@
 .billing-mode-item.mode-active { background: #FFF1E7; border-color: #E98657; }
 .mode-info { flex: 1; min-width: 0; }
 .mode-title { font-size: 28rpx; font-weight: 500; color: #333333; display: block; }
-.mode-desc { font-size: 22rpx; color: #999999; display: block; margin-top: 4rpx; line-height: 1.4; }
+.mode-desc { font-size: 22rpx; color: #999999; display: block; margin-top: 6rpx; line-height: 1.4; }
 .pricing-section { background: #F7F8FA; border-radius: 16rpx; padding: 20rpx; }
 .section-title { font-size: 24rpx; color: #999999; margin-bottom: 16rpx; }
 .weight-row { display: flex; align-items: center; gap: 16rpx; padding: 12rpx 0; border-bottom: 1rpx solid #F2DEC9; }

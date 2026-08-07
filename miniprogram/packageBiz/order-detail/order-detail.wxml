@@ -17,7 +17,7 @@
     <copyable-detail-row wx:if="{{order.contactIdCard}}" label="身份证号" value="{{order.contactIdCard}}" />
     <copyable-detail-row wx:if="{{order.emergencyPhone}}" label="紧急联系电话" value="{{order.emergencyPhone}}" />
     <copyable-detail-row label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
-    <copyable-detail-row label="房间" value="{{order.roomName}}" />
+    <copyable-detail-row label="{{order.billingMode === 'custom' ? '收费项目' : '房间'}}" value="{{order.roomName}}" />
     <copyable-detail-row label="接送服务" value="{{order.needPickup ? '需要' : '不需要'}}" />
     <block wx:if="{{order.needPickup}}">
       <copyable-detail-row label="接送地址" value="{{order.pickupAddress}}" stack="{{true}}" />
@@ -89,6 +89,7 @@
   <view class="card">
     <view class="card-title">生活习性</view>
     <copyable-detail-row label="性格特点" value="{{petView.character}}" stack="{{true}}" />
+    <copyable-detail-row label="特殊行为" value="{{petView.behaviorHabits}}" stack="{{true}}" />
     <copyable-detail-row label="饮食禁忌" value="{{petView.dietTaboo}}" stack="{{true}}" />
     <copyable-detail-row label="特殊照料需求" value="{{petView.specialCare}}" stack="{{true}}" />
     <copyable-detail-row label="备注" value="{{petView.remark}}" stack="{{true}}" />

@@ -26,6 +26,7 @@ function daysBetween(start, end) {
 const billingUtil = require('./billing');
 const { findWeightPrice } = require('./weightPricing');
 const { findRoomPrice } = require('./roomPricing');
+const { findCustomPrice } = require('./customPricing');
 const { RECEPTION_RANGE_OPTIONS } = require('./receptionRange');
 const PET_TYPES = RECEPTION_RANGE_OPTIONS.map((item) => item.value);
 const PET_GENDERS = ['公', '母'];
@@ -40,6 +41,9 @@ function getPetTypePrice(petType, rules) {
 function getPriceByMode(rules, petWeight, roomType) {
   if (rules.billingMode === 'room') {
     return findRoomPrice(rules.roomPricing, roomType);
+  }
+  if (rules.billingMode === 'custom') {
+    return findCustomPrice(rules.customPricing, roomType);
   }
   return findWeightPrice(rules.weightPricing, petWeight);
 }

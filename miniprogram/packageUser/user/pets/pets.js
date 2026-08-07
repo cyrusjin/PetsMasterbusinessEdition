@@ -1,4 +1,5 @@
 const app = getApp();
+const { formatAgeText } = require('../../../utils/petAge');
 
 Page({
   data: {
@@ -9,7 +10,12 @@ Page({
   onShow() {
     this.setData({ loading: true });
     app.loadPets({ force: true })
-      .then((pets) => this.setData({ pets: pets || [] }))
+      .then((pets) => this.setData({
+        pets: (pets || []).map((pet) => ({
+          ...pet,
+          ageText: formatAgeText(pet) || `${pet.age || '?'}岁`
+        }))
+      }))
       .finally(() => this.setData({ loading: false }));
   },
 

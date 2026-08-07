@@ -8,7 +8,9 @@ const {
   uploadPetPhoto,
   normalizePetType,
   normalizePetHealthFields,
-  sanitizeDecimalInput
+  sanitizeDecimalInput,
+  sanitizeIntegerInput,
+  parseAgeParts
 } = require('../../utils/petForm');
 const { searchBreeds, hasExactBreed } = require('../../utils/petBreeds');
 
@@ -35,10 +37,13 @@ Page({
     breed: '',
     gender: '',
     age: '',
+    ageYears: '',
+    ageMonths: '',
     weight: '',
     color: '',
     photo: '',
     character: '',
+    behaviorHabits: '',
     dietTaboo: '',
     specialCare: '',
     remark: '',
@@ -63,9 +68,12 @@ Page({
       if (pet) {
         const petType = normalizePetType(pet.type || pet.petType);
         const health = normalizePetHealthFields(pet);
+        const ageParts = parseAgeParts(pet);
         this.setData({
           ...pet,
           ...health,
+          ...ageParts,
+          behaviorHabits: pet.behaviorHabits || '',
           petType
         });
         this._refreshBreedSuggestions(pet.breed || '', petType, false);
@@ -119,10 +127,18 @@ Page({
 
   onDecimalField(e) {
     const field = e.currentTarget.dataset.field;
-    const maxDecimals = field === 'age' ? 1 : 2;
+    const maxDecimals = field === 'weight' ? 2 : 2;
     this.setData({
       [field]: sanitizeDecimalInput(e.detail.value, maxDecimals)
     });
+  },
+
+  onAgeYearsInput(e) {
+    this.setData({ ageYears: sanitizeIntegerInput(e.detail.value, 50) });
+  },
+
+  onAgeMonthsInput(e) {
+    this.setData({ ageMonths: sanitizeIntegerInput(e.detail.value, 11) });
   },
 
   onBreedFocus() {

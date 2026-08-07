@@ -14,7 +14,7 @@
             <view class="flex-row gap-16 mt-16">
               <text class="tag tag-blue">{{item.type}}</text>
               <text class="tag tag-green">{{item.gender}}</text>
-              <text class="tag tag-orange">{{item.age}}岁</text>
+              <text class="tag tag-orange">{{item.ageText}}</text>
             </view>
           </view>
         </view>

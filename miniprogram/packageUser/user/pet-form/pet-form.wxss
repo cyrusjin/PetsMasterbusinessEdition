@@ -132,3 +132,12 @@
   font-size: 30rpx;
   color: #333333;
 }
+.age-row {
+  align-items: center;
+}
+
+.age-input {
+  width: 140rpx;
+  flex: none;
+  text-align: center;
+}

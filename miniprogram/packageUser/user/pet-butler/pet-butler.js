@@ -1,5 +1,6 @@
 const app = getApp();
 const butler = require('../../../utils/petButler');
+const { formatAgeText } = require('../../../utils/petAge');
 const {
   fetchMerchantSwitchEnabled,
   applyMerchantSwitchToApp,
@@ -46,7 +47,10 @@ Page({
   },
 
   _applyPets(pets) {
-    const list = Array.isArray(pets) ? pets : [];
+    const list = (Array.isArray(pets) ? pets : []).map((pet) => ({
+      ...pet,
+      ageText: formatAgeText(pet) || (pet.age != null ? `${pet.age}岁` : '?')
+    }));
     const upcoming = butler.collectUpcoming(list, 14).slice(0, 5);
     let walkStreak = 0;
     list.forEach((p) => {

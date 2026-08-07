@@ -1,6 +1,7 @@
 const { calcStayFeeBreakdown, formatMoney } = require('./billing');
 const { findWeightPrice } = require('./weightPricing');
 const { findRoomPrice } = require('./roomPricing');
+const { findCustomPrice } = require('./customPricing');
 const {
   normalizeLongTermDiscount,
   applyLongTermDiscount,
@@ -32,8 +33,12 @@ function normalizeMultiPetDiscount(raw) {
 }
 
 function getPetBasePrice(rules, petWeight, roomType) {
-  if ((rules || {}).billingMode === 'room') {
+  const mode = (rules || {}).billingMode;
+  if (mode === 'room') {
     return findRoomPrice((rules || {}).roomPricing, roomType);
+  }
+  if (mode === 'custom') {
+    return findCustomPrice((rules || {}).customPricing, roomType);
   }
   return findWeightPrice((rules || {}).weightPricing, petWeight);
 }

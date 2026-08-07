@@ -1,5 +1,29 @@
 const ABOVE_MAX_FALLBACK = 99999;
 
+/** 输入过程中清洗：保留数字与一个小数点，便于输入 4.5 */
+function sanitizeDecimalInput(value, maxDecimals = 2) {
+  let text = String(value == null ? '' : value).replace(/[^\d.]/g, '');
+  const dot = text.indexOf('.');
+  if (dot >= 0) {
+    text = text.slice(0, dot + 1) + text.slice(dot + 1).replace(/\./g, '');
+    if (maxDecimals >= 0) {
+      const [intPart, decPart = ''] = text.split('.');
+      text = `${intPart}.${decPart.slice(0, maxDecimals)}`;
+    }
+  }
+  return text;
+}
+
+function roundWeight(value) {
+  const num = parseFloat(value);
+  if (!Number.isFinite(num)) return 0;
+  return Math.round(num * 100) / 100;
+}
+
+function sameWeight(a, b) {
+  return Math.round(roundWeight(a) * 100) === Math.round(roundWeight(b) * 100);
+}
+
 function buildRangeLabel(min, max, isAbove) {
   const minText = formatKg(min);
   if (isAbove) return `${minText}kg以上`;
@@ -7,9 +31,15 @@ function buildRangeLabel(min, max, isAbove) {
 }
 
 function formatKg(value) {
-  const num = parseFloat(value);
+  const text = String(value == null ? '' : value).trim();
+  if (!text) return '';
+  // 输入中的 "4." 原样保留，避免无法继续输入小数
+  if (/^\d+\.$/.test(text)) return text;
+  const num = parseFloat(text);
   if (!Number.isFinite(num)) return '';
-  return Number.isInteger(num) ? String(num) : String(num);
+  if (Number.isInteger(num) && text.indexOf('.') < 0) return String(num);
+  const rounded = roundWeight(num);
+  return String(rounded);
 }
 
 function isAboveRange(item) {
@@ -21,14 +51,26 @@ function isAboveRange(item) {
 
 function withLabel(item) {
   const isAbove = isAboveRange(item);
-  const min = parseFloat(item.min);
-  const max = isAbove ? null : parseFloat(item.max);
+  const minRaw = item && item.min;
+  const maxRaw = item && item.max;
+  const priceRaw = item && item.price;
+  const minText = formatKg(minRaw);
+  const maxText = isAbove ? null : formatKg(maxRaw);
+  const minNum = parseFloat(minText);
+  const maxNum = isAbove ? null : parseFloat(maxText);
+  const priceNum = parseFloat(priceRaw);
   return {
-    min: Number.isFinite(min) ? min : 0,
-    max: isAbove ? null : (Number.isFinite(max) ? max : 0),
-    price: parseFloat(item.price) || 0,
+    // 保留可编辑的字符串，避免 4.5 被抹成整数
+    min: minText !== '' ? minText : (Number.isFinite(minNum) ? String(minNum) : '0'),
+    max: isAbove ? null : (maxText !== '' ? maxText : (Number.isFinite(maxNum) ? String(maxNum) : '0')),
+    price: (() => {
+      const priceText = sanitizeDecimalInput(priceRaw, 2);
+      if (priceText === '' || priceText === '.') return priceText || '0';
+      if (/^\d+\.$/.test(priceText)) return priceText;
+      return Number.isFinite(priceNum) ? String(roundWeight(priceNum)) : '0';
+    })(),
     isAbove,
-    label: buildRangeLabel(min, max, isAbove)
+    label: buildRangeLabel(minText || 0, maxText, isAbove)
   };
 }
 
@@ -84,7 +126,7 @@ function mergeWeightPricing(ranges, aboveItem) {
 function addWeightRange(list) {
   const { ranges, aboveItem } = splitWeightPricing(list);
   const lastRange = ranges[ranges.length - 1];
-  const nextMin = lastRange ? lastRange.max : 0;
+  const nextMin = lastRange ? roundWeight(lastRange.max) : 0;
   const nextMax = nextMin + 5;
   const newRange = withLabel({ min: nextMin, max: nextMax, price: 0, isAbove: false });
   const nextAbove = withLabel({
@@ -106,7 +148,7 @@ function removeWeightRange(list, index) {
   const lastRange = nextRanges[nextRanges.length - 1];
   const nextAbove = withLabel({
     ...aboveItem,
-    min: lastRange ? lastRange.max : aboveItem.min
+    min: lastRange ? roundWeight(lastRange.max) : roundWeight(aboveItem.min)
   });
   return mergeWeightPricing(nextRanges, nextAbove);
 }
@@ -117,58 +159,82 @@ function updateWeightRangeField(list, index, field, rawValue) {
   const target = next[index];
   if (!target) return normalized;
 
-  if (field === 'price') {
-    target.price = parseFloat(rawValue) || 0;
-  } else if (field === 'min' || field === 'max') {
-    const parsed = parseFloat(rawValue);
-    target[field] = Number.isFinite(parsed) ? parsed : 0;
+  if (field === 'price' || field === 'min' || field === 'max') {
+    target[field] = sanitizeDecimalInput(rawValue, 2);
   }
 
+  const editedRaw = target[field];
   const relabeled = next.map(withLabel);
-  const aboveIndex = relabeled.length - 1;
 
-  if (target.isAbove && field === 'min' && aboveIndex > 0) {
+  // 保留正在输入的原始小数文本（如 4. / 4.5）
+  if (field === 'price' || field === 'min' || field === 'max') {
+    relabeled[index] = {
+      ...relabeled[index],
+      [field]: editedRaw,
+      label: buildRangeLabel(
+        field === 'min' ? editedRaw : relabeled[index].min,
+        field === 'max' ? editedRaw : relabeled[index].max,
+        relabeled[index].isAbove
+      )
+    };
+  }
+
+  const aboveIndex = relabeled.length - 1;
+  const editedNum = roundWeight(editedRaw);
+
+  if (target.isAbove && field === 'min' && aboveIndex > 0 && Number.isFinite(editedNum)) {
     relabeled[aboveIndex - 1] = withLabel({
       ...relabeled[aboveIndex - 1],
-      max: relabeled[aboveIndex].min
+      max: editedNum
     });
   }
 
-  if (!target.isAbove && field === 'max' && index < aboveIndex) {
+  if (!target.isAbove && field === 'max' && index < aboveIndex && Number.isFinite(editedNum)) {
     if (index + 1 < aboveIndex) {
       relabeled[index + 1] = withLabel({
         ...relabeled[index + 1],
-        min: relabeled[index].max
+        min: editedNum
       });
     } else {
       relabeled[aboveIndex] = withLabel({
         ...relabeled[aboveIndex],
-        min: relabeled[index].max
+        min: editedNum
       });
     }
   }
 
-  if (!target.isAbove && field === 'min' && index > 0) {
+  if (!target.isAbove && field === 'min' && index > 0 && Number.isFinite(editedNum)) {
     relabeled[index - 1] = withLabel({
       ...relabeled[index - 1],
-      max: relabeled[index].min
+      max: editedNum
     });
   }
 
-  return relabeled.map(withLabel);
+  return relabeled.map((item, idx) => {
+    if (idx === index && (field === 'price' || field === 'min' || field === 'max')) {
+      return {
+        ...item,
+        [field]: editedRaw,
+        label: buildRangeLabel(item.min, item.max, item.isAbove)
+      };
+    }
+    return withLabel(item);
+  });
 }
 
 function findWeightPrice(list, petWeight) {
   const normalized = normalizeWeightPricing(list);
   const weight = parseFloat(petWeight) || 0;
   const matched = normalized.find((item) => {
-    if (item.isAbove) return weight >= item.min;
-    return weight >= item.min && weight < item.max;
+    const min = roundWeight(item.min);
+    if (item.isAbove) return weight >= min;
+    const max = roundWeight(item.max);
+    return weight >= min && weight < max;
   });
-  if (matched) return matched.price;
+  if (matched) return roundWeight(matched.price);
   const above = normalized[normalized.length - 1];
-  if (above && above.isAbove) return above.price;
-  return normalized[0] ? normalized[0].price : 0;
+  if (above && above.isAbove) return roundWeight(above.price);
+  return normalized[0] ? roundWeight(normalized[0].price) : 0;
 }
 
 function validateWeightPricing(list) {
@@ -176,23 +242,30 @@ function validateWeightPricing(list) {
   const { ranges, aboveItem } = splitWeightPricing(normalized);
 
   if (!ranges.length) return '请至少添加一个体重区间';
-  if (!(parseFloat(aboveItem.price) > 0)) return `请填写${aboveItem.label}价格`;
+  if (!(roundWeight(aboveItem.price) > 0)) return `请填写${aboveItem.label}价格`;
 
   for (let i = 0; i < ranges.length; i += 1) {
     const item = ranges[i];
-    if (!(parseFloat(item.min) >= 0)) return `请填写第${i + 1}个区间的起始体重`;
-    if (!(parseFloat(item.max) > parseFloat(item.min))) {
+    if (!(roundWeight(item.min) >= 0) && String(item.min).trim() === '') {
+      return `请填写第${i + 1}个区间的起始体重`;
+    }
+    if (!(roundWeight(item.min) >= 0) && !Number.isFinite(parseFloat(item.min))) {
+      return `请填写第${i + 1}个区间的起始体重`;
+    }
+    if (!(roundWeight(item.max) > roundWeight(item.min))) {
       return `第${i + 1}个区间的上限体重需大于下限`;
     }
-    if (!(parseFloat(item.price) > 0)) return `请填写${item.label}价格`;
-    if (i > 0 && parseFloat(item.min) !== parseFloat(ranges[i - 1].max)) {
+    if (!(roundWeight(item.price) > 0)) return `请填写${item.label}价格`;
+    if (i > 0 && !sameWeight(item.min, ranges[i - 1].max)) {
       return `第${i + 1}个区间需紧接上一区间`;
     }
   }
 
-  if (!(parseFloat(aboveItem.min) >= 0)) return '请填写「以上」区间的起始体重';
+  if (!(roundWeight(aboveItem.min) >= 0) && !Number.isFinite(parseFloat(aboveItem.min))) {
+    return '请填写「以上」区间的起始体重';
+  }
   const lastRange = ranges[ranges.length - 1];
-  if (parseFloat(aboveItem.min) !== parseFloat(lastRange.max)) {
+  if (!sameWeight(aboveItem.min, lastRange.max)) {
     return `「${aboveItem.label}」需从上一区间上限开始`;
   }
 
@@ -210,5 +283,7 @@ module.exports = {
   updateWeightRangeField,
   findWeightPrice,
   validateWeightPricing,
-  buildRangeLabel
+  buildRangeLabel,
+  sanitizeDecimalInput,
+  roundWeight
 };

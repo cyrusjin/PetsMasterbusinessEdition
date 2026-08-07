@@ -390,10 +390,17 @@
             <text class="mode-desc">宠物主人按房间名称与体重限制选择</text>
           </view>
         </label>
+        <label class="billing-mode-item {{billingMode === 'custom' ? 'mode-active' : ''}}">
+          <radio value="custom" checked="{{billingMode === 'custom'}}" color="#E98657" />
+          <view class="mode-info">
+            <text class="mode-title">自定义收费</text>
+            <text class="mode-desc">自定义收费项目名称与价格，预约时由用户选择</text>
+          </view>
+        </label>
       </radio-group>
       <view wx:if="{{billingMode === 'weight'}}" class="pricing-section mt-20">
         <view class="section-title"><text>体重区间价格（元/天） <text class="required-star">*</text></text></view>
-        <view class="weight-range-tip">可自定义每个区间的起止体重与价格，最后一行为「以上」区间</view>
+        <view class="weight-range-tip">可自定义每个区间的起止体重与价格，支持小数（如 4.5kg），最后一行为「以上」区间</view>
         <view class="weight-range-row" wx:for="{{weightPricing}}" wx:key="index">
           <block wx:if="{{item.isAbove}}">
             <input class="weight-input" type="digit" placeholder="体重" value="{{item.min}}" bindinput="onWeightRangeField" data-index="{{index}}" data-field="min" />
@@ -466,6 +473,68 @@
           </view>
         </view>
         <view class="weight-range-add" bindtap="onAddRoom">+ 添加房间</view>
+      </view>
+      <view wx:if="{{billingMode === 'custom'}}" class="pricing-section mt-20">
+        <view class="section-title"><text>自定义收费项目（元/天） <text class="required-star">*</text></text></view>
+        <view class="weight-range-tip">可自定义项目名称与价格；描述和照片选填，会展示给下单用户</view>
+        <view class="room-config-card" wx:for="{{customPricing}}" wx:key="id">
+          <view class="room-config-row">
+            <input
+              class="room-name-input"
+              placeholder="项目名称"
+              maxlength="{{maxCustomName}}"
+              value="{{item.name}}"
+              bindinput="onCustomField"
+              data-index="{{index}}"
+              data-field="name"
+            />
+            <input
+              class="price-input"
+              type="digit"
+              placeholder="价格"
+              value="{{item.price}}"
+              bindinput="onCustomField"
+              data-index="{{index}}"
+              data-field="price"
+            />
+            <text class="price-unit">元</text>
+            <view
+              wx:if="{{customPricing.length > 1}}"
+              class="weight-range-delete"
+              catchtap="onRemoveCustomOption"
+              data-index="{{index}}"
+            >删除</view>
+          </view>
+          <view class="room-extra-row">
+            <textarea
+              class="room-desc-input"
+              placeholder="项目描述（选填）"
+              value="{{item.description}}"
+              maxlength="{{maxCustomDescription}}"
+              auto-height
+              bindinput="onCustomField"
+              data-index="{{index}}"
+              data-field="description"
+            />
+            <view class="room-photo-picker">
+              <view wx:if="{{item.photo}}" class="room-photo-wrap">
+                <cached-image
+                  custom-class="room-photo-preview"
+                  src="{{item.photo}}"
+                  mode="aspectFill"
+                  bindtap="onPreviewCustomPhoto"
+                  data-index="{{index}}"
+                />
+                <view class="store-photo-delete" catchtap="onDeleteCustomPhoto" data-index="{{index}}">×</view>
+              </view>
+              <view wx:else class="store-photo-add room-photo-add" bindtap="onChooseCustomPhoto" data-index="{{index}}">
+                <text class="store-photo-add-icon">+</text>
+                <text class="store-photo-add-text">照片(选填)</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="weight-range-add" bindtap="onAddCustomOption">+ 添加项目</view>
       </view>
 
       <view class="charge-section mt-20">

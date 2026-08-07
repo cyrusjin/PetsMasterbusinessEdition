@@ -10,7 +10,7 @@
         <view class="flex-row gap-20">
           <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-avatar-small" />
           <view wx:else class="pet-avatar-small">{{item.name[0]}}</view>
-          <view><text>{{item.name}}</text><text class="text-gray pet-meta" style="display:block;font-size:22rpx;">{{item.type}} · {{item.age}}岁 · {{item.weight}}kg</text></view>
+          <view><text>{{item.name}}</text><text class="text-gray pet-meta" style="display:block;font-size:22rpx;">{{item.type}} · {{item.ageText}} · {{item.weight}}kg</text></view>
         </view>
         <view wx:if="{{selectedPetIds[item.id]}}" class="tag tag-green">已选</view>
       </view>
@@ -19,9 +19,10 @@
     <button class="btn-add-pet" bindtap="onGoPets">+ 新增宠物档案</button>
   </view>
 
-  <view class="card" wx:if="{{store && store.isOpen && billingMode === 'room'}}">
+  <view class="card" wx:if="{{store && store.isOpen && (billingMode === 'room' || billingMode === 'custom')}}">
     <view class="card-title">
-      <text>选择房间 <text class="required-star">*</text></text>
+      <text wx:if="{{billingMode === 'custom'}}">选择收费项目 <text class="required-star">*</text></text>
+      <text wx:else>选择房间 <text class="required-star">*</text></text>
       <text class="text-gray pet-multi-hint" wx:if="{{selectedPets.length > 1}}">为每只宠物选择</text>
     </view>
     <view class="pet-room-section" wx:for="{{petRoomSections}}" wx:key="petId">
@@ -52,7 +53,7 @@
           </view>
           <text class="room-name">{{room.name}}</text>
           <text class="room-desc" wx:if="{{room.description}}">{{room.description}}</text>
-          <text class="room-limit">{{room.weightLimitText}}</text>
+          <text class="room-limit" wx:if="{{room.weightLimitText}}">{{room.weightLimitText}}</text>
           <text class="room-price">¥{{room.price}}/天</text>
           <text class="room-disabled-tip" wx:if="{{room.disabled}}">体重超限</text>
         </view>
@@ -266,6 +267,7 @@
         <view wx:else class="fee-pending-tip">
           <text wx:if="{{!startTime || !endTime}}">请选择入住时间和离店时间后查看费用</text>
           <text wx:elif="{{billingMode === 'room' && !roomsReady}}">请为每只宠物选择房间后查看费用</text>
+          <text wx:elif="{{billingMode === 'custom' && !roomsReady}}">请为每只宠物选择收费项目后查看费用</text>
         </view>
       </view>
     </view>

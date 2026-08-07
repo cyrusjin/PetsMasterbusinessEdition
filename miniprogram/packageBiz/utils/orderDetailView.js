@@ -32,9 +32,10 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
       ['接送范围', formatPickupLegs(order) || '--']
     );
   }
+  const optionLabel = order.billingMode === 'custom' ? '收费项目' : '房间';
   orderRows.push(
     ['寄养时间', boardingTime],
-    ['房间', displayText(order.roomName)],
+    [optionLabel, displayText(order.roomName)],
     ['接送服务', pickupText],
     ['洗护服务', order.needWash ? '需要' : '不需要'],
     ['天数', order.days != null && order.days !== '' ? `${order.days}天` : '--']
@@ -112,6 +113,7 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
       title: '生活习性',
       rows: [
         ['性格特点', displayText(petView.character)],
+        ['特殊行为', displayText(petView.behaviorHabits)],
         ['饮食禁忌', displayText(petView.dietTaboo)],
         ['特殊照料需求', displayText(petView.specialCare)],
         ['备注', displayText(petView.remark)]

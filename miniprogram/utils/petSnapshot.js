@@ -1,3 +1,5 @@
+const { formatAgeText } = require('./petAge');
+
 function buildPetSnapshot(pet) {
   if (!pet) return null;
   return {
@@ -5,6 +7,8 @@ function buildPetSnapshot(pet) {
     breed: pet.breed || '',
     gender: pet.gender || '',
     age: pet.age != null ? String(pet.age) : '',
+    ageYears: pet.ageYears != null ? pet.ageYears : '',
+    ageMonths: pet.ageMonths != null ? pet.ageMonths : '',
     weight: pet.weight != null ? String(pet.weight) : '',
     color: pet.color || '',
     vaccination: pet.vaccination || '',
@@ -18,6 +22,7 @@ function buildPetSnapshot(pet) {
     isNeutered: pet.isNeutered || '',
     hasDogLicense: pet.hasDogLicense || '',
     character: pet.character || '',
+    behaviorHabits: pet.behaviorHabits || '',
     dietTaboo: pet.dietTaboo || '',
     specialCare: pet.specialCare || '',
     remark: pet.remark || ''
@@ -43,13 +48,19 @@ function buildPetDetailView(snapshot, orderFallback = {}) {
   const pet = snapshot || {};
   const breed = pet.breed || orderFallback.petBreed || '';
   const gender = pet.gender || orderFallback.petGender || '';
-  const age = pet.age || orderFallback.petAge || '';
+  const ageSource = {
+    ...pet,
+    age: pet.age || orderFallback.petAge || '',
+    ageYears: pet.ageYears != null ? pet.ageYears : orderFallback.petAgeYears,
+    ageMonths: pet.ageMonths != null ? pet.ageMonths : orderFallback.petAgeMonths
+  };
+  const ageText = formatAgeText(ageSource);
   return {
     photo: pet.photo || orderFallback.petPhoto || '',
     breed,
     gender,
-    age,
-    ageText: age ? `${age}岁` : '--',
+    age: ageSource.age,
+    ageText: ageText || '--',
     weight: pet.weight || orderFallback.petWeight || '',
     weightText: pet.weight ? `${pet.weight}kg` : '--',
     color: pet.color || '',
@@ -62,6 +73,7 @@ function buildPetDetailView(snapshot, orderFallback = {}) {
     isNeutered: formatYesNoLabel(pet.isNeutered),
     hasDogLicense: formatYesNoLabel(pet.hasDogLicense),
     character: pet.character || '--',
+    behaviorHabits: pet.behaviorHabits || '--',
     dietTaboo: pet.dietTaboo || '--',
     specialCare: pet.specialCare || '--',
     remark: pet.remark || '--'
@@ -79,6 +91,12 @@ function buildContractPetInfoLines(pet, orderFallback = {}) {
     breed: p.breed || snapshot.breed || (orderFallback && orderFallback.petBreed) || '',
     gender: p.gender || snapshot.gender || (orderFallback && orderFallback.petGender) || '',
     age: p.age != null && p.age !== '' ? p.age : (snapshot.age || (orderFallback && orderFallback.petAge) || ''),
+    ageYears: p.ageYears != null && p.ageYears !== ''
+      ? p.ageYears
+      : (snapshot.ageYears != null ? snapshot.ageYears : (orderFallback && orderFallback.petAgeYears)),
+    ageMonths: p.ageMonths != null && p.ageMonths !== ''
+      ? p.ageMonths
+      : (snapshot.ageMonths != null ? snapshot.ageMonths : (orderFallback && orderFallback.petAgeMonths)),
     weight: p.weight != null && p.weight !== '' ? p.weight : (snapshot.weight || (orderFallback && orderFallback.petWeight) || ''),
     color: p.color || snapshot.color || '',
     vaccination: p.vaccination || snapshot.vaccination || '',
@@ -92,6 +110,7 @@ function buildContractPetInfoLines(pet, orderFallback = {}) {
     isNeutered: p.isNeutered || snapshot.isNeutered || '',
     hasDogLicense: p.hasDogLicense || snapshot.hasDogLicense || '',
     character: p.character || snapshot.character || '',
+    behaviorHabits: p.behaviorHabits || snapshot.behaviorHabits || '',
     dietTaboo: p.dietTaboo || snapshot.dietTaboo || '',
     specialCare: p.specialCare || snapshot.specialCare || '',
     remark: p.remark || snapshot.remark || ''
@@ -120,6 +139,7 @@ function buildContractPetInfoLines(pet, orderFallback = {}) {
     { label: '是否绝育', value: display(view.isNeutered) },
     { label: '是否办理犬证', value: display(view.hasDogLicense) },
     { label: '性格特点', value: display(view.character) },
+    { label: '特殊行为', value: display(view.behaviorHabits) },
     { label: '饮食禁忌', value: display(view.dietTaboo) },
     { label: '特殊照料需求', value: display(view.specialCare) },
     { label: '备注', value: display(view.remark) }
@@ -131,7 +151,12 @@ function buildOrderListPetMeta(order) {
   const snapshot = order.petSnapshot || {};
   const breed = order.petBreed || snapshot.breed || '';
   const gender = order.petGender || snapshot.gender || '';
-  const age = order.petAge || snapshot.age || '';
+  const ageSource = {
+    age: order.petAge || snapshot.age || '',
+    ageYears: order.petAgeYears != null ? order.petAgeYears : snapshot.ageYears,
+    ageMonths: order.petAgeMonths != null ? order.petAgeMonths : snapshot.ageMonths
+  };
+  const ageText = formatAgeText(ageSource);
   const boardingTime = [
     order.startDate,
     order.startTime,
@@ -143,8 +168,8 @@ function buildOrderListPetMeta(order) {
     petPhoto: order.petPhoto || snapshot.photo || '',
     petBreed: breed,
     petGender: gender,
-    petAge: age,
-    petAgeText: age ? `${age}岁` : '--',
+    petAge: ageSource.age,
+    petAgeText: ageText || '--',
     boardingTime,
     createTimeText: util.formatOrderCreateTime(order) || '--'
   };
@@ -156,5 +181,6 @@ module.exports = {
   buildContractPetInfoLines,
   buildOrderListPetMeta,
   formatYesNoLabel,
-  formatStatusWithDetail
+  formatStatusWithDetail,
+  formatAgeText
 };

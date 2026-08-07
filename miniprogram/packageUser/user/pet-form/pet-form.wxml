@@ -57,7 +57,16 @@
       <text class="breed-hint">支持下拉选择与模糊搜索；没有合适项可直接填写</text>
     </view>
     <view class="form-group"><text class="form-label"><text class="required-star">*</text>性别</text><radio-group class="flex-row gap-20" bindchange="onRadio" data-field="gender"><label class="flex-row gap-16"><radio value="公" checked="{{gender==='公'}}" color="#4CAF50"/>公</label><label class="flex-row gap-16"><radio value="母" checked="{{gender==='母'}}" color="#4CAF50"/>母</label></radio-group></view>
-    <view class="form-group"><text class="form-label"><text class="required-star">*</text>年龄</text><view class="flex-row gap-16"><input class="form-input" type="digit" placeholder="如 1.5" value="{{age}}" bindinput="onDecimalField" data-field="age" /><text>岁</text></view></view>
+    <view class="form-group">
+      <text class="form-label"><text class="required-star">*</text>年龄</text>
+      <view class="flex-row gap-16 age-row">
+        <input class="form-input age-input" type="number" placeholder="0" value="{{ageYears}}" bindinput="onAgeYearsInput" />
+        <text>岁</text>
+        <input class="form-input age-input" type="number" placeholder="0" value="{{ageMonths}}" bindinput="onAgeMonthsInput" />
+        <text>月</text>
+      </view>
+      <text class="breed-hint">例如 0 岁 8 月、1 岁 3 月</text>
+    </view>
     <view class="form-group"><text class="form-label"><text class="required-star">*</text>体重</text><view class="flex-row gap-16"><input class="form-input" type="digit" placeholder="如 3.2" value="{{weight}}" bindinput="onDecimalField" data-field="weight" /><text>kg</text></view></view>
     <view class="form-group"><text class="form-label"><text class="required-star">*</text>毛色</text><input class="form-input" placeholder="毛色" value="{{color}}" bindinput="onField" data-field="color" /></view>
   </view>
@@ -94,6 +103,16 @@
   <view class="card">
     <view class="card-title">生活习性</view>
     <view class="form-group"><text class="form-label">性格特点</text><input class="form-input" placeholder="性格特点" value="{{character}}" bindinput="onField" data-field="character" /></view>
+    <view class="form-group">
+      <text class="form-label">特殊行为</text>
+      <input
+        class="form-input"
+        placeholder="是否有骑跨、护食、护水、护玩具等行为"
+        value="{{behaviorHabits}}"
+        bindinput="onField"
+        data-field="behaviorHabits"
+      />
+    </view>
     <view class="form-group"><text class="form-label">饮食禁忌</text><input class="form-input" placeholder="饮食禁忌" value="{{dietTaboo}}" bindinput="onField" data-field="dietTaboo" /></view>
     <view class="form-group"><text class="form-label">特殊照料需求</text><textarea class="form-textarea" placeholder="特殊照料需求" value="{{specialCare}}" bindinput="onField" data-field="specialCare" /></view>
     <view class="form-group"><text class="form-label">备注</text><textarea class="form-textarea" placeholder="其他备注" value="{{remark}}" bindinput="onField" data-field="remark" /></view>
