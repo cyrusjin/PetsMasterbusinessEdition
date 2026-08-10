@@ -58,7 +58,7 @@ Page({
       })
       .finally(() => {
         wx.reLaunch({
-          url: `/pages/index/index?store_id=${encodeURIComponent(storeId)}`
+          url: `/packageUser/user/reserve/reserve?store_id=${encodeURIComponent(storeId)}`
         });
       });
   },

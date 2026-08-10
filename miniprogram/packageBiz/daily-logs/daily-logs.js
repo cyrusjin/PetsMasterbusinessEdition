@@ -7,6 +7,44 @@ const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const { deriveVideoCoverUrl, normalizeLogVideos } = require('../../utils/mediaUrl');
 const dailyApi = require('../../utils/daily');
 
+const DEFAULT_SHARE_IMAGE = '/images/default-avatar.png';
+const DAILY_SHARE_TITLE = '快来看看宠物动态';
+const DAILY_SHARE_PAGE = 'pages/daily/daily';
+
+function pickDailyShareImage(log) {
+  if (!log) return '';
+  const images = Array.isArray(log.images) ? log.images.filter(Boolean) : [];
+  if (images.length) return String(images[0]);
+  const coverUrls = Array.isArray(log.videoCoverUrls) ? log.videoCoverUrls.filter(Boolean) : [];
+  if (coverUrls.length) return String(coverUrls[0]);
+  const items = Array.isArray(log.videoItems) ? log.videoItems : [];
+  for (let i = 0; i < items.length; i += 1) {
+    const cover = items[i] && items[i].coverUrl;
+    if (cover) return String(cover);
+  }
+  return String(log.videoCoverUrl || log.videoCover || '').trim();
+}
+
+function buildDailyLogShareConfig(log) {
+  const id = log && (log.id || log.log_id);
+  const path = id
+    ? `${DAILY_SHARE_PAGE}?log_id=${encodeURIComponent(String(id).trim())}`
+    : DAILY_SHARE_PAGE;
+  return {
+    title: DAILY_SHARE_TITLE,
+    path,
+    imageUrl: pickDailyShareImage(log) || DEFAULT_SHARE_IMAGE
+  };
+}
+
+function enableDailyLogShareMenu() {
+  if (!wx.showShareMenu) return;
+  wx.showShareMenu({
+    withShareTicket: true,
+    menus: ['shareAppMessage']
+  });
+}
+
 function enrichLogs(logs, orders, pets) {
   const orderMap = {};
   (orders || []).forEach((item) => {
@@ -203,6 +241,7 @@ Page({
   onLoad(options) {
     this._prefillOrderId = (options && options.orderId) || '';
     this._hasLoadedOnce = false;
+    enableDailyLogShareMenu();
     this._paintFromLocal();
   },
 
@@ -212,6 +251,7 @@ Page({
       this._skipNextShowRefresh = false;
       return;
     }
+    enableDailyLogShareMenu();
     this._paintFromLocal();
     app.ensureCloudAndLogin({ silent: true }).then(() => {
       if (!app.canAccessMerchantBackend()) {
@@ -550,5 +590,19 @@ Page({
           });
       }
     });
+  },
+
+  onShareAppMessage(res) {
+    if (res && res.from === 'button' && res.target) {
+      const groupIndex = Number(res.target.dataset.groupIndex);
+      const logIndex = Number(res.target.dataset.logIndex);
+      const group = this.data.timeline[groupIndex];
+      const log = group && group.logs && group.logs[logIndex];
+      if (log && !log.isScheduled) {
+        return buildDailyLogShareConfig(log);
+      }
+    }
+    // 右上角转发也不带 store_id，避免误绑店
+    return buildDailyLogShareConfig(null);
   }
 });

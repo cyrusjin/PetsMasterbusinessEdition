@@ -18,7 +18,7 @@ function getStatusConfirmContent(nextStatus) {
   if (nextStatus === STATUS_OPEN) {
     return '确定切换为「营业中」吗？宠主将可以正常预约下单。';
   }
-  return '确定切换为「已闭店」吗？店铺将暂停接收新订单。';
+  return '确定切换为「未营业」吗？店铺将暂停接收新订单。';
 }
 
 module.exports = {

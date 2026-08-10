@@ -10,14 +10,14 @@ const WEEKDAY_OPTIONS = [
 
 const DEFAULT_BUSINESS_HOURS = {
   weekdays: [1, 2, 3, 4, 5, 6, 7],
-  openTime: '09:00',
-  closeTime: '18:00'
+  openTime: '08:00',
+  closeTime: '20:00'
 };
 
 function normalizeTime(value, fallback) {
-  const text = (value || fallback || '09:00').trim();
+  const text = (value || fallback || DEFAULT_BUSINESS_HOURS.openTime).trim();
   const match = text.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return fallback || '09:00';
+  if (!match) return fallback || DEFAULT_BUSINESS_HOURS.openTime;
   const hour = Math.min(23, Math.max(0, parseInt(match[1], 10)));
   const minute = Math.min(59, Math.max(0, parseInt(match[2], 10)));
   return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
@@ -29,8 +29,8 @@ function parseLegacyHours(text) {
   if (!match) return null;
   return {
     weekdays: [...DEFAULT_BUSINESS_HOURS.weekdays],
-    openTime: normalizeTime(match[1], '09:00'),
-    closeTime: normalizeTime(match[2], '18:00')
+    openTime: normalizeTime(match[1], DEFAULT_BUSINESS_HOURS.openTime),
+    closeTime: normalizeTime(match[2], DEFAULT_BUSINESS_HOURS.closeTime)
   };
 }
 

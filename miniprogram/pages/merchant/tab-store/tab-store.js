@@ -36,7 +36,18 @@ const { buildMerchantCoopContract } = require('../../../utils/merchantCoopContra
 const { isMerchantRejected, isMerchantDisabled } = require('../../../utils/role');
 const { isAuthorizedNickName, getNickNameCapability } = require('../../../utils/userAuth');
 const { isOaBound } = require('../../../utils/officialAccount');
+const {
+  enableStoreShareMenu,
+  buildMerchantShareConfig,
+  buildMerchantTimelineShareConfig,
+  redirectGuestShareToReserve
+} = require('../../../utils/storeShare');
 const { normalizePhone, validateMobilePhone } = require('../../../utils/phone');
+
+const {
+  markForceOpenSuccessPromo,
+  isForceOpenSuccessStore
+} = require('../../../utils/openSuccessPromo');
 const {
   normalizeReceptionRange,
   formatReceptionRangeText,
@@ -69,8 +80,20 @@ const {
   removeWeightRange,
   updateWeightRangeField
 } = require('../../../utils/weightPricing');
-const { normalizeDeposit, validateStoreForm } = require('../../../utils/storeForm');
-const { normalizePickupPricing, PICKUP_PRICING_MODE, parsePickupFreeMinDays } = require('../../../utils/pickupPricing');
+const { normalizeDeposit, validateStoreForm, validateBasicStoreForm, validateAdvancedStoreForm } = require('../../../utils/storeForm');
+const {
+  normalizePickupPricing,
+  PICKUP_PRICING_MODE,
+  normalizePickupFreeTiers,
+  normalizePickupFreeTiersForEdit,
+  createDefaultPickupFreeTiersForEdit,
+  addPickupFreeTier,
+  removePickupFreeTier,
+  updatePickupFreeTierField,
+  setPickupFreeTierTripType,
+  validatePickupFreeTiers,
+  hasPickupFreeOffer
+} = require('../../../utils/pickupPricing');
 const {
   normalizeWashPricing,
   normalizeWashFields,
@@ -93,9 +116,13 @@ const {
   MAX_CUSTOM_NAME,
   getDefaultCustomPricing,
   normalizeCustomPricing,
+  normalizeCustomPricingForUi,
   addCustomOption,
   removeCustomOption,
   updateCustomOptionField,
+  addCustomChild,
+  removeCustomChild,
+  updateCustomChildField,
   uploadCustomPricingPhotos
 } = require('../../../utils/customPricing');
 const {
@@ -175,8 +202,8 @@ function pickBillingState(rules) {
     weightPricing: normalizeWeightPricing((rules && rules.weightPricing) || []),
     roomPricing: normalizeRoomPricing((rules && rules.roomPricing) || []),
     customPricing: (() => {
-      const list = normalizeCustomPricing((rules && rules.customPricing) || []);
-      return list.length ? list : getDefaultCustomPricing();
+      const list = normalizeCustomPricingForUi((rules && rules.customPricing) || []);
+      return list.length ? list : normalizeCustomPricingForUi(getDefaultCustomPricing());
     })(),
     multiPetDiscountEnabled,
     multiPetDiscountPercent: multiPetDiscountEnabled && multiPetPercent != null && multiPetPercent !== ''
@@ -195,21 +222,15 @@ Page({
     isDemoMode: false,
     isAdminDisabled: false,
     adminDisableReason: '',
-    applyShop: createEmptyApplyShop(),
-    applyStorePhotos: [],
-    applyBusinessLicense: '',
-    applyStatus: '',
-    applyRejectReason: '',
-    wxNickName: '',
-    nickCapMode: 'nickname-input',
-    agreedToCoopContract: false,
-    signedCoopContractDraft: null,
+    settingsTab: 'basic',
+    basicSaveText: '开始营业',
+    showBasicSaveButton: false,
     submitting: false,
     shop: {},
     billingMode: 'weight',
     weightPricing: [],
     roomPricing: [],
-    customPricing: getDefaultCustomPricing(),
+    customPricing: normalizeCustomPricingForUi(getDefaultCustomPricing()),
     checkInDayCharge: 'full',
     departureDayCharge: 'full',
     departureCharge: { ...DEFAULT_DEPARTURE_CHARGE },
@@ -247,9 +268,10 @@ Page({
       ghostY: 0,
       ghostSize: 100
     },
-    hideMerchantTabBar: true,
+    hideMerchantTabBar: false,
     oaFollowSheetVisible: false,
     pickupFreeMode: 'none',
+    pickupFreeTiers: createDefaultPickupFreeTiersForEdit(),
     washPricing: [],
     washFreeMode: 'none',
     multiPetDiscountEnabled: false,
@@ -271,77 +293,74 @@ Page({
       expireAtText: ''
     },
     savingContractClause: false,
-    // 确认非审核（商家开关开启）前不渲染入驻表单，避免路径直达扫到
     merchantUiReady: false,
     applyDisabledTitle: '',
     applyDisabledTip: '',
-    applyPendingTitle: '',
-    applyPendingTip: '',
-    applyRejectedTitle: '',
-    applyRejectedTip: '',
-    applyFormTitle: '',
-    applyFormTip: '',
-    applyContractTitle: '',
-    applyContractName: '',
-    applyContractHint: '',
-    applySubmitText: ''
   },
 
-  onLoad() {
-    this._applyFormDirty = false;
+  onLoad(options) {
     this._formDirty = false;
-    this._syncNickNameCapability();
-    // 不在 onLoad 灌表单：等 onShow 确认开关后再展示
+    const storeId = String((options && options.store_id) || '').trim();
+    if (storeId && redirectGuestShareToReserve(storeId)) {
+      return;
+    }
+    if (app.globalData && app.globalData.storeSettingsTab === 'advanced') {
+      app.globalData.storeSettingsTab = '';
+      this.setData({ settingsTab: 'advanced' });
+    }
+  },
+
+  onShareAppMessage(res) {
+    const shareType = res && res.target && res.target.dataset && res.target.dataset.shareType;
+    if (shareType === 'open-success' || shareType === 'customer' || !shareType) {
+      return buildMerchantShareConfig(this);
+    }
+    return buildMerchantShareConfig(this);
+  },
+
+  onShareTimeline() {
+    return buildMerchantTimelineShareConfig(this);
   },
 
   _unlockMerchantCopy() {
-    const status = this.data.applyStatus;
-    let applySubmitText = '申请入驻';
-    if (status === 'pending') applySubmitText = '等待审核';
-    else if (status === 'rejected') applySubmitText = '重新提交申请';
     this.setData({
       applyDisabledTitle: '店铺已关闭',
-      applyDisabledTip: '您的店铺已被平台关闭，如有疑问请联系客服。',
-      applyPendingTitle: '审核中',
-      applyPendingTip: '您的入驻申请已提交，请等待管理员审核。审核通过后即可使用商家端完整功能。',
-      applyRejectedTitle: '审核未通过',
-      applyRejectedTip: '您的入驻申请未通过审核，请按驳回理由修改资料后重新提交。',
-      applyFormTitle: '申请入驻',
-      applyFormTip: '请填写以下信息提交入驻申请，审核通过后即可使用商家端完整功能。',
-      applyContractTitle: '入驻合作协议',
-      applyContractName: '商家入驻平台合作协议',
-      applyContractHint: '签署后方可提交入驻申请',
-      applySubmitText
+      applyDisabledTip: '您的店铺已被平台关闭，如有疑问请联系客服。'
     });
   },
 
-  _syncApplySubmitText() {
-    const status = this.data.applyStatus;
-    let applySubmitText = '申请入驻';
-    if (status === 'pending') applySubmitText = '等待审核';
-    else if (status === 'rejected') applySubmitText = '重新提交申请';
-    if (this.data.merchantUiReady) this.setData({ applySubmitText });
+  _syncBasicSaveText() {
+    const incomplete = normalizeStoreStatus(this.data.businessStatus || this.data.shop.status) === STATUS_INCOMPLETE;
+    const signed = !!(this.data.shop && this.data.shop.coopContractSigned);
+    // 未营业：必须先签署协议才显示「开始营业」；已营业：始终可保存基础设置
+    this.setData({
+      basicSaveText: incomplete ? '开始营业' : '保存基础设置',
+      showBasicSaveButton: incomplete ? signed : true
+    });
   },
 
-  _syncNickNameCapability() {
-    const cap = getNickNameCapability();
-    this.setData({ nickCapMode: cap.mode });
+  _isBasicSetupReady() {
+    try {
+      return !!(app.hasCompletedBasicStoreSetup && app.hasCompletedBasicStoreSetup());
+    } catch (err) {
+      return false;
+    }
   },
 
-  _shouldShowApplyFlow() {
-    if (app.isMerchantDisabled()) return false;
-    // 未审核通过（含全新未入驻 / 待审 / 已拒绝）只展示门店授权申请
-    if (app.isMerchantApproved()) return false;
-    return true;
-  },
-
-  /** 未入驻/待审/拒绝/关闭：隐藏底部 Tab，只留门店授权页 */
   _shouldHideMerchantTabBar() {
-    return !app.isMerchantApproved();
+    if (app.isMerchantDisabled && app.isMerchantDisabled()) return true;
+    // 未完成基础设置（含无店铺申请入驻）：隐藏底部 Tab
+    return !this._isBasicSetupReady();
+  },
+
+  _syncNavTitle() {
+    const title = this._isBasicSetupReady() ? '我的门店' : '申请入驻';
+    wx.setNavigationBarTitle({ title });
   },
 
   _syncApplyShellChrome() {
     this.setData({ hideMerchantTabBar: this._shouldHideMerchantTabBar() });
+    this._syncNavTitle();
   },
 
   _syncDisabledState(shop) {
@@ -365,19 +384,9 @@ Page({
       return;
     }
 
-    const showApplyFlow = this._shouldShowApplyFlow();
-    if (showApplyFlow) {
-      this.setData({ isDemoMode: true, isAdminDisabled: false, hideMerchantTabBar: true });
-      this._hydrateApplyFormFromCache();
-      return;
-    }
-
     this.setData({
       isDemoMode: false,
-      isAdminDisabled: false,
-      applyStatus: '',
-      applyRejectReason: '',
-      hideMerchantTabBar: this._shouldHideMerchantTabBar()
+      isAdminDisabled: false
     });
     const cachedShop = app.getShop();
     if (cachedShop && cachedShop.store_id && !merchantDemo.isDemoEntityId(cachedShop.store_id)) {
@@ -385,7 +394,33 @@ Page({
       if (!this._formDirty) {
         this._applyShopToForm(cachedShop);
       }
+    } else if (!this._formDirty) {
+      this._applyShopToForm(this._createEmptyShop());
     }
+    this._syncApplyShellChrome();
+  },
+
+  _createEmptyShop() {
+    return {
+      name: '',
+      logo: '',
+      address: '',
+      contactPhone: '',
+      legalName: '',
+      businessLicense: '',
+      intro: '',
+      introPhotos: [],
+      storePhotos: [],
+      receptionRange: [],
+      businessHours: { ...DEFAULT_BUSINESS_HOURS },
+      status: STATUS_INCOMPLETE,
+      pickupService: 'no',
+      washService: 'no',
+      deposit: 0,
+      coopContractSigned: false,
+      coopContractSnapshot: null,
+      coopContractSignTime: ''
+    };
   },
 
   _hydrateApplyFormFromCache() {
@@ -430,12 +465,7 @@ Page({
   },
 
   _needsForceUserRefresh() {
-    return !!(
-      this.data.applyStatus === 'pending'
-      || this.data.applyStatus === 'rejected'
-      || app.isMerchantPending()
-      || isMerchantRejected(app.globalData.userInfo)
-    );
+    return false;
   },
 
   _reloadStorePage(options = {}) {
@@ -450,40 +480,26 @@ Page({
         });
       }
 
-      const showApplyFlow = this._shouldShowApplyFlow();
-      // 审核通过后务必清掉 pending/rejected，否则会一直 forceUser 刷新，打断头像等编辑
       this.setData({
-        isDemoMode: showApplyFlow,
-        isAdminDisabled: false,
-        hideMerchantTabBar: showApplyFlow || this._shouldHideMerchantTabBar(),
-        ...(showApplyFlow ? {} : { applyStatus: '', applyRejectReason: '' })
+        isDemoMode: false,
+        isAdminDisabled: false
       });
       this._syncApplyShellChrome();
 
-      if (showApplyFlow) {
-        this._loadApplyForm();
-        return;
-      }
-
       if (this._formDirty && !forceUser) return;
-      // 已有表单数据时切回 Tab 不必强制拉店铺；下拉刷新走 refreshMerchantStore
       const storeOpts = (forceUser || !this.data.shop || !this.data.shop.store_id)
         ? { force: true }
         : {};
       return app.ensureMerchantStore(storeOpts).then((shop) => {
         if (!shop || !shop.store_id) {
-          this.setData({
-            isDemoMode: true,
-            isAdminDisabled: false,
-            applyStatus: '',
-            applyRejectReason: '',
-            hideMerchantTabBar: true
-          });
-          this._hydrateApplyFormFromCache();
+          if (this._formDirty) return;
+          this._applyShopToForm(this._createEmptyShop());
+          this._syncApplyShellChrome();
           return;
         }
         if (this._formDirty) return;
         this._applyShopToForm(shop);
+        this._syncApplyShellChrome();
       });
     });
   },
@@ -491,7 +507,6 @@ Page({
   onShow() {
     hideHomeButton();
     this._syncTabBar();
-    // 非正式版 / 开关关闭：禁止停留商家界面
     if (redirectToUserIfMerchantUiBlocked()) return;
     ensureMerchantPageAllowed().then((blocked) => {
       if (blocked) return;
@@ -501,15 +516,37 @@ Page({
         wx.switchTab({ url: '/pages/index/index' });
         return;
       }
-      // 审核中/已拒绝时强制拉用户，避免本地 pending 缓存导致界面不更新
       this._reloadStorePage({ forceUser: this._needsForceUserRefresh() })
         .then(() => {
-          this._syncApplySubmitText();
           this._syncApplyShellChrome();
           this._syncTabBar();
+          this._syncBasicSaveText();
           this._refreshHolidayPricingSummary();
+          if (app.globalData && app.globalData.storeSettingsTab === 'advanced') {
+            app.globalData.storeSettingsTab = '';
+            this.setData({ settingsTab: 'advanced' });
+          }
+          this._maybeForceOpenSuccessSheet();
         });
     });
+  },
+
+  _maybeForceOpenSuccessSheet() {
+    if (!isForceOpenSuccessStore(this.data.shop || app.getShop())) return;
+    const tryShow = () => {
+      const bar = this.selectComponent('#merchantTabBar');
+      if (bar && typeof bar.showOpenSuccessPromo === 'function') {
+        bar.showOpenSuccessPromo({ force: true, allowRepeat: true });
+        return true;
+      }
+      return false;
+    };
+    if (!tryShow()) {
+      markForceOpenSuccessPromo(app);
+      setTimeout(() => {
+        tryShow();
+      }, 80);
+    }
   },
 
   _syncTabBar() {},
@@ -527,40 +564,13 @@ Page({
   },
 
   onPullDownRefresh() {
-    const wasPending = this.data.applyStatus === 'pending' || app.isMerchantPending();
-    const inApplyFlow = this.data.isDemoMode || this._needsForceUserRefresh();
-
-    if (inApplyFlow) {
-      this._applyFormDirty = false;
-      this._reloadStorePage({ forceUser: true })
-        .then(() => {
-          if (wasPending && app.isMerchantApproved()) {
-            wx.showToast({ title: '审核已通过', icon: 'success' });
-          } else {
-            wx.showToast({ title: '已刷新', icon: 'success' });
-          }
-        })
-        .finally(() => wx.stopPullDownRefresh());
-      return;
-    }
     if (this._formDirty) {
       wx.stopPullDownRefresh();
       return;
     }
-    app.refreshMerchantStore()
-      .then((shop) => {
-        if (!shop || !shop.store_id) {
-          this.setData({
-            isDemoMode: true,
-            isAdminDisabled: false,
-            applyStatus: '',
-            applyRejectReason: '',
-            hideMerchantTabBar: true
-          });
-          this._hydrateApplyFormFromCache();
-          return;
-        }
-        this._applyShopToForm(shop);
+    this._reloadStorePage({ forceUser: true })
+      .then(() => {
+        this._syncBasicSaveText();
         wx.showToast({ title: '已刷新', icon: 'success' });
       })
       .finally(() => wx.stopPullDownRefresh());
@@ -1186,14 +1196,17 @@ Page({
     const user = app.globalData.userInfo || {};
     return buildMerchantCoopContract({
       user,
-      shop: this.data.applyShop
+      shop: this.data.shop
     });
   },
 
   _validateBeforeCoopContract() {
-    const shop = { ...this.data.applyShop };
-    const storePhotos = normalizeStorePhotos(this.data.applyStorePhotos);
-    return validateApplyForm({ shop, storePhotos });
+    const shop = this.data.shop || {};
+    if (!(shop.name || '').trim()) return '请先填写店铺名称';
+    if (!(shop.address || '').trim()) return '请先选择营业地址';
+    if (!(shop.contactPhone || '').trim()) return '请先填写联系电话';
+    if (!(shop.legalName || '').trim()) return '请先填写负责人姓名';
+    return '';
   },
 
   onViewCoopContract() {
@@ -1202,8 +1215,8 @@ Page({
       showValidationAlert(formError, '无法预览协议');
       return;
     }
-    const doc = this.data.agreedToCoopContract && this.data.signedCoopContractDraft
-      ? this.data.signedCoopContractDraft
+    const doc = this.data.shop.coopContractSigned && this.data.shop.coopContractSnapshot
+      ? this.data.shop.coopContractSnapshot
       : this._buildCoopContractDraft();
     this.setData({
       showCoopContractModal: true,
@@ -1244,15 +1257,21 @@ Page({
       signTime: new Date().toLocaleString('zh-CN'),
       signMethod: 'electronic'
     };
-    app.globalData.signedCoopContractDraft = doc;
+    this._markDirty();
+    const shop = {
+      ...this.data.shop,
+      coopContractSigned: true,
+      coopContractSignTime: doc.signTime,
+      coopContractSnapshot: doc
+    };
     this.setData({
-      agreedToCoopContract: true,
-      signedCoopContractDraft: doc,
+      shop,
       showCoopContractModal: false,
       coopContractMode: 'preview',
       coopContractDoc: null
     });
     this._setTabBarVisible(true);
+    this._syncBasicSaveText();
     wx.showToast({ title: '签署成功', icon: 'success' });
   },
 
@@ -1262,12 +1281,15 @@ Page({
 
   _applyShopToForm(storeShop) {
     const normalizedShop = this._normalizeShop(storeShop);
-    const localRules = app.getBillingRules();
     const cloudRules = normalizedShop.billingRules || {};
-    const rules = { ...localRules, ...cloudRules };
-    if (cloudRules && Object.keys(cloudRules).length) {
-      app.saveBillingRules({ ...localRules, ...cloudRules });
-    }
+    const hasCloudRules = !!(cloudRules && Object.keys(cloudRules).length);
+    // 无云端计费时用默认，禁止把上一店本地 pet_billing_rules 带回新店
+    const rules = hasCloudRules
+      ? { ...app._defaultBillingRules(), ...cloudRules }
+      : app._defaultBillingRules();
+    app.saveBillingRules(rules);
+    const receptionState = pickReceptionRangeState(normalizedShop);
+    const billingState = pickBillingState(rules);
     this.setData({
       shop: normalizedShop,
       businessStatus: normalizeStoreStatus(normalizedShop.status),
@@ -1275,16 +1297,18 @@ Page({
       introPhotos: normalizeIntroPhotos(normalizedShop.introPhotos),
       noticePhotos: normalizeNoticePhotos(normalizedShop.noticePhotos),
       washNoticePhotos: normalizeNoticePhotos(normalizedShop.washNoticePhotos),
-      pickupFreeMode: parsePickupFreeMinDays(normalizedShop.pickupFreeMinDays) > 0 ? 'minDays' : 'none',
+      pickupFreeMode: hasPickupFreeOffer(normalizedShop) ? 'minDays' : 'none',
+      pickupFreeTiers: normalizePickupFreeTiersForEdit(normalizedShop),
       washPricing: normalizeWashPricing(normalizedShop.washPricing || []),
       washFreeMode: parseWashFreeMinDays(normalizedShop.washFreeMinDays) > 0 ? 'minDays' : 'none',
       valueAddedServices: resolveStoreValueAddedServices(normalizedShop),
       membership: normalizedShop.membership || this.data.membership,
-      ...pickBillingState(rules),
+      ...billingState,
       ...pickBusinessHoursState(normalizedShop),
-      ...pickReceptionRangeState(normalizedShop),
+      ...receptionState,
       ...this._pickContractClauseState(normalizedShop)
     });
+    this._syncBasicSaveText();
   },
 
   onGoMembership() {
@@ -1345,6 +1369,12 @@ Page({
       pickupService: shop.pickupService === 'yes' ? 'yes' : 'no',
       pickupNotice: shop.pickupNotice || '',
       wechatId: (shop.wechatId || '').trim(),
+      contactPhone: normalizePhone(shop.contactPhone || ''),
+      legalName: (shop.legalName || '').trim(),
+      businessLicense: normalizeBusinessLicense(shop.businessLicense),
+      coopContractSigned: !!shop.coopContractSigned,
+      coopContractSignTime: shop.coopContractSignTime || '',
+      coopContractSnapshot: shop.coopContractSnapshot || null,
       ...normalizePickupPricing(shop),
       ...normalizeWashFields(shop),
       valueAddedServices: resolveStoreValueAddedServices(shop),
@@ -1396,6 +1426,73 @@ Page({
     });
   },
 
+  onSettingsTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (!tab || tab === this.data.settingsTab) return;
+    this.setData({ settingsTab: tab });
+  },
+
+  onContactPhoneInput(e) {
+    this._markDirty();
+    const contactPhone = normalizePhone(e.detail.value);
+    this.setData({ shop: { ...this.data.shop, contactPhone } });
+  },
+
+  onContactPhoneBlur() {
+    const phone = this.data.shop.contactPhone;
+    if (!phone) return;
+    const err = validateMobilePhone(phone, {
+      emptyMsg: '',
+      invalidMsg: '联系电话需为标准的11位手机号'
+    });
+    if (err) showValidationAlert(err);
+  },
+
+  onChooseBusinessLicense() {
+    if (this._choosingLicense) return;
+    this._choosingLicense = true;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const path = (((res.tempFiles || [])[0] || {}).tempFilePath) || '';
+        if (!path) return;
+        this._markDirty();
+        this.setData({
+          shop: { ...this.data.shop, businessLicense: path }
+        });
+      },
+      complete: () => {
+        this._choosingLicense = false;
+      }
+    });
+  },
+
+  onDeleteBusinessLicense() {
+    this._markDirty();
+    this.setData({
+      shop: { ...this.data.shop, businessLicense: '' }
+    });
+  },
+
+  onPreviewBusinessLicense() {
+    const url = this.data.shop.businessLicense;
+    if (!url) return;
+    wx.previewImage({ current: url, urls: [url] });
+  },
+
+  onBillingMode(e) {
+    this._markDirty();
+    const billingMode = e.detail.value;
+    const patch = { billingMode };
+    if (billingMode === 'custom') {
+      const list = normalizeCustomPricingForUi(this.data.customPricing);
+      if (!list.length) patch.customPricing = normalizeCustomPricingForUi(getDefaultCustomPricing());
+    }
+    this.setData(patch);
+  },
+
   _applyBusinessHours(businessHours) {
     const normalized = normalizeBusinessHours(businessHours);
     const shop = {
@@ -1421,11 +1518,26 @@ Page({
     });
   },
 
+  _getPickupFreePayload() {
+    if (this.data.pickupFreeMode !== 'minDays') {
+      return {
+        pickupFreeTiers: [],
+        pickupFreeMinDays: '',
+        pickupFreeMaxKm: ''
+      };
+    }
+    const pickupFreeTiers = normalizePickupFreeTiers(this.data.pickupFreeTiers);
+    const legacy = pickupFreeTiers[0] || null;
+    return {
+      pickupFreeTiers,
+      pickupFreeMinDays: legacy ? legacy.minDays : '',
+      pickupFreeMaxKm: legacy ? legacy.maxKm : ''
+    };
+  },
+
   _getStoreFormPayload() {
     const billingRules = this._getBillingRulesPayload();
-    const pickupFreeMinDays = this.data.pickupFreeMode === 'minDays'
-      ? (this.data.shop.pickupFreeMinDays || '')
-      : '';
+    const pickupFree = this._getPickupFreePayload();
     const washService = this.data.shop.washService === 'yes' ? 'yes' : 'no';
     const washFreeMinDays = washService === 'yes' && this.data.washFreeMode === 'minDays'
       ? (this.data.shop.washFreeMinDays || '')
@@ -1433,7 +1545,7 @@ Page({
     return {
       shop: {
         ...this.data.shop,
-        pickupFreeMinDays,
+        ...pickupFree,
         washService,
         washPricing: washService === 'yes'
           ? normalizeWashPricing(this.data.washPricing)
@@ -1468,9 +1580,27 @@ Page({
     const error = validateStoreForm(this._getStoreFormPayload());
     if (error) return error;
     if (this.data.shop.pickupService === 'yes' && this.data.pickupFreeMode === 'minDays') {
-      if (!parsePickupFreeMinDays(this.data.shop.pickupFreeMinDays)) {
-        return '请填写住几天及以上免费接送';
+      const freeErr = validatePickupFreeTiers(this.data.pickupFreeTiers);
+      if (freeErr) return freeErr;
+    }
+    if (this.data.shop.washService === 'yes' && this.data.washFreeMode === 'minDays') {
+      if (!parseWashFreeMinDays(this.data.shop.washFreeMinDays)) {
+        return '请填写住几天及以上免费洗护';
       }
+    }
+    return '';
+  },
+
+  _validateBasicForm() {
+    return validateBasicStoreForm(this._getStoreFormPayload());
+  },
+
+  _validateAdvancedForm() {
+    const error = validateAdvancedStoreForm(this._getStoreFormPayload());
+    if (error) return error;
+    if (this.data.shop.pickupService === 'yes' && this.data.pickupFreeMode === 'minDays') {
+      const freeErr = validatePickupFreeTiers(this.data.pickupFreeTiers);
+      if (freeErr) return freeErr;
     }
     if (this.data.shop.washService === 'yes' && this.data.washFreeMode === 'minDays') {
       if (!parseWashFreeMinDays(this.data.shop.washFreeMinDays)) {
@@ -1495,7 +1625,10 @@ Page({
       weightPricing: normalizeWeightPricing(this.data.weightPricing),
       roomPricing: normalizeRoomPricing(this.data.roomPricing),
       customPricing: (() => {
-        const list = normalizeCustomPricing(this.data.customPricing);
+        const list = normalizeCustomPricing(this.data.customPricing).map((item) => ({
+          ...item,
+          children: (item.children || []).filter((child) => !!(child.name || '').trim())
+        }));
         return list.length ? list : getDefaultCustomPricing();
       })(),
       valueAddedServices,
@@ -1646,17 +1779,6 @@ Page({
       .catch(() => {});
   },
 
-  onBillingMode(e) {
-    this._markDirty();
-    const billingMode = e.detail.value;
-    const patch = { billingMode };
-    if (billingMode === 'custom') {
-      const list = normalizeCustomPricing(this.data.customPricing);
-      if (!list.length) patch.customPricing = getDefaultCustomPricing();
-    }
-    this.setData(patch);
-  },
-
   onCheckInDayCharge(e) {
     this._markDirty();
     this.setData({ checkInDayCharge: e.detail.value }, () => this._updateChargeSummary());
@@ -1702,13 +1824,55 @@ Page({
   onPickupFreeModeChange(e) {
     this._markDirty();
     const pickupFreeMode = e.detail.value === 'minDays' ? 'minDays' : 'none';
-    const shop = { ...this.data.shop };
-    if (pickupFreeMode === 'none') {
-      shop.pickupFreeMinDays = '';
-    } else if (!parsePickupFreeMinDays(shop.pickupFreeMinDays)) {
-      shop.pickupFreeMinDays = '7';
+    const patch = { pickupFreeMode };
+    if (pickupFreeMode === 'minDays') {
+      const tiers = (this.data.pickupFreeTiers && this.data.pickupFreeTiers.length)
+        ? this.data.pickupFreeTiers
+        : createDefaultPickupFreeTiersForEdit();
+      patch.pickupFreeTiers = tiers;
     }
-    this.setData({ pickupFreeMode, shop });
+    this.setData(patch);
+  },
+
+  onPickupFreeTierField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    if (!Number.isInteger(index) || (field !== 'minDays' && field !== 'maxKm')) return;
+    this.setData({
+      pickupFreeTiers: updatePickupFreeTierField(
+        this.data.pickupFreeTiers,
+        index,
+        field,
+        e.detail.value
+      )
+    });
+  },
+
+  onAddPickupFreeTier() {
+    this._markDirty();
+    this.setData({
+      pickupFreeTiers: addPickupFreeTier(this.data.pickupFreeTiers)
+    });
+  },
+
+  onRemovePickupFreeTier(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index)) return;
+    this.setData({
+      pickupFreeTiers: removePickupFreeTier(this.data.pickupFreeTiers, index)
+    });
+  },
+
+  onSetPickupFreeTierTripType(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const tripType = e.currentTarget.dataset.trip;
+    if (!Number.isInteger(index) || (tripType !== 'oneWay' && tripType !== 'roundTrip')) return;
+    this.setData({
+      pickupFreeTiers: setPickupFreeTierTripType(this.data.pickupFreeTiers, index, tripType)
+    });
   },
 
   onWashServiceChange(e) {
@@ -2069,6 +2233,92 @@ Page({
     this.setData({ customPricing });
   },
 
+  onCustomChildField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const childIndex = Number(e.currentTarget.dataset.childIndex);
+    const field = e.currentTarget.dataset.field;
+    const customPricing = updateCustomChildField(
+      this.data.customPricing, index, childIndex, field, e.detail.value
+    );
+    this.setData({ customPricing });
+  },
+
+  onAddCustomChild(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    this.setData({
+      customPricing: addCustomChild(this.data.customPricing, index)
+    });
+  },
+
+  onRemoveCustomChild(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const childIndex = Number(e.currentTarget.dataset.childIndex);
+    this.setData({
+      customPricing: removeCustomChild(this.data.customPricing, index, childIndex)
+    });
+  },
+
+  onChooseCustomChildPhoto(e) {
+    if (this._choosingCustomPhoto) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const childIndex = Number(e.currentTarget.dataset.childIndex);
+    if (!Number.isInteger(index) || index < 0) return;
+    if (!Number.isInteger(childIndex) || childIndex < 0) return;
+    this._choosingCustomPhoto = true;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res && res.tempFiles && res.tempFiles[0];
+        const path = file && file.tempFilePath;
+        if (!path) {
+          wx.showToast({ title: '未选择到图片', icon: 'none' });
+          return;
+        }
+        this._markDirty();
+        const customPricing = updateCustomChildField(
+          this.data.customPricing, index, childIndex, 'photo', path
+        );
+        this.setData({ customPricing });
+      },
+      fail: (err) => {
+        const msg = (err && err.errMsg) || '';
+        if (/cancel/i.test(msg)) return;
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
+      },
+      complete: () => {
+        this._choosingCustomPhoto = false;
+      }
+    });
+  },
+
+  onDeleteCustomChildPhoto(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const childIndex = Number(e.currentTarget.dataset.childIndex);
+    const customPricing = updateCustomChildField(
+      this.data.customPricing, index, childIndex, 'photo', ''
+    );
+    this.setData({ customPricing });
+  },
+
+  onPreviewCustomChildPhoto(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const childIndex = Number(e.currentTarget.dataset.childIndex);
+    const item = (this.data.customPricing || [])[index];
+    const child = item && item.children && item.children[childIndex];
+    const url = child && child.photo;
+    if (!url) return;
+    resolveImageUrls([url]).then((urls) => {
+      const current = (urls && urls[0]) || url;
+      wx.previewImage({ current, urls: [current] });
+    });
+  },
+
   onChooseCustomPhoto(e) {
     if (this._choosingCustomPhoto) return;
     const index = Number(e.currentTarget.dataset.index);
@@ -2322,8 +2572,21 @@ Page({
 
   preventMove() {},
 
+  onSaveBasic() {
+    this._persistStore({ mode: 'basic' });
+  },
+
+  onSaveAdvanced() {
+    this._persistStore({ mode: 'advanced' });
+  },
+
   onSave() {
-    const formError = this._validateStoreForm();
+    this._persistStore({ mode: this.data.settingsTab === 'advanced' ? 'advanced' : 'basic' });
+  },
+
+  _persistStore({ mode }) {
+    if (this.data.submitting) return;
+    const formError = mode === 'advanced' ? this._validateAdvancedForm() : this._validateBasicForm();
     if (formError) {
       showValidationAlert(formError);
       return;
@@ -2331,15 +2594,16 @@ Page({
 
     const billingRules = this._getBillingRulesPayload();
     const currentStatus = normalizeStoreStatus(this.data.shop.status);
-    const nextStatus = currentStatus === STATUS_INCOMPLETE ? STATUS_OPEN : currentStatus;
+    const nextStatus = mode === 'basic' && currentStatus === STATUS_INCOMPLETE
+      ? STATUS_OPEN
+      : currentStatus;
 
+    this.setData({ submitting: true });
     wx.showLoading({ title: '保存中' });
     const cachedShop = app.getShop() || {};
     const shop = this._normalizeShop({
       ...this.data.shop,
-      pickupFreeMinDays: this.data.pickupFreeMode === 'minDays'
-        ? (this.data.shop.pickupFreeMinDays || '')
-        : '',
+      ...this._getPickupFreePayload(),
       washService: this.data.shop.washService === 'yes' ? 'yes' : 'no',
       washPricing: this.data.shop.washService === 'yes'
         ? normalizeWashPricing(this.data.washPricing)
@@ -2353,14 +2617,15 @@ Page({
         : [],
       valueAddedServices: normalizeValueAddedServices(this.data.valueAddedServices),
       status: nextStatus,
-      businessHours: this.data.businessHours,
+      businessHours: this.data.businessHours || DEFAULT_BUSINESS_HOURS,
       receptionRange: this.data.receptionRange,
       storePhotos: this.data.storePhotos,
       introPhotos: this.data.introPhotos,
       noticePhotos: this.data.noticePhotos,
       billingRules
     });
-    uploadStoreLogo(shop.logo, cachedShop.logo)
+
+    const uploadChain = uploadStoreLogo(shop.logo, cachedShop.logo)
       .then((logo) => {
         if (logo) shop.logo = logo;
         return uploadStorePhotos(shop.storePhotos, cachedShop.storePhotos);
@@ -2371,6 +2636,10 @@ Page({
       })
       .then((introPhotos) => {
         shop.introPhotos = introPhotos;
+        return uploadBusinessLicense(shop.businessLicense, cachedShop.businessLicense);
+      })
+      .then((businessLicense) => {
+        shop.businessLicense = businessLicense || '';
         return uploadNoticePhotos(shop.noticePhotos, cachedShop.noticePhotos);
       })
       .then((noticePhotos) => {
@@ -2399,17 +2668,41 @@ Page({
         billingRules.valueAddedServices = valueAddedServices;
         shop.billingRules = { ...shop.billingRules, valueAddedServices };
         return app.syncShopToCloud(shop);
-      })
+      });
+
+    uploadChain
       .then((saved) => {
         app.saveBillingRules(billingRules);
         this._applyShopToForm(saved);
         this._formDirty = false;
         wx.hideLoading();
         const openedNow = currentStatus === STATUS_INCOMPLETE && normalizeStoreStatus(saved.status) === STATUS_OPEN;
-        wx.showToast({
-          title: openedNow ? '保存成功，店铺已开始营业' : '保存成功',
-          icon: 'success'
-        });
+        if (openedNow) {
+          enableStoreShareMenu();
+          this._syncApplyShellChrome();
+          this._syncBasicSaveText();
+          const tryShow = () => {
+            const bar = this.selectComponent('#merchantTabBar');
+            if (bar && typeof bar.showOpenSuccessPromo === 'function') {
+              bar.showOpenSuccessPromo({ force: true });
+              return true;
+            }
+            return false;
+          };
+          if (!tryShow()) {
+            markForceOpenSuccessPromo(app);
+            setTimeout(() => {
+              tryShow();
+            }, 80);
+          }
+        } else {
+          this._syncApplyShellChrome();
+          this._syncBasicSaveText();
+          wx.showToast({
+            title: '保存成功',
+            icon: 'success'
+          });
+        }
       })
       .catch((err) => {
         wx.hideLoading();
@@ -2418,6 +2711,9 @@ Page({
           icon: 'none',
           duration: 3000
         });
+      })
+      .finally(() => {
+        this.setData({ submitting: false });
       });
   },
 

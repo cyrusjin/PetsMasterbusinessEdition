@@ -58,12 +58,14 @@ Component({
           if (ds === _e) cls += ' end';
           if (ds > _s && ds < _e) cls += ' in-range';
         } else if (_s && ds === _s) cls += ' start';
+        const isSameDay = !!(_s && _e && _s === _e && ds === _s);
         cells.push({
           day: d,
           dateStr: ds,
           cls: cls.trim(),
-          isStart: _s === ds,
-          isEnd: _e === ds,
+          isStart: _s === ds && !isSameDay,
+          isEnd: _e === ds && !isSameDay,
+          isSameDay,
           disabled
         });
       }
@@ -91,8 +93,8 @@ Component({
       let { _s, _e, year, month } = this.data;
       if (!_s || (_s && _e)) { _s = ds; _e = null; }
       else {
+        // 再次点同一天：确认当日寄养（开始=结束）
         if (ds < _s) { _e = _s; _s = ds; }
-        else if (ds === _s) { _s = null; _e = null; }
         else _e = ds;
       }
       const [yStr, mStr] = ds.split('-');

@@ -60,49 +60,43 @@
       </view>
     </view>
 
-    <view class="card">
-      <view class="card-title">{{isStoreOwner && !isDemoMode ? '分享与员工' : '分享店铺'}}</view>
-      <view class="share-actions-grid {{isStoreOwner && !isDemoMode ? '' : 'share-grid-solo'}}">
-        <view class="share-action-col">
-          <view class="quick-item share-item-wrap">
-            <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
-            <text>分享给客人</text>
-            <button
-              class="share-hit-btn"
-              open-type="share"
-              data-share-type="customer"
-              hover-class="none"
-            ></button>
-          </view>
-          <text class="share-action-hint">发送本小程序给好友，打开后自动绑定本店</text>
-        </view>
-        <view class="share-action-col" wx:if="{{isStoreOwner && !isDemoMode}}">
-          <view class="quick-item share-item-wrap">
-            <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
-            <text>分享给员工</text>
-            <button
-              class="share-hit-btn"
-              open-type="share"
-              data-share-type="staff"
-              hover-class="none"
-            ></button>
-          </view>
-          <text class="share-action-hint">同事接受邀请后可协助管理</text>
-        </view>
+    <button
+      class="guest-invite-card"
+      open-type="share"
+      data-share-type="customer"
+      hover-class="guest-invite-card-hover"
+    >
+      <view class="guest-invite-frame" aria-hidden="true"></view>
+      <view class="guest-invite-corner guest-invite-corner-tl" aria-hidden="true">✨</view>
+      <view class="guest-invite-corner guest-invite-corner-tr" aria-hidden="true">💰</view>
+      <view class="guest-invite-corner guest-invite-corner-bl" aria-hidden="true">🧧</view>
+      <view class="guest-invite-corner guest-invite-corner-br" aria-hidden="true">🎉</view>
+      <text class="guest-invite-title">发送给客人预约</text>
+      <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
+      <text class="guest-invite-desc">发给好友，打开即可预约本店寄养</text>
+      <view class="guest-invite-btn-wrap">
+        <text class="guest-invite-btn-text">发送给客人预约 🧧</text>
       </view>
+    </button>
 
-      <view
-        wx:if="{{isStoreOwner && !isDemoMode}}"
-        class="share-staff-row"
-        bindtap="onGoStaffManage"
-      >
-        <image class="share-staff-icon" src="/images/card/card-pets.png" mode="aspectFit" />
-        <view class="share-staff-body">
-          <text class="share-staff-title">员工管理</text>
-          <text class="share-staff-desc">查看并移除已授权员工</text>
+    <view class="card" wx:if="{{isStoreOwner && !isDemoMode}}">
+      <view class="card-title">员工协作</view>
+      <view class="staff-collab-row">
+        <view class="staff-collab-item share-item-wrap">
+          <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+          <text class="staff-collab-text">分享给员工</text>
+          <button
+            class="share-hit-btn"
+            open-type="share"
+            data-share-type="staff"
+            hover-class="none"
+          ></button>
         </view>
-        <text class="share-staff-badge" wx:if="{{staffCount > 0}}">{{staffCount}}人</text>
-        <text class="share-staff-arrow">›</text>
+        <view class="staff-collab-item" bindtap="onGoStaffManage">
+          <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+          <text class="staff-collab-text">员工管理</text>
+          <text class="staff-collab-badge" wx:if="{{staffCount > 0}}">{{staffCount}}人</text>
+        </view>
       </view>
     </view>
 

@@ -4,6 +4,7 @@
 
 const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
 const { isMerchantUiBlocked, fetchMerchantSwitchEnabled, applyMerchantSwitchToApp } = require('./merchantSwitch');
+const { isBasicStoreComplete } = require('./storeForm');
 
 const USER_TAB_ROUTES = [
   'pages/index/index',
@@ -35,13 +36,42 @@ function isUserTabRoute(route) {
   return USER_TAB_ROUTES.includes(route || getCurrentRoute());
 }
 
+function getAppShopSafe() {
+  try {
+    const app = getApp();
+    if (app && typeof app.getShop === 'function') return app.getShop() || null;
+  } catch (err) {
+    // ignore
+  }
+  return null;
+}
+
+function hasCompletedBasicSetup() {
+  try {
+    const app = getApp();
+    if (app && typeof app.hasCompletedBasicStoreSetup === 'function') {
+      return !!app.hasCompletedBasicStoreSetup();
+    }
+  } catch (err) {
+    // fall through
+  }
+  return isBasicStoreComplete(getAppShopSafe());
+}
+
+/** 商家壳下可用业务能力：未禁用即可（不再要求审核通过） */
 function hasMerchantBackendAccess() {
   try {
     if (isMerchantUiBlocked()) return false;
     const app = getApp();
     if (app.isUserClientMode && app.isUserClientMode()) return false;
+    if (app.isMerchantDisabled && app.isMerchantDisabled()) return false;
+    const user = app.globalData && app.globalData.userInfo;
+    if (isMerchantDisabled(user)) return false;
+    // 商家壳内即可访问后端能力；基础未完成由落地页/跳转约束
+    if (app.globalData && app.globalData.role === 'merchant') return true;
     if (app.isMerchantApproved && app.isMerchantApproved()) return true;
-    return isMerchantApproved(app.globalData && app.globalData.userInfo);
+    if (isMerchantApproved(user) || isMerchantPending(user) || isMerchantRejected(user)) return true;
+    return false;
   } catch (err) {
     return false;
   }
@@ -54,7 +84,6 @@ function canUseMerchantShell() {
     if (app.isUserClientMode && app.isUserClientMode()) return false;
     const user = app.globalData && app.globalData.userInfo;
     if (hasMerchantBackendAccess()) return true;
-    // 未入驻也可进商家壳，仅用于门店授权/申请入驻（不再走演示模式）
     if (app.globalData && app.globalData.role === 'merchant') return true;
     if (isMerchantPending(user) || isMerchantRejected(user) || isMerchantDisabled(user)) return true;
     return false;
@@ -76,7 +105,6 @@ function redirectToUserIfMerchantUiBlocked() {
       wx.switchTab({ url: USER_HOME });
       return true;
     }
-    // 仅当开关已明确为 false 时拦截（路径直达扫包）
     const app = typeof getApp === 'function' ? getApp() : null;
     if (app && app.globalData && app.globalData.merchantSwitchEnabled === false) {
       wx.switchTab({ url: USER_HOME });
@@ -114,19 +142,19 @@ function hasMerchantStore() {
 }
 
 function getMerchantLandingUrl() {
-  // 已入驻进日常管理；未入驻只进门店授权
-  if (hasMerchantBackendAccess()) return MERCHANT_HOME;
+  if (hasCompletedBasicSetup()) return MERCHANT_HOME;
   return MERCHANT_APPLY_HOME;
 }
 
-/** 未审核通过时强制回到门店授权页；返回 true 表示已发起跳转 */
+/** 基础设置未完成时强制回门店页；返回 true 表示已发起跳转 */
 function redirectToStoreAuthIfNeeded() {
   try {
     if (redirectToUserIfMerchantUiBlocked()) return true;
     const app = getApp();
     if (!app) return false;
     if (app.isUserClientMode && app.isUserClientMode()) return false;
-    if (app.isMerchantApproved && app.isMerchantApproved()) return false;
+    if (app.isMerchantDisabled && app.isMerchantDisabled()) return false;
+    if (hasCompletedBasicSetup()) return false;
     const route = getCurrentRoute();
     if (route === 'pages/merchant/tab-store/tab-store') return false;
     wx.redirectTo({ url: MERCHANT_APPLY_HOME });
@@ -146,11 +174,9 @@ function applyRoleShell() {
     const inUserMode = !!(app.isUserClientMode && app.isUserClientMode());
     const useMerchant = !inUserMode && canUseMerchantShell();
     if (useMerchant) {
-      // 商家页不在原生 tabBar 内，隐藏原生栏避免叠层
       wx.hideTabBar({ animation: false }).catch(() => {});
       return;
     }
-    // 用户版：隐藏原生默认栏，由 custom-tab-bar 展示
     wx.hideTabBar({ animation: false }).catch(() => {});
   } catch (err) {
     // ignore
@@ -163,7 +189,6 @@ function guardUserTabPage() {
     if (!app) return false;
     if (app.isUserClientMode && app.isUserClientMode()) return false;
     if (app.canAccessMerchantBackend && app.canAccessMerchantBackend() && !(app.isUserClientMode && app.isUserClientMode())) {
-      // 已入驻商家误入用户 Tab：交给 app 冷启动跳转，此处不强制
       return false;
     }
   } catch (err) {
@@ -189,5 +214,6 @@ module.exports = {
   getUserLandingUrl,
   redirectToStoreAuthIfNeeded,
   redirectToUserIfMerchantUiBlocked,
-  ensureMerchantPageAllowed
+  ensureMerchantPageAllowed,
+  hasCompletedBasicSetup
 };

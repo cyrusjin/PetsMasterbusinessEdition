@@ -18,6 +18,7 @@ const { validateWashService } = require('./washPricing');
 const { validateMultiPetDiscount } = require('./multiPetPricing');
 const { validateLongTermDiscount } = require('./longTermDiscount');
 const { validateValueAddedServices } = require('./valueAddedServices');
+const { validateMobilePhone } = require('./phone');
 
 const DEFAULT_LOGO = '/images/default-avatar.png';
 
@@ -31,6 +32,10 @@ function hasValidLogo(logo) {
   if (!logo || typeof logo !== 'string') return false;
   const text = logo.trim();
   if (!text || text === DEFAULT_LOGO) return false;
+  return true;
+}
+
+function receptionAllowsCustomBilling(_receptionRange) {
   return true;
 }
 
@@ -57,37 +62,37 @@ function validateBillingRules(billingRules) {
   return '';
 }
 
-function validateStoreForm(payload) {
-  const shop = payload.shop || {};
-  const businessHours = normalizeBusinessHours(payload.businessHours || shop.businessHours, shop.hours);
-  const receptionRange = normalizeReceptionRange(payload.receptionRange || shop.receptionRange || shop.range);
-  const storePhotos = normalizeStorePhotos(payload.storePhotos || shop.storePhotos);
-  const introPhotos = normalizeIntroPhotos(payload.introPhotos || shop.introPhotos);
-  const noticePhotos = normalizeNoticePhotos(payload.noticePhotos || shop.noticePhotos);
-  const billingRules = {
+function buildBillingRulesFromPayload(payload, shop) {
+  return {
     ...payload.billingRules,
     departureCharge: normalizeDepartureCharge(
       (payload.billingRules && payload.billingRules.departureCharge) || payload.departureCharge
     ),
     checkInDayCharge: (payload.billingRules && payload.billingRules.checkInDayCharge) || payload.checkInDayCharge,
-    departureDayCharge: (payload.billingRules && payload.billingRules.departureDayCharge) || payload.departureDayCharge
+    departureDayCharge: (payload.billingRules && payload.billingRules.departureDayCharge) || payload.departureDayCharge,
+    billingMode: (payload.billingRules && payload.billingRules.billingMode)
+      || payload.billingMode
+      || (shop && shop.billingRules && shop.billingRules.billingMode)
   };
+}
+
+/** 开店必填的基础设置 */
+function validateBasicStoreForm(payload) {
+  const shop = payload.shop || {};
+  const receptionRange = normalizeReceptionRange(payload.receptionRange || shop.receptionRange || shop.range);
+  const storePhotos = normalizeStorePhotos(payload.storePhotos || shop.storePhotos);
+  const introPhotos = normalizeIntroPhotos(payload.introPhotos || shop.introPhotos);
+  const billingRules = buildBillingRulesFromPayload(payload, shop);
 
   if (!hasValidLogo(shop.logo)) return '请上传店铺头像';
   if (!(shop.name || '').trim()) return '请填写店铺名称';
-  const wechatId = (shop.wechatId || '').trim();
-  if (wechatId.length > 30) return '微信号不超过30个字符';
   if (!(shop.address || '').trim()) return '请选择营业地址';
   const lat = parseFloat(shop.latitude);
   const lng = parseFloat(shop.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '请通过地图选择营业地址';
-
   if (isVagueAddress((shop.address || '').trim())) {
     return '营业地址不够详细，请重新在地图中选择具体位置';
   }
-
-  if (!businessHours.weekdays || !businessHours.weekdays.length) return '请选择营业时间（周几）';
-  if (!businessHours.openTime || !businessHours.closeTime) return '请设置营业起止时间';
 
   const intro = (shop.intro || '').trim();
   if (intro.length > MAX_INTRO_TEXT) return `店铺介绍不超过${MAX_INTRO_TEXT}字`;
@@ -97,13 +102,45 @@ function validateStoreForm(payload) {
 
   const billingError = validateBillingRules(billingRules);
   if (billingError) return billingError;
+
+  const contactPhone = (shop.contactPhone || '').trim();
+  const phoneError = validateMobilePhone(contactPhone, {
+    emptyMsg: '请填写联系电话',
+    invalidMsg: '联系电话需为标准的11位手机号'
+  });
+  if (phoneError) return phoneError;
+
+  if (!(shop.legalName || '').trim()) return '请填写负责人姓名';
+
+  // 老店可能只有签署标记/时间，无 snapshot；有签署记录即可保存
+  if (!shop.coopContractSigned && !(shop.coopContractSignTime || '').trim()) {
+    return '请先签署入驻合作协议';
+  }
+
+  const notice = (shop.notice || '').trim();
+  if (notice.length > MAX_NOTICE_TEXT) return `寄养须知不超过${MAX_NOTICE_TEXT}字`;
+
+  return '';
+}
+
+/** 高级设置：只校验已开启/已填写的项 */
+function validateAdvancedStoreForm(payload) {
+  const shop = payload.shop || {};
+  const businessHours = normalizeBusinessHours(payload.businessHours || shop.businessHours, shop.hours);
+  const billingRules = buildBillingRulesFromPayload(payload, shop);
+
+  const wechatId = (shop.wechatId || '').trim();
+  if (wechatId.length > 30) return '微信号不超过30个字符';
+
+  if (!businessHours.weekdays || !businessHours.weekdays.length) return '请选择营业时间（周几）';
+  if (!businessHours.openTime || !businessHours.closeTime) return '请设置营业起止时间';
+
   const multiPetError = validateMultiPetDiscount(billingRules.multiPetDiscount);
   if (multiPetError) return multiPetError;
   const longTermError = validateLongTermDiscount(billingRules.longTermDiscount);
   if (longTermError) return longTermError;
 
   const pickupService = shop.pickupService === 'yes' ? 'yes' : 'no';
-  if (!pickupService) return '请选择接送设置';
   if (pickupService === 'yes') {
     const pickupNotice = (shop.pickupNotice || '').trim();
     if (!pickupNotice) return '请填写接送须知';
@@ -126,18 +163,32 @@ function validateStoreForm(payload) {
     if (!washNotice && !washNoticePhotos.length) return '请填写洗护须知或上传须知图片';
   }
 
-  const valueAddedError = validateValueAddedServices(
-    payload.valueAddedServices != null
-      ? payload.valueAddedServices
-      : shop.valueAddedServices
-  );
-  if (valueAddedError) return valueAddedError;
-
-  const notice = (shop.notice || '').trim();
-  if (notice.length > MAX_NOTICE_TEXT) return `寄养须知不超过${MAX_NOTICE_TEXT}字`;
-  if (!notice && !noticePhotos.length) return '请填写寄养须知或上传须知图片';
+  const valueAdded = payload.valueAddedServices != null
+    ? payload.valueAddedServices
+    : shop.valueAddedServices;
+  if (Array.isArray(valueAdded) && valueAdded.length) {
+    const valueAddedError = validateValueAddedServices(valueAdded);
+    if (valueAddedError) return valueAddedError;
+  }
 
   return '';
+}
+
+function validateStoreForm(payload) {
+  const basicError = validateBasicStoreForm(payload);
+  if (basicError) return basicError;
+  return validateAdvancedStoreForm(payload);
+}
+
+function isBasicStoreComplete(shop, billingRules) {
+  if (!shop) return false;
+  return !validateBasicStoreForm({
+    shop,
+    billingRules: billingRules || shop.billingRules || {},
+    receptionRange: shop.receptionRange || shop.range,
+    storePhotos: shop.storePhotos,
+    introPhotos: shop.introPhotos
+  });
 }
 
 module.exports = {
@@ -145,7 +196,11 @@ module.exports = {
   normalizeDeposit,
   hasValidLogo,
   validateStoreForm,
+  validateBasicStoreForm,
+  validateAdvancedStoreForm,
   validateBillingRules,
+  receptionAllowsCustomBilling,
+  isBasicStoreComplete,
   MAX_INTRO_TEXT,
   MAX_NOTICE_TEXT,
   MAX_PICKUP_NOTICE_TEXT

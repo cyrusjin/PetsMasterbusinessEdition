@@ -3,7 +3,13 @@ const { formatMoney } = require('../../../utils/billing');
 const timePicker = require('../../utils/timePicker');
 const { validateReserveContact, validateContactIdCard } = require('../../utils/reserveContact');
 const { validatePickupInfo, buildPickupPayload } = require('../../utils/pickupInfo');
-const { calcPickupShippingFee, canCalcDistancePickupFee, parseStoreCoords, isPickupFreeByStayDays } = require('../../../utils/pickupPricing');
+const {
+  calcPickupShippingFee,
+  canCalcDistancePickupFee,
+  parseStoreCoords,
+  isPickupFreeByStayDays,
+  meetsPickupFreeStayDays
+} = require('../../../utils/pickupPricing');
 const { calcWashFee, formatWashPricingSummary } = require('../../../utils/washPricing');
 const { resolveStorePickupDrivingDistance } = require('../../utils/mapDistance');
 const { choosePickupLocation, formatLocationAddress, getPickupLocationValidationMessage } = require('../../../utils/location');
@@ -351,7 +357,10 @@ Page({
     const isDistanceMode = storeView.pickupPricingMode === 'distance';
     const storeHasLocation = !!parseStoreCoords(storeView);
     const hasPickupCoords = !!(pickupLatitude && pickupLongitude);
-    const needsDrivingDistance = !!(chargePickup && isDistanceMode && storeHasLocation && hasPickupCoords);
+    const stayMayFree = !!(chargePickup && meetsPickupFreeStayDays(storeView, breakdown.days));
+    const needsDrivingDistance = !!(
+      chargePickup && storeHasLocation && hasPickupCoords && (isDistanceMode || stayMayFree)
+    );
     // 店铺开通时可勾选；已选洗护的订单在店铺关闭洗护后仍可取消
     const orderNeedWash = !!needWash && (!!storeView.hasWash || !!order.needWash);
 
@@ -359,8 +368,8 @@ Page({
       if (feeToken !== this._feeCalcToken) return;
       const resolvedMode = distanceMode === 'straight' ? 'straight' : (distanceKm != null ? 'driving' : '');
       const pickupReady = !chargePickup
-        || isPickupFreeByStayDays(storeView, breakdown.days)
-        || !isDistanceMode
+        || isPickupFreeByStayDays(storeView, breakdown.days, distanceKm)
+        || (!(isDistanceMode || stayMayFree))
         || canCalcDistancePickupFee(
           storeView, pickupLatitude, pickupLongitude, distanceKm, breakdown.days
         );
@@ -442,7 +451,9 @@ Page({
             petIndex: prevSnap.petIndex,
             petCount: multiResult.petCount || prevSnap.petCount || groupOrders.length,
             pickupDistanceKm: chargePickup && distanceKm != null ? distanceKm : undefined,
-            pickupDistanceMode: chargePickup && isDistanceMode ? (resolvedMode || 'driving') : undefined,
+            pickupDistanceMode: chargePickup && (isDistanceMode || stayMayFree)
+              ? (resolvedMode || 'driving')
+              : undefined,
             wash: washSnap || undefined
           },
           basePrice
@@ -484,6 +495,16 @@ Page({
     const { order, timeOnly, feeReady, _feePayload } = this.data;
     if (!feeReady || !_feePayload) {
       showValidationAlert(this.data.pickupDistanceError || '请完善时间信息');
+      return;
+    }
+
+    const checkStartDate = timeOnly ? order.startDate : this.data.startDate;
+    const checkStartTime = timeOnly ? order.startTime : this.data.startTime;
+    const checkEndDate = this.data.endDate;
+    const checkEndTime = this.data.endTime;
+    if (checkStartDate && checkEndDate && checkStartDate === checkEndDate
+      && checkStartTime && checkEndTime && checkEndTime <= checkStartTime) {
+      showValidationAlert('当日寄养的离店时间需晚于入住时间');
       return;
     }
 

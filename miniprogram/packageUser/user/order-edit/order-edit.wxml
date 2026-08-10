@@ -90,11 +90,11 @@
           <input class="form-input" type="number" maxlength="11" value="{{pickupContactPhone}}" bindinput="onPickupPhoneInput" />
         </view>
         <view class="form-group">
-          <text class="form-label">接送范围 <text class="required-star">*</text></text>
+          <text class="form-label">接或送 <text class="required-star">*</text></text>
           <radio-group class="pickup-leg-group" bindchange="onPickupLegChange">
-            <label class="pickup-leg-item"><radio value="both" checked="{{pickupLeg === 'both'}}" color="#E98657" />去程+返程</label>
-            <label class="pickup-leg-item"><radio value="outbound" checked="{{pickupLeg === 'outbound'}}" color="#E98657" />仅去程</label>
-            <label class="pickup-leg-item"><radio value="return" checked="{{pickupLeg === 'return'}}" color="#E98657" />仅返程</label>
+            <label class="pickup-leg-item"><radio value="outbound" checked="{{pickupLeg === 'outbound'}}" color="#E98657" />仅接</label>
+            <label class="pickup-leg-item"><radio value="return" checked="{{pickupLeg === 'return'}}" color="#E98657" />仅送</label>
+            <label class="pickup-leg-item"><radio value="both" checked="{{pickupLeg === 'both'}}" color="#E98657" />接+送</label>
           </radio-group>
         </view>
       </block>

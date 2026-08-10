@@ -109,7 +109,8 @@ function calcStayFeeBreakdown(startDate, endDate, startTime, endTime, rules, bas
     let dayLabel;
 
     if (calendarDays === 1) {
-      factor = checkInFactor;
+      // 开始=结束：当日寄养按全价计费（不受入住/离店当天规则影响）
+      factor = 1;
       dayLabel = '当日';
     } else if (i === 0) {
       factor = checkInFactor;
@@ -166,7 +167,8 @@ function calcStayDays(startDate, endDate, startTime, endTime, rules) {
   const checkInFactor = getCheckInDayFactor((rules && rules.checkInDayCharge) || 'full');
 
   if (calendarDays <= 1) {
-    return checkInFactor;
+    // 当日寄养按全价（1 天）
+    return 1;
   }
 
   const departureFactor = getDepartureDayFactor(endTime, rules);
@@ -193,11 +195,11 @@ function buildChargeSummary(rules) {
 
   if (departureMode === 'half') {
     const config = getDepartureChargeConfig(rules);
-    return `入住当天计${checkInLabel}；离店当天按时间分段：${config.freeUntil} 前免费，${config.halfUntil} 前计半天，${config.fullFrom} 后起计全天`;
+    return `入住当天计${checkInLabel}；离店当天按时间分段：${config.freeUntil} 前免费，${config.halfUntil} 前计半天，${config.fullFrom} 后起计全天；当日寄养按全价`;
   }
 
   const departureLabel = getDepartureDayChargeLabel(departureMode);
-  return `入住当天计${checkInLabel}；离店当天计${departureLabel}`;
+  return `入住当天计${checkInLabel}；离店当天计${departureLabel}；当日寄养按全价`;
 }
 
 function normalizeDepartureCharge(departureCharge) {

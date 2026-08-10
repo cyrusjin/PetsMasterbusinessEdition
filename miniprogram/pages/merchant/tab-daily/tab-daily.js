@@ -66,6 +66,12 @@ Page({
       if (inviteFromOptions) {
         app.globalData.pendingStaffInviteStoreId = '';
       }
+      // 朋友圈分享带 store_id 落到日常页时，客人进预约页
+      const shareStoreId = String((options && options.store_id) || '').trim();
+      if (shareStoreId && !inviteFromOptions) {
+        const { redirectGuestShareToReserve } = require('../../../utils/storeShare');
+        if (redirectGuestShareToReserve(shareStoreId)) return;
+      }
     }
     const shop = app.getShop();
     if (shop && shop.store_id) {
@@ -126,7 +132,7 @@ Page({
         redirectToStoreAuthIfNeeded();
       });
       startMerchantOrdersPoll(this, () => {
-        if (!app.isMerchantApproved() || app.isMerchantDemoMode()) return Promise.resolve();
+        if (!app.canAccessMerchantBackend() || app.isMerchantDemoMode()) return Promise.resolve();
         return app.loadOrders({ force: false }).then(() => {
           const shop = app.getShop();
           if (!shop || !shop.store_id) return;
@@ -167,7 +173,7 @@ Page({
       this._syncTabBar();
     });
     startMerchantOrdersPoll(this, () => {
-      if (!app.isMerchantApproved() || app.isMerchantDemoMode()) return Promise.resolve();
+      if (!app.canAccessMerchantBackend() || app.isMerchantDemoMode()) return Promise.resolve();
       return app.loadOrders({ force: false }).then(() => {
         const shop = app.getShop();
         if (!shop || !shop.store_id) return;
@@ -500,7 +506,7 @@ Page({
       }
       return buildStaffShareConfig(this);
     }
-    if (shareType === 'customer') {
+    if (shareType === 'customer' || shareType === 'open-success') {
       if (!this._guardMerchantFeature()) {
         return {
           title: '萌宠寄养',

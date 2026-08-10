@@ -15,6 +15,7 @@ const {
 } = require('./legalHolidays');
 const { normalizeWashPricing, normalizeWashFreeMinDays } = require('./washPricing');
 const { resolveStoreValueAddedServices } = require('./valueAddedServices');
+const { normalizePickupFreeTiers } = require('./pickupPricing');
 
 function mergeBillingRules(store, defaults) {
   const fromStore = (store && store.billingRules) || {};
@@ -102,9 +103,14 @@ function buildUserStoreView(store) {
     pickupPricingMode: normalized.pickupPricingMode === 'distance' ? 'distance' : 'flat',
     pickupFlatPrice: normalized.pickupFlatPrice != null ? normalized.pickupFlatPrice : '',
     pickupPricePerKm: normalized.pickupPricePerKm != null ? normalized.pickupPricePerKm : '',
-    pickupFreeMinDays: normalized.pickupFreeMinDays != null && normalized.pickupFreeMinDays !== ''
-      ? normalized.pickupFreeMinDays
-      : '',
+    ...(() => {
+      const pickupFreeTiers = normalizePickupFreeTiers(normalized.pickupFreeTiers, normalized);
+      return {
+        pickupFreeTiers,
+        pickupFreeMinDays: pickupFreeTiers[0] ? pickupFreeTiers[0].minDays : '',
+        pickupFreeMaxKm: pickupFreeTiers[0] ? pickupFreeTiers[0].maxKm : ''
+      };
+    })(),
     hasWash: normalized.washService === 'yes',
     washPricing: normalizeWashPricing(normalized.washPricing || []),
     washFreeMinDays: normalized.washFreeMinDays != null && normalized.washFreeMinDays !== ''

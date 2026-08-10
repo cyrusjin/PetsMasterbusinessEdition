@@ -45,7 +45,63 @@
         <text class="pet-room-name">{{item.petName}}</text>
         <text class="pet-room-meta">{{item.petMeta}}</text>
       </view>
-      <view class="room-select-row">
+
+      <block wx:if="{{billingMode === 'custom'}}">
+        <view class="custom-parent-filter">
+          <picker
+            mode="selector"
+            range="{{item.parentNames}}"
+            value="{{item.parentIndex}}"
+            disabled="{{!item.parentNames.length}}"
+            bindchange="onCustomParentChange"
+            data-pet-id="{{item.petId}}"
+          >
+            <view class="custom-parent-filter-box {{item.parentSelected ? '' : 'placeholder'}}">
+              <text>{{item.parentSelected ? item.selectedParentName : '请选择项目'}}</text>
+              <text class="custom-parent-filter-arrow">▾</text>
+            </view>
+          </picker>
+        </view>
+        <view
+          class="custom-parent-leaf-tip"
+          wx:if="{{item.parentSelected && !item.showChildren && item.selectedParentPrice != null}}"
+        >
+          已选 ¥{{item.selectedParentPrice}}/天
+        </view>
+
+        <block wx:if="{{item.showChildren}}">
+          <view class="room-step-label">选择子项</view>
+          <view class="room-select-row">
+            <view
+              class="room-item {{item.roomType === room.id ? 'room-selected' : ''}}"
+              wx:for="{{item.childOptions}}"
+              wx:for-item="room"
+              wx:key="id"
+              bindtap="onRoomTypeSelect"
+              data-type="{{room.id}}"
+              data-pet-id="{{item.petId}}"
+              data-level="child"
+            >
+              <view
+                class="room-photo-wrap"
+                wx:if="{{room.photo}}"
+                catchtap="onPreviewRoomPhoto"
+                data-url="{{room.photo}}"
+              >
+                <cached-image custom-class="room-photo-img" src="{{room.photo}}" mode="aspectFill" />
+              </view>
+              <view class="room-photo-wrap room-photo-empty" wx:else>
+                <text class="room-icon">🐾</text>
+              </view>
+              <text class="room-name">{{room.name}}</text>
+              <text class="room-desc" wx:if="{{room.description}}">{{room.description}}</text>
+              <text class="room-price">¥{{room.price}}/天</text>
+            </view>
+          </view>
+        </block>
+      </block>
+
+      <view class="room-select-row" wx:else>
         <view
           class="room-item {{item.roomType === room.id ? 'room-selected' : ''}} {{room.disabled ? 'room-disabled' : ''}}"
           wx:for="{{item.roomOptions}}"
@@ -54,6 +110,7 @@
           bindtap="onRoomTypeSelect"
           data-type="{{room.id}}"
           data-pet-id="{{item.petId}}"
+          data-level="option"
         >
           <view
             class="room-photo-wrap"
@@ -115,16 +172,16 @@
           </view>
           <view class="pickup-form pickup-form-inline" wx:if="{{needPickup}}">
             <view class="form-group">
-              <text class="form-label">接送范围 <text class="required-star">*</text></text>
+              <text class="form-label">接或送 <text class="required-star">*</text></text>
               <radio-group class="pickup-leg-group" bindchange="onPickupLegChange">
                 <label class="pickup-leg-item">
-                  <radio value="both" checked="{{pickupLeg === 'both'}}" color="#E98657" />去程+返程
+                  <radio value="outbound" checked="{{pickupLeg === 'outbound'}}" color="#E98657" />仅接
                 </label>
                 <label class="pickup-leg-item">
-                  <radio value="outbound" checked="{{pickupLeg === 'outbound'}}" color="#E98657" />仅去程
+                  <radio value="return" checked="{{pickupLeg === 'return'}}" color="#E98657" />仅送
                 </label>
                 <label class="pickup-leg-item">
-                  <radio value="return" checked="{{pickupLeg === 'return'}}" color="#E98657" />仅返程
+                  <radio value="both" checked="{{pickupLeg === 'both'}}" color="#E98657" />接+送
                 </label>
               </radio-group>
             </view>

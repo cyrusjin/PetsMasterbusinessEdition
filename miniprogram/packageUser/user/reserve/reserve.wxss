@@ -587,6 +587,61 @@
   width: 100%;
   box-sizing: border-box;
 }
+.custom-parent-filter {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.custom-parent-filter-label {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: #666666;
+}
+.custom-parent-filter picker {
+  flex: 1;
+  min-width: 0;
+}
+.custom-parent-filter-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F7F8FA;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  height: 80rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  color: #333333;
+}
+.custom-parent-filter-box.placeholder {
+  color: #999999;
+}
+.custom-parent-filter-arrow {
+  margin-left: 12rpx;
+  color: #999999;
+  font-size: 24rpx;
+}
+.custom-parent-leaf-tip {
+  margin: -4rpx 0 8rpx;
+  font-size: 24rpx;
+  color: #E98657;
+}
+.custom-parent-hint {
+  margin-top: 4rpx;
+  font-size: 24rpx;
+}
+.room-step-label {
+  margin: 8rpx 0 12rpx;
+  font-size: 24rpx;
+  color: #8A7466;
+  font-weight: 500;
+}
+.room-price-hint {
+  color: #E98657;
+  font-size: 22rpx;
+}
 .pet-room-section { margin-bottom: 20rpx; }
 .pet-room-section:last-child { margin-bottom: 0; }
 .pet-room-head {

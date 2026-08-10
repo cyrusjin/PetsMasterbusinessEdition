@@ -65,6 +65,19 @@
               </view>
               <view class="timeline-head-tags">
                 <text wx:if="{{log.isScheduled}}" class="tag tag-schedule">定时待发送</text>
+                <button
+                  wx:if="{{!log.isScheduled}}"
+                  class="timeline-share-btn"
+                  open-type="share"
+                  data-group-index="{{groupIdx}}"
+                  data-log-index="{{logIdx}}"
+                  hover-class="timeline-share-btn-hover"
+                >
+                  <view class="timeline-share-inner">
+                    <image class="timeline-share-icon" src="/images/icon-share.png" mode="aspectFit" />
+                    <text class="timeline-share-text">分享给客人</text>
+                  </view>
+                </button>
               </view>
             </view>
 

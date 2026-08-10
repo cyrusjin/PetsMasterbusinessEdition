@@ -79,6 +79,60 @@
   border: 2rpx dashed #E98657;
   border-radius: 12rpx;
 }
+.pickup-free-tier-card {
+  background: #fff;
+  border-radius: 14rpx;
+  padding: 8rpx 16rpx 16rpx;
+  margin-bottom: 16rpx;
+  border: 1rpx solid #F2DEC9;
+}
+.pickup-free-tier-card:last-of-type { margin-bottom: 0; }
+.pickup-free-tier-main {
+  border-bottom: none;
+  padding-bottom: 8rpx;
+}
+.pickup-free-km-input {
+  flex: 0 0 120rpx;
+  width: 120rpx;
+  min-width: 120rpx;
+  text-align: center;
+}
+.pickup-free-leg-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 4rpx 0 4rpx 4rpx;
+}
+.pickup-free-leg-label {
+  font-size: 22rpx;
+  color: #999999;
+  flex-shrink: 0;
+}
+.pickup-free-leg-chip {
+  min-width: 72rpx;
+  height: 52rpx;
+  padding: 0 20rpx;
+  line-height: 52rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #666666;
+  background: #F7F8FA;
+  border: 2rpx solid #E8E8E8;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+}
+.pickup-free-leg-chip.active {
+  color: #E98657;
+  background: #FFF1E7;
+  border-color: #E98657;
+  font-weight: 500;
+}
+.pickup-free-leg-hint {
+  margin-left: auto;
+  font-size: 20rpx;
+  color: #BBBBBB;
+  flex-shrink: 0;
+}
 .price-input {
   flex: 1;
   min-width: 0;
@@ -113,6 +167,38 @@
   border-bottom: 1rpx solid #F2DEC9;
 }
 .room-config-card:last-of-type { border-bottom: none; }
+.custom-child-block {
+  margin-top: 16rpx;
+  padding: 16rpx;
+  background: #FFF9F4;
+  border-radius: 12rpx;
+  box-sizing: border-box;
+}
+.custom-child-title {
+  font-size: 24rpx;
+  color: #8A7466;
+  margin-bottom: 12rpx;
+  font-weight: 500;
+}
+.custom-child-card {
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #F2E4D8;
+}
+.custom-child-card:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.custom-child-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+.custom-child-add {
+  margin-top: 4rpx;
+  margin-bottom: 0;
+}
 .room-extra-row {
   display: flex;
   align-items: flex-start;

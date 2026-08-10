@@ -74,6 +74,48 @@
 .tag-orange { background: #FFF1E7; color: #E98657; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; flex-shrink: 0; }
 .tag-schedule { background: #E8F3FF; color: #2F6FED; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; flex-shrink: 0; }
 .timeline-head-tags { display: flex; align-items: center; gap: 8rpx; flex-shrink: 0; }
+.timeline-share-btn {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999rpx;
+  background: #FFF1E7;
+  line-height: 1;
+  font-size: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.timeline-share-btn::after { border: none; }
+.timeline-share-btn-hover { opacity: 0.75; }
+.timeline-share-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 48rpx;
+  padding: 0 16rpx 0 12rpx;
+  box-sizing: border-box;
+}
+.timeline-share-icon {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+  display: block;
+}
+.timeline-share-text {
+  display: block;
+  font-size: 22rpx;
+  color: #E98657;
+  font-weight: 500;
+  line-height: 28rpx;
+  height: 28rpx;
+  white-space: nowrap;
+}
 .schedule-banner {
   margin: 0 0 12rpx;
   padding: 12rpx 16rpx;

@@ -3,8 +3,11 @@ const { STORAGE_KEYS } = require('./constants');
 const DEFAULT_SHARE_IMAGE = '/images/default-avatar.png';
 /** 旧版落地页（历史分享卡片兼容） */
 const CUSTOMER_SHARE_LANDING = 'pages/share/store-landing/store-landing';
-/** 本小程序用户端首页（分享给客人） */
+/** 本小程序用户端首页（兼容旧逻辑） */
 const USER_MINI_PROGRAM_HOME = 'pages/index/index';
+/** 客人分享统一进入预约页 */
+const USER_RESERVE_PATH = 'packageUser/user/reserve/reserve';
+const CUSTOMER_SHARE_TITLE = '开始预约寄养';
 
 function resolveShareStoreId(shop) {
   let app = null;
@@ -35,8 +38,8 @@ function resolveShareStoreId(shop) {
 
 function buildSharePath(storeId) {
   const id = (storeId || '').trim();
-  if (!id) return USER_MINI_PROGRAM_HOME;
-  return `${USER_MINI_PROGRAM_HOME}?store_id=${encodeURIComponent(id)}`;
+  if (!id) return USER_RESERVE_PATH;
+  return `${USER_RESERVE_PATH}?store_id=${encodeURIComponent(id)}`;
 }
 
 function buildStaffSharePath(storeId) {
@@ -47,11 +50,10 @@ function buildStaffSharePath(storeId) {
 
 function buildStoreShareConfig(shop, storeId) {
   const id = resolveShareStoreId(shop) || (storeId || '').trim();
-  const name = (shop && shop.name) || '宠物寄养';
   const logo = (shop && shop.logo) || DEFAULT_SHARE_IMAGE;
   const path = buildSharePath(id);
   return {
-    title: `${name} · 在线预约寄养`,
+    title: CUSTOMER_SHARE_TITLE,
     path,
     imageUrl: logo
   };
@@ -76,7 +78,7 @@ function enableStoreShareMenu() {
 }
 
 function promptShareUnavailable() {
-  wx.showToast({ title: '请先申请入驻', icon: 'none' });
+  wx.showToast({ title: '请先完善店铺资料', icon: 'none' });
 }
 
 /** 商家页右上角「···」转发时，合并页面与本地缓存的店铺信息 */
@@ -126,10 +128,41 @@ function buildMerchantTimelineShareConfig(page) {
   return buildTimelineShareConfig(shop);
 }
 
+/**
+ * 朋友圈等入口会落到当前商家页：非本店员工时引导进预约页。
+ * 返回 true 表示已发起跳转。
+ */
+function redirectGuestShareToReserve(storeId) {
+  const id = String(storeId || '').trim();
+  if (!id) return false;
+  let app = null;
+  try {
+    app = getApp();
+  } catch (err) {
+    return false;
+  }
+  if (!app) return false;
+  if (app.shouldIgnoreShareEntry && app.shouldIgnoreShareEntry()) return false;
+  if (app.isStaffForStore && app.isStaffForStore(id)) return false;
+  const enter = app.enterUserStore
+    ? app.enterUserStore(id, { forceData: true })
+    : Promise.resolve();
+  Promise.resolve(enter)
+    .catch(() => {})
+    .finally(() => {
+      wx.reLaunch({
+        url: `/${USER_RESERVE_PATH}?store_id=${encodeURIComponent(id)}`
+      });
+    });
+  return true;
+}
+
 module.exports = {
   DEFAULT_SHARE_IMAGE,
   CUSTOMER_SHARE_LANDING,
   USER_MINI_PROGRAM_HOME,
+  USER_RESERVE_PATH,
+  CUSTOMER_SHARE_TITLE,
   buildSharePath,
   buildStaffSharePath,
   resolveShareStoreId,
@@ -140,5 +173,6 @@ module.exports = {
   buildMerchantTimelineShareConfig,
   resolveMerchantShareShop,
   enableStoreShareMenu,
-  promptShareUnavailable
+  promptShareUnavailable,
+  redirectGuestShareToReserve
 };

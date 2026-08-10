@@ -1,7 +1,13 @@
 <view class="container has-tab-bar">
   <oa-follow-banner />
+  <view wx:if="{{sharedLoading}}" class="shared-tip">
+    <text class="text-gray">正在加载分享动态…</text>
+  </view>
+  <view wx:elif="{{sharedMissing}}" class="shared-tip">
+    <text class="text-gray">分享的动态不存在或已删除</text>
+  </view>
   <view wx:if="{{logs.length > 0}}">
-    <view class="daily-item card" wx:for="{{logs}}" wx:key="id" wx:for-index="logIdx">
+    <view class="daily-item card {{item.fromShare ? 'from-share' : ''}}" wx:for="{{logs}}" wx:key="id" wx:for-index="logIdx">
       <view class="flex-between mb-16">
         <view class="flex-row gap-16">
           <cached-image wx:if="{{item.petPhoto}}" src="{{item.petPhoto}}" mode="aspectFill" custom-class="pet-avatar-small" />
@@ -49,15 +55,17 @@
         </view>
       </view>
       <daily-comments
+        wx:if="{{!item.commentsHidden}}"
         log-id="{{item.id}}"
         comments="{{item.comments}}"
+        disabled="{{item.commentsDisabled}}"
         bind:change="onCommentsChange"
         data-log-index="{{logIdx}}"
       />
     </view>
   </view>
-  <view wx:else class="empty-state">
+  <view wx:elif="{{!sharedLoading}}" class="empty-state">
     <text class="empty-icon">📸</text>
-    <text class="empty-text">暂无宠物动态</text>
+    <text class="empty-text">{{sharedMissing ? '分享的动态不存在或已删除' : '暂无宠物动态'}}</text>
   </view>
 </view>

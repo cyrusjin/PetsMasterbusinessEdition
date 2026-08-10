@@ -149,6 +149,17 @@ function mergeMerchantShop(local, remote) {
     merged.pickupFreeMinDays = local.pickupFreeMinDays;
   }
 
+  if ((remote.pickupFreeMaxKm == null || remote.pickupFreeMaxKm === '')
+    && local.pickupFreeMaxKm != null && local.pickupFreeMaxKm !== '') {
+    merged.pickupFreeMaxKm = local.pickupFreeMaxKm;
+  }
+
+  const remoteTiers = Array.isArray(remote.pickupFreeTiers) ? remote.pickupFreeTiers : [];
+  const localTiers = Array.isArray(local.pickupFreeTiers) ? local.pickupFreeTiers : [];
+  if (!remoteTiers.length && localTiers.length) {
+    merged.pickupFreeTiers = localTiers;
+  }
+
   if ((remote.washFreeMinDays == null || remote.washFreeMinDays === '')
     && local.washFreeMinDays != null && local.washFreeMinDays !== '') {
     merged.washFreeMinDays = local.washFreeMinDays;

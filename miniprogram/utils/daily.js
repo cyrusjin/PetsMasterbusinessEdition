@@ -107,6 +107,22 @@ function listDailyLogComments(logId) {
   return callDailyService('listDailyLogComments', { logId });
 }
 
+function getSharedDailyLog(logId) {
+  return callDailyService('getSharedDailyLog', { logId });
+}
+
+/** 分享落地：按 log_id 拉取已发布打卡（不绑店） */
+function fetchSharedDailyLog(logId) {
+  const id = String(logId || '').trim();
+  if (!id) return Promise.resolve(null);
+  return getSharedDailyLog(id)
+    .then((res) => (res && res.success && res.log ? res.log : null))
+    .catch((err) => {
+      console.error('[打卡] 拉取分享打卡失败', err);
+      return null;
+    });
+}
+
 module.exports = {
   saveDailyLog,
   updateDailyLog,
@@ -114,11 +130,13 @@ module.exports = {
   listDailyLogs,
   listDailyLogsByOrders,
   listMerchantDailyLogs,
+  getSharedDailyLog,
   initDatabase,
   fetchDailyLogs,
   fetchDailyLogsForOrders,
   fetchMerchantDailyLogs,
   fetchMerchantBoardingLogs,
+  fetchSharedDailyLog,
   addDailyLogComment,
   listDailyLogComments
 };

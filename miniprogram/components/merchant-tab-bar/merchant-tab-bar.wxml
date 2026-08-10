@@ -1,17 +1,67 @@
-<view class="merchant-tab-bar">
-  <view class="tab-item {{active === 'daily' ? 'active' : ''}}" wx:if="{{showBizTabs}}">
+<view class="open-success-sheet" wx:if="{{openSuccessVisible}}">
+  <view class="open-success-mask" catchtouchmove="preventMove" bindtap="onCloseOpenSuccess"></view>
+  <view class="open-success-panel" catchtouchmove="preventMove">
+    <view class="open-success-pets" aria-hidden="true">
+      <text class="open-success-pet open-success-pet-dog">🐶</text>
+      <text class="open-success-pet open-success-pet-cat">🐱</text>
+      <text class="open-success-pet open-success-pet-paw">🐾</text>
+    </view>
+    <view class="open-success-badge">🎉</view>
+    <view class="open-success-header">
+      <text class="open-success-title">先测一下预约</text>
+      <text class="open-success-close" bindtap="onCloseOpenSuccess">×</text>
+    </view>
+    <text class="open-success-lead">发给自己或朋友，走一遍下单流程</text>
+    <view class="open-success-emoji-row" aria-hidden="true">
+      <text>🐕</text>
+      <text>🐈</text>
+      <text>🐩</text>
+      <text>🐱</text>
+    </view>
+    <view class="open-success-actions">
+      <view class="open-success-btn open-success-btn-primary">
+        <text class="open-success-btn-text">发给自己或朋友</text>
+        <button
+          class="open-success-btn-hit"
+          open-type="share"
+          data-share-type="open-success"
+          hover-class="none"
+        >发给自己或朋友</button>
+      </view>
+    </view>
+    <view
+      class="open-success-advanced-link"
+      bindtap="onContinueAdvancedSettings"
+    >
+      <text class="open-success-advanced-title">继续完善高级设置</text>
+      <text class="open-success-advanced-hint">接送 / 洗护 / 折扣等 ›</text>
+    </view>
+  </view>
+</view>
+
+<oa-follow-sheet
+  show="{{oaFollowSheetVisible}}"
+  title="店铺已开通"
+  headline="关注服务号，接收新订单提醒"
+  desc="有新预约或订单变更时，服务号会第一时间通知你"
+  bind:close="onCloseOaFollowSheet"
+  bind:followed="onOaFollowSheetFollowed"
+/>
+
+<view class="merchant-tab-bar" wx:if="{{showBizTabs}}">
+  <view class="tab-item {{active === 'daily' ? 'active' : ''}}">
     <image class="tab-icon-img" src="{{active === 'daily' ? '/images/tab/tab-order-active.png' : '/images/tab/tab-order.png'}}" mode="aspectFit" />
     <view class="tab-text">日常管理</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabDaily" />
   </view>
-  <view class="tab-item {{active === 'statistics' ? 'active' : ''}}" wx:if="{{showBizTabs}}">
+  <view class="tab-item {{active === 'statistics' ? 'active' : ''}}">
     <image class="tab-icon-img" src="/images/card/card-stats.png" mode="aspectFit" />
     <view class="tab-text">营收统计</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStatistics" />
   </view>
   <view class="tab-item {{active === 'store' ? 'active' : ''}}">
     <image class="tab-icon-img" src="{{active === 'store' ? '/images/tab/tab-shop-active.png' : '/images/tab/tab-shop.png'}}" mode="aspectFit" />
-    <view class="tab-text">{{showBizTabs ? '我的门店' : '门店授权'}}</view>
+    <view class="tab-text">我的门店</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStore" />
   </view>
 </view>

@@ -4,9 +4,9 @@ function formatPickupLegs(order) {
   if (!order || !order.needPickup) return '';
   const outbound = order.pickupIncludeOutbound !== false;
   const ret = order.pickupIncludeReturn !== false;
-  if (outbound && ret) return '去程、返程';
-  if (outbound) return '去程';
-  if (ret) return '返程';
+  if (outbound && ret) return '接、送';
+  if (outbound) return '接';
+  if (ret) return '送';
   return '未选择';
 }
 
@@ -14,7 +14,7 @@ function formatPickupTripType(order) {
   if (!order || !order.needPickup) return '';
   const outbound = order.pickupIncludeOutbound !== false;
   const ret = order.pickupIncludeReturn !== false;
-  if (outbound && ret) return '双程';
+  if (outbound && ret) return '往返';
   if (outbound || ret) return '单程';
   return '未选择';
 }
@@ -34,7 +34,7 @@ function validatePickupInfo(data) {
   if (phoneError) return phoneError;
   if (!time) return '请选择接送时间';
   if (!data.pickupIncludeOutbound && !data.pickupIncludeReturn) {
-    return '请至少选择去程或返程接送';
+    return '请至少选择接或送';
   }
   return '';
 }
