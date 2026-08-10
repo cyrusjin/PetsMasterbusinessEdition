@@ -20,7 +20,7 @@
         <text class="tag tag-green" wx:for="{{item.checks}}" wx:key="*this" wx:for-item="c">{{c}}</text>
       </view>
       <view class="daily-desc" wx:if="{{item.description}}">{{item.description}}</view>
-      <view class="daily-media" wx:if="{{(item.images && item.images.length) || item.videoUrl || item.video}}">
+      <view class="daily-media" wx:if="{{(item.images && item.images.length) || (item.videoItems && item.videoItems.length) || item.videoUrl || item.video}}">
         <view
           class="daily-img-wrap"
           wx:for="{{item.images}}"
@@ -33,14 +33,19 @@
           <cached-image src="{{img}}" mode="aspectFill" custom-class="daily-img" />
         </view>
         <view
-          wx:if="{{item.videoUrl || item.video}}"
-          class="daily-video-thumb {{item.videoCoverUrl ? 'has-cover' : ''}}"
+          wx:for="{{item.videoItems}}"
+          wx:key="url"
+          wx:for-item="videoItem"
+          wx:for-index="videoIdx"
+          class="daily-video-thumb {{videoItem.coverUrl ? 'has-cover' : ''}}"
           catchtap="onPreviewVideo"
           data-log-index="{{logIdx}}"
+          data-url="{{videoItem.url}}"
+          data-video-index="{{videoIdx}}"
         >
           <cached-image
-            wx:if="{{item.videoCoverUrl}}"
-            src="{{item.videoCoverUrl}}"
+            wx:if="{{videoItem.coverUrl}}"
+            src="{{videoItem.coverUrl}}"
             mode="aspectFill"
             custom-class="daily-video-cover"
           />

@@ -25,27 +25,34 @@ function getDefaultCheckItems() {
 function getMediaStats(mediaList) {
   const list = mediaList || [];
   const imageCount = list.filter((item) => item.type === 'image').length;
-  const hasVideo = list.some((item) => item.type === 'video');
+  const videoCount = list.filter((item) => item.type === 'video').length;
+  const total = list.length;
   return {
     imageCount,
-    hasVideo,
-    canAddMedia: imageCount < 9 || !hasVideo
+    videoCount,
+    canAddMedia: total < 9
   };
 }
 
 function splitMediaList(mediaList) {
   const images = [];
-  let video = '';
-  let videoThumb = '';
+  const videos = [];
+  const videoThumbs = [];
   (mediaList || []).forEach((item) => {
-    if (item.type === 'video' && !video) {
-      video = item.path;
-      videoThumb = item.thumb || '';
+    if (item.type === 'video') {
+      videos.push(item.path);
+      videoThumbs.push(item.thumb || '');
     } else if (item.type === 'image') {
       images.push(item.path);
     }
   });
-  return { images, video, videoThumb };
+  return {
+    images,
+    videos,
+    videoThumbs,
+    video: videos[0] || '',
+    videoThumb: videoThumbs[0] || ''
+  };
 }
 
 function createMediaId(prefix) {
@@ -148,15 +155,25 @@ Page({
         thumb: path
       });
     });
-    const videoPath = log.videoUrl || log.video || '';
-    if (videoPath) {
+    const videoPaths = Array.isArray(log.videoUrls) && log.videoUrls.length
+      ? log.videoUrls
+      : (Array.isArray(log.videos) && log.videos.length
+        ? log.videos
+        : (log.videoUrl || log.video ? [log.videoUrl || log.video] : []));
+    const videoCovers = Array.isArray(log.videoCoverUrls) && log.videoCoverUrls.length
+      ? log.videoCoverUrls
+      : (Array.isArray(log.videoCovers) && log.videoCovers.length
+        ? log.videoCovers
+        : (log.videoCoverUrl || log.videoCover ? [log.videoCoverUrl || log.videoCover] : []));
+    videoPaths.forEach((videoPath, index) => {
+      if (!videoPath) return;
       mediaList.push({
         id: createMediaId('vid'),
         type: 'video',
         path: videoPath,
-        thumb: log.videoCoverUrl || log.videoCover || ''
+        thumb: videoCovers[index] || ''
       });
-    }
+    });
 
     const scheduledAt = Number(log.scheduledAt) || 0;
     const schedulePatch = {};
@@ -418,48 +435,36 @@ Page({
 
   onChooseMedia() {
     const mediaList = this.data.mediaList || [];
-    const { imageCount, hasVideo } = getMediaStats(mediaList);
-    const imageSlots = 9 - imageCount;
-    const videoSlots = hasVideo ? 0 : 1;
-    if (imageSlots <= 0 && videoSlots <= 0) return;
-
-    const count = Math.min(9, imageSlots + videoSlots);
-    const mediaType = imageSlots > 0 && videoSlots > 0
-      ? ['image', 'video']
-      : (imageSlots > 0 ? ['image'] : ['video']);
+    const remainSlots = 9 - mediaList.length;
+    if (remainSlots <= 0) return;
 
     wx.chooseMedia({
-      count,
-      mediaType,
+      count: remainSlots,
+      mediaType: ['image', 'video'],
       sourceType: ['album', 'camera'],
       sizeType: ['compressed'],
       maxDuration: 60,
       compressed: true,
       success: (res) => {
         const nextList = [...mediaList];
-        let nextImageCount = imageCount;
-        let nextHasVideo = hasVideo;
 
         (res.tempFiles || []).forEach((file) => {
+          if (nextList.length >= 9) return;
           if (file.fileType === 'video') {
-            if (nextHasVideo) return;
             nextList.push({
               id: createMediaId('video'),
               type: 'video',
               path: file.tempFilePath,
               thumb: file.thumbTempFilePath || ''
             });
-            nextHasVideo = true;
             return;
           }
-          if (nextImageCount >= 9) return;
           nextList.push({
             id: createMediaId('image'),
             type: 'image',
             path: file.tempFilePath,
             thumb: file.tempFilePath
           });
-          nextImageCount += 1;
         });
 
         const stats = getMediaStats(nextList);
@@ -608,7 +613,7 @@ Page({
     }
 
     const { checkItems, desc, mediaList } = this.data;
-    const { images, video, videoThumb } = splitMediaList(mediaList);
+    const { images, videos, videoThumbs } = splitMediaList(mediaList);
     const checks = checkItems.filter((item) => item.checked).map((item) => item.label);
     const shop = app.getShop() || {};
     const storeId = shop.store_id || app.globalData.merchantStoreId || '';
@@ -618,7 +623,9 @@ Page({
     this.setData({ submitting: true });
     wx.showLoading({ title: editMode ? '保存中' : (isScheduled ? '定时中' : '提交中'), mask: true });
 
-    const submitLogs = (cloudImages, cloudVideo, cloudVideoCover) => {
+    const submitLogs = (cloudImages, cloudVideos, cloudVideoCovers) => {
+      const videoList = cloudVideos || [];
+      const coverList = cloudVideoCovers || [];
       wx.showLoading({ title: editMode ? '保存中' : (isScheduled ? '定时中' : '提交中'), mask: true });
       if (editMode) {
         const payload = {
@@ -629,8 +636,10 @@ Page({
           checks,
           description: desc,
           images: cloudImages,
-          video: cloudVideo,
-          videoCover: cloudVideoCover,
+          videos: videoList,
+          videoCovers: coverList,
+          video: videoList[0] || '',
+          videoCover: coverList[0] || '',
           notifyOwner: true,
           isAbnormal: false,
           time,
@@ -648,8 +657,10 @@ Page({
           checks,
           description: desc,
           images: cloudImages,
-          video: cloudVideo,
-          videoCover: cloudVideoCover,
+          videos: videoList,
+          videoCovers: coverList,
+          video: videoList[0] || '',
+          videoCover: coverList[0] || '',
           notifyOwner: true,
           isAbnormal: false,
           time
@@ -665,12 +676,18 @@ Page({
     };
 
     const uploadPromise = app.isMerchantDemoMode()
-      ? Promise.resolve({ images, video, videoCover: videoThumb })
-      : dailyMedia.uploadDailyMedia(images, video, storeId, uploadOrderId, videoThumb);
+      ? Promise.resolve({
+        images,
+        videos,
+        videoCovers: videoThumbs,
+        video: videos[0] || '',
+        videoCover: videoThumbs[0] || ''
+      })
+      : dailyMedia.uploadDailyMedia(images, videos, storeId, uploadOrderId, videoThumbs);
 
     uploadPromise
-      .then(({ images: cloudImages, video: cloudVideo, videoCover: cloudVideoCover }) => (
-        submitLogs(cloudImages, cloudVideo, cloudVideoCover)
+      .then(({ images: cloudImages, videos: cloudVideos, videoCovers: cloudVideoCovers }) => (
+        submitLogs(cloudImages, cloudVideos, cloudVideoCovers)
       ))
       .then(() => {
         wx.hideLoading();

@@ -4,7 +4,7 @@ const { dedupeDailyLogs } = require('../../utils/dailyLogUtil');
 const { previewImages, previewVideo } = require('../../utils/dailyPreview');
 const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
-const { deriveVideoCoverUrl } = require('../../utils/mediaUrl');
+const { deriveVideoCoverUrl, normalizeLogVideos } = require('../../utils/mediaUrl');
 const dailyApi = require('../../utils/daily');
 
 function enrichLogs(logs, orders, pets) {
@@ -21,7 +21,7 @@ function enrichLogs(logs, orders, pets) {
   return dedupeDailyLogs(logs || []).map((log) => {
     const order = orderMap[log.orderId] || orderMap[log.order_id] || null;
     const pet = order && order.petId ? petMap[order.petId] : null;
-    const videoUrl = log.videoUrl || log.video || '';
+    const videoFields = normalizeLogVideos(log);
     const scheduledAt = Number(log.scheduledAt) || 0;
     const status = log.status || '';
     // 未发布的预约：status=scheduled，或带预约时间且未标记已发布
@@ -38,8 +38,8 @@ function enrichLogs(logs, orders, pets) {
       petPhoto: pet ? pet.photo : '',
       petName: log.petName || (order ? order.petName : '未知宠物'),
       dateKey,
-      videoUrl,
-      videoCoverUrl: log.videoCoverUrl || log.videoCover || deriveVideoCoverUrl(videoUrl) || '',
+      ...videoFields,
+      videoCoverUrl: videoFields.videoCoverUrl || deriveVideoCoverUrl(videoFields.videoUrl) || '',
       status: isScheduled ? 'scheduled' : (status || 'published'),
       isScheduled,
       canDeleteScheduled: isScheduled,
@@ -434,11 +434,12 @@ Page({
   },
 
   onPreviewVideo(e) {
-    const { groupIndex, logIndex } = e.currentTarget.dataset;
+    const { groupIndex, logIndex, url, videoIndex } = e.currentTarget.dataset;
     const group = this.data.timeline[groupIndex];
     const log = group && group.logs && group.logs[logIndex];
     if (!log) return;
-    previewVideo(log.videoUrl || log.video).then((opened) => {
+    const sources = (log.videoItems || []).map((item) => item.url).filter(Boolean);
+    previewVideo(url || log.videoUrl || log.video, sources, videoIndex).then((opened) => {
       if (opened) this._skipNextShowRefresh = true;
     });
   },

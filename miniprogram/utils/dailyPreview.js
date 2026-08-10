@@ -43,23 +43,36 @@ function previewImages(currentUrl, urls) {
     });
 }
 
-function previewVideo(source) {
-  if (!source) return Promise.resolve(false);
-  return resolveVideoForPreview(source).then((url) => {
-    if (!url) {
-      wx.showToast({ title: '视频加载失败', icon: 'none' });
-      return false;
-    }
-    if (wx.previewMedia) {
+function previewVideo(source, sources, currentIndex) {
+  const list = (Array.isArray(sources) && sources.length
+    ? sources
+    : [source]
+  ).filter(Boolean);
+  if (!list.length) return Promise.resolve(false);
+
+  return Promise.all(list.map((item) => resolveVideoForPreview(item)))
+    .then((resolved) => {
+      const valid = resolved.filter(Boolean);
+      if (!valid.length) {
+        wx.showToast({ title: '视频加载失败', icon: 'none' });
+        return false;
+      }
+      if (!wx.previewMedia) {
+        wx.showToast({ title: '当前版本不支持视频预览', icon: 'none' });
+        return false;
+      }
+      const preferred = (source || '').trim();
+      let index = Number(currentIndex);
+      if (!Number.isFinite(index) || index < 0) {
+        index = preferred ? list.indexOf(preferred) : 0;
+      }
+      if (index < 0 || index >= valid.length) index = 0;
       wx.previewMedia({
-        sources: [{ url, type: 'video' }],
-        current: 0
+        sources: valid.map((url) => ({ url, type: 'video' })),
+        current: index
       });
       return true;
-    }
-    wx.showToast({ title: '当前版本不支持视频预览', icon: 'none' });
-    return false;
-  });
+    });
 }
 
 module.exports = {

@@ -75,32 +75,68 @@ function isUploadedUrl(url) {
     || url.startsWith('cloud://');
 }
 
-function uploadDailyMedia(images, video, storeId, orderId, videoThumb) {
+function normalizeVideoInputs(videoOrVideos, videoThumbOrThumbs) {
+  const videos = Array.isArray(videoOrVideos)
+    ? videoOrVideos.filter(Boolean)
+    : (videoOrVideos ? [videoOrVideos] : []);
+  const thumbs = Array.isArray(videoThumbOrThumbs)
+    ? videoThumbOrThumbs
+    : (videoThumbOrThumbs ? [videoThumbOrThumbs] : []);
+  return { videos, thumbs };
+}
+
+function uploadDailyVideos(videoOrVideos, storeId, orderId, videoThumbOrThumbs) {
+  const { videos, thumbs } = normalizeVideoInputs(videoOrVideos, videoThumbOrThumbs);
+  if (!videos.length) {
+    return Promise.resolve({ videos: [], videoCovers: [], video: '', videoCover: '' });
+  }
+
+  return Promise.all(videos.map((videoPath, index) => {
+    const thumbPath = thumbs[index] || '';
+    return Promise.all([
+      uploadDailyVideo(videoPath, storeId, orderId),
+      shouldUploadVideoCover(videoPath, thumbPath)
+        ? uploadDailyVideoCover(thumbPath, storeId, orderId)
+        : Promise.resolve('')
+    ]).then(([uploadedVideo, uploadedCover]) => {
+      if (videoPath && uploadedVideo && !isUploadedUrl(uploadedVideo)) {
+        return Promise.reject(new Error('视频上传失败，请检查网络后重试'));
+      }
+      const safeVideo = uploadedVideo && isUploadedUrl(uploadedVideo) ? uploadedVideo : '';
+      if (!safeVideo) {
+        return Promise.reject(new Error('视频上传失败，请检查网络后重试'));
+      }
+      const safeCover = uploadedCover && isUploadedUrl(uploadedCover) ? uploadedCover : '';
+      const fallbackCover = safeCover || deriveVideoCoverUrl(safeVideo) || '';
+      return {
+        video: safeVideo,
+        videoCover: fallbackCover && isUploadedUrl(fallbackCover) ? fallbackCover : ''
+      };
+    });
+  })).then((pairs) => {
+    const uploadedVideos = pairs.map((item) => item.video).filter(Boolean);
+    const uploadedCovers = pairs.map((item) => item.videoCover);
+    return {
+      videos: uploadedVideos,
+      videoCovers: uploadedCovers,
+      video: uploadedVideos[0] || '',
+      videoCover: uploadedCovers[0] || ''
+    };
+  });
+}
+
+function uploadDailyMedia(images, videoOrVideos, storeId, orderId, videoThumbOrThumbs) {
   return uploadDailyImages(images, storeId, orderId)
     .then((uploadedImages) => {
       const cloudImages = uploadedImages.filter((item) => isUploadedUrl(item));
       if ((images || []).filter(Boolean).length && !cloudImages.length) {
         return Promise.reject(new Error('图片上传失败，请检查网络后重试'));
       }
-      return Promise.all([
-        uploadDailyVideo(video, storeId, orderId),
-        video && shouldUploadVideoCover(video, videoThumb)
-          ? uploadDailyVideoCover(videoThumb, storeId, orderId)
-          : Promise.resolve('')
-      ]).then(([uploadedVideo, uploadedCover]) => {
-        if (video && uploadedVideo && !isUploadedUrl(uploadedVideo)) {
-          return Promise.reject(new Error('视频上传失败，请检查网络后重试'));
-        }
-        const safeVideo = uploadedVideo && isUploadedUrl(uploadedVideo) ? uploadedVideo : '';
-        const safeCover = uploadedCover && isUploadedUrl(uploadedCover) ? uploadedCover : '';
-        // 无本地缩略图时，回退到服务端按视频派生的 _cover.jpg（上传接口会同步抽帧）
-        const fallbackCover = safeCover || (safeVideo ? deriveVideoCoverUrl(safeVideo) : '');
-        return {
+      return uploadDailyVideos(videoOrVideos, storeId, orderId, videoThumbOrThumbs)
+        .then((videoResult) => ({
           images: cloudImages,
-          video: safeVideo,
-          videoCover: fallbackCover && isUploadedUrl(fallbackCover) ? fallbackCover : ''
-        };
-      });
+          ...videoResult
+        }));
     });
 }
 
@@ -109,5 +145,6 @@ module.exports = {
   uploadDailyImages,
   uploadDailyVideo,
   uploadDailyVideoCover,
+  uploadDailyVideos,
   uploadDailyMedia
 };

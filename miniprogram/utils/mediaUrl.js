@@ -42,26 +42,86 @@ function resolveVideoUrls(sources) {
   return Promise.all(list.map((item) => resolveVideoUrl(item)));
 }
 
+function asList(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (value) return [value];
+  return [];
+}
+
+/** 兼容旧单字段与新 videos[] / videoUrls[] */
+function normalizeLogVideos(log = {}) {
+  const videos = asList(
+    (Array.isArray(log.videos) && log.videos.length) ? log.videos : log.video
+  );
+  const resolvedUrls = asList(
+    (Array.isArray(log.videoUrls) && log.videoUrls.length) ? log.videoUrls : log.videoUrl
+  );
+  const urls = resolvedUrls.length ? resolvedUrls : videos;
+  const covers = asList(
+    (Array.isArray(log.videoCoverUrls) && log.videoCoverUrls.length)
+      ? log.videoCoverUrls
+      : ((Array.isArray(log.videoCovers) && log.videoCovers.length)
+        ? log.videoCovers
+        : (log.videoCoverUrl || log.videoCover))
+  );
+  const videoItems = urls.map((url, index) => ({
+    url,
+    coverUrl: covers[index] || deriveVideoCoverUrl(url) || ''
+  }));
+  return {
+    videos,
+    videoUrls: urls,
+    videoCovers: covers,
+    videoCoverUrls: videoItems.map((item) => item.coverUrl),
+    videoItems,
+    video: videos[0] || '',
+    videoUrl: urls[0] || '',
+    videoCover: covers[0] || '',
+    videoCoverUrl: videoItems[0] ? videoItems[0].coverUrl : ''
+  };
+}
+
 function enrichLogsWithVideoUrls(logs) {
   const list = logs || [];
   if (!list.length) return Promise.resolve([]);
 
   return Promise.all(list.map((log) => {
-    if (!log.video) {
-      return { ...log, videoUrl: log.videoUrl || '', videoCoverUrl: log.videoCoverUrl || '' };
-    }
-    const videoPromise = log.videoUrl
-      ? Promise.resolve(log.videoUrl)
-      : resolveVideoUrl(log.video).then((videoUrl) => videoUrl || log.video);
-    return videoPromise.then((videoUrl) => {
-      if (log.videoCoverUrl) {
-        return { ...log, videoUrl };
-      }
-      return resolveVideoCoverUrl(videoUrl, log.videoCover).then((videoCoverUrl) => ({
+    const normalized = normalizeLogVideos(log);
+    if (!normalized.videos.length && !normalized.videoUrls.length) {
+      return {
         ...log,
-        videoUrl,
-        videoCoverUrl: videoCoverUrl || ''
-      }));
+        ...normalized,
+        videoUrl: '',
+        videoCoverUrl: '',
+        videoUrls: [],
+        videoCoverUrls: [],
+        videoItems: []
+      };
+    }
+
+    const sourceList = normalized.videos.length ? normalized.videos : normalized.videoUrls;
+    return resolveVideoUrls(sourceList).then((videoUrls) => {
+      const urls = videoUrls.filter(Boolean);
+      return Promise.all(urls.map((videoUrl, index) => (
+        resolveVideoCoverUrl(videoUrl, normalized.videoCovers[index] || normalized.videoCoverUrls[index] || '')
+      ))).then((videoCoverUrls) => {
+        const videoItems = urls.map((url, index) => ({
+          url,
+          coverUrl: videoCoverUrls[index] || deriveVideoCoverUrl(url) || ''
+        }));
+        return {
+          ...log,
+          videos: sourceList,
+          videoCovers: normalized.videoCovers,
+          videoUrls: urls,
+          videoCoverUrls: videoItems.map((item) => item.coverUrl),
+          videoItems,
+          video: sourceList[0] || '',
+          videoUrl: urls[0] || '',
+          videoCover: normalized.videoCovers[0] || '',
+          videoCoverUrl: videoItems[0] ? videoItems[0].coverUrl : ''
+        };
+      });
     });
   }));
 }
@@ -71,5 +131,6 @@ module.exports = {
   resolveVideoUrls,
   deriveVideoCoverUrl,
   resolveVideoCoverUrl,
+  normalizeLogVideos,
   enrichLogsWithVideoUrls
 };

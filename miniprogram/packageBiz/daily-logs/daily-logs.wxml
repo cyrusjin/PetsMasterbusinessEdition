@@ -77,7 +77,7 @@
 
             <view class="timeline-desc" wx:if="{{log.description}}">{{log.description}}</view>
 
-            <view class="media-thumbs" wx:if="{{(log.images && log.images.length) || log.videoUrl || log.video}}">
+            <view class="media-thumbs" wx:if="{{(log.images && log.images.length) || (log.videoItems && log.videoItems.length) || log.videoUrl || log.video}}">
               <view
                 class="media-thumb-wrap"
                 wx:for="{{log.images}}"
@@ -91,15 +91,20 @@
                 <cached-image src="{{img}}" mode="aspectFill" custom-class="media-thumb" />
               </view>
               <view
-                wx:if="{{log.videoUrl || log.video}}"
-                class="media-thumb video-thumb {{log.videoCoverUrl ? 'has-cover' : ''}}"
+                wx:for="{{log.videoItems}}"
+                wx:key="url"
+                wx:for-item="videoItem"
+                wx:for-index="videoIdx"
+                class="media-thumb video-thumb {{videoItem.coverUrl ? 'has-cover' : ''}}"
                 catchtap="onPreviewVideo"
                 data-group-index="{{groupIdx}}"
                 data-log-index="{{logIdx}}"
+                data-url="{{videoItem.url}}"
+                data-video-index="{{videoIdx}}"
               >
                 <cached-image
-                  wx:if="{{log.videoCoverUrl}}"
-                  src="{{log.videoCoverUrl}}"
+                  wx:if="{{videoItem.coverUrl}}"
+                  src="{{videoItem.coverUrl}}"
                   mode="aspectFill"
                   custom-class="media-thumb"
                 />

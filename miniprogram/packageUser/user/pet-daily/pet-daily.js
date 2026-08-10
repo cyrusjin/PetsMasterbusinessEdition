@@ -1,7 +1,7 @@
 const app = getApp();
 const { dedupeDailyLogs } = require('../../../utils/dailyLogUtil');
 const { previewImages, previewVideo } = require('../../../utils/dailyPreview');
-const { resolveVideoUrl, resolveVideoCoverUrl } = require('../../../utils/mediaUrl');
+const { enrichLogsWithVideoUrls, normalizeLogVideos } = require('../../../utils/mediaUrl');
 const { refreshSingleOrder } = require('../../../utils/orderRefresh');
 
 Page({
@@ -50,31 +50,12 @@ Page({
   },
 
   _setLogs(logs) {
-    const sorted = dedupeDailyLogs(logs || []);
-    return Promise.all(sorted.map((log) => {
-      const tasks = [];
-      if (!log.videoUrl && log.video) {
-        tasks.push(resolveVideoUrl(log.video).then((videoUrl) => {
-          log.videoUrl = videoUrl || '';
-        }));
-      }
-      return Promise.all(tasks).then(() => {
-        if (!log.videoUrl) {
-          return {
-            ...log,
-            videoUrl: log.videoUrl || '',
-            videoCoverUrl: log.videoCoverUrl || '',
-            comments: Array.isArray(log.comments) ? log.comments : []
-          };
-        }
-        return resolveVideoCoverUrl(log.videoUrl, log.videoCoverUrl || log.videoCover).then((videoCoverUrl) => ({
-          ...log,
-          videoUrl: log.videoUrl || '',
-          videoCoverUrl: videoCoverUrl || log.videoCoverUrl || '',
-          comments: Array.isArray(log.comments) ? log.comments : []
-        }));
-      });
-    })).then((resolved) => {
+    const sorted = dedupeDailyLogs(logs || []).map((log) => ({
+      ...log,
+      ...normalizeLogVideos(log),
+      comments: Array.isArray(log.comments) ? log.comments : []
+    }));
+    return enrichLogsWithVideoUrls(sorted).then((resolved) => {
       this.setData({ logs: resolved });
     });
   },
@@ -89,9 +70,12 @@ Page({
 
   onPreviewVideo(e) {
     const logIndex = e.currentTarget.dataset.logIndex;
+    const url = e.currentTarget.dataset.url;
+    const videoIndex = e.currentTarget.dataset.videoIndex;
     const log = this.data.logs[logIndex];
     if (!log) return;
-    previewVideo(log.videoUrl || log.video);
+    const sources = (log.videoItems || []).map((item) => item.url).filter(Boolean);
+    previewVideo(url || log.videoUrl || log.video, sources, videoIndex);
   },
 
   onCommentsChange(e) {

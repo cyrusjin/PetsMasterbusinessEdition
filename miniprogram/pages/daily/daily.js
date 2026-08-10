@@ -65,7 +65,7 @@ Page({
     return userFeed.buildDailyViewLogs(app, rawLogs, orders).then((logs) => {
       if (gen !== this._showGen) return;
       const sig = logs.map((log) => (
-        `${log.id}:${(log.comments || []).length}:${log.videoUrl || ''}:${log.videoCoverUrl || ''}`
+        `${log.id}:${(log.comments || []).length}:${(log.videoUrls || []).join(',')}:${(log.videoCoverUrls || []).join(',')}`
       )).join('|');
       if (sig === this._lastSig) return;
       this._lastSig = sig;
@@ -83,9 +83,12 @@ Page({
 
   onPreviewVideo(e) {
     const logIndex = e.currentTarget.dataset.logIndex;
+    const url = e.currentTarget.dataset.url;
+    const videoIndex = e.currentTarget.dataset.videoIndex;
     const log = this.data.logs[logIndex];
     if (!log) return;
-    previewVideo(log.videoUrl || log.video);
+    const sources = (log.videoItems || []).map((item) => item.url).filter(Boolean);
+    previewVideo(url || log.videoUrl || log.video, sources, videoIndex);
   },
 
   onCommentsChange(e) {
