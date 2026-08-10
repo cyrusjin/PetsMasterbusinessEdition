@@ -1134,6 +1134,7 @@ Page({
           ...(app.globalData.userInfo || {}),
           nickName: wxNickName,
           store_id: store.store_id,
+          visitStoreId: store.store_id,
           merchantStoreId: store.store_id,
           merchantStatus: 'pending',
           isMerchant: false,
@@ -1144,6 +1145,9 @@ Page({
         app.globalData.role = 'user';
         app.setData(STORAGE_KEYS.USER, user);
         app.saveShop(store);
+        if (app._bindOwnStoreAsVisit) {
+          app._bindOwnStoreAsVisit(store.store_id);
+        }
         return app.refreshUserRole().then(() => store);
       })
       .then((store) => {

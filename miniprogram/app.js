@@ -1320,6 +1320,8 @@ App({
           this.saveShop(merged);
           this.globalData.merchantStoreId = merged.store_id;
           this._merchantStoreFetchedAt = Date.now();
+          // 开店后用户端也绑自家店（不切壳，仅同步本地 visit）
+          this._bindOwnStoreAsVisit(merged.store_id);
           auth.setMerchantProfile(res.store.store_id).catch((err) => {
             console.error('setMerchantProfile failed', err);
           });
@@ -1328,6 +1330,24 @@ App({
         const errMsg = (res && res.errMsg) || '保存店铺失败';
         return Promise.reject(new Error(errMsg));
       });
+  },
+
+  /** 商家开店后：把宠主端 visitStoreId 指到自己的店铺，不切换用户壳 */
+  _bindOwnStoreAsVisit(storeId) {
+    const id = String(storeId || '').trim();
+    if (!id || merchantDemo.isDemoEntityId(id)) return;
+    const user = {
+      ...(this.globalData.userInfo || {}),
+      visitStoreId: id,
+      store_id: id,
+      merchantStoreId: id
+    };
+    this.globalData.userInfo = user;
+    this.setData(STORAGE_KEYS.USER, user);
+    this.globalData.savedUserVisitStoreId = id;
+    this.setData(STORAGE_KEYS.SAVED_USER_VISIT_STORE_ID, id);
+    this._lastSyncedVisitStoreId = id;
+    this._lastSyncedVisitStoreAt = Date.now();
   },
 
   _loadAllData() {

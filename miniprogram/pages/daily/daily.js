@@ -163,6 +163,7 @@ Page({
       ].join('#');
       if (sig === this._lastSig) {
         this.setData({ sharedLoading: false, sharedMissing });
+        this._reportViewedLogs(logs);
         return;
       }
       this._lastSig = sig;
@@ -172,11 +173,25 @@ Page({
         sharedMissing,
         sharedLogId: id || this.data.sharedLogId
       });
+      this._reportViewedLogs(logs);
     }).catch((err) => {
       console.error('[宠物动态] 刷新失败', err);
       if (gen !== this._showGen) return;
       this.setData({ sharedLoading: false });
     });
+  },
+
+  _reportViewedLogs(logs) {
+    const ids = (logs || [])
+      .filter((log) => log && !log.viewOnly && !log.isScheduled)
+      .map((log) => getLogId(log))
+      .filter(Boolean);
+    if (!ids.length) return;
+    // 避免同一批反复打接口
+    const sig = ids.slice().sort().join('|');
+    if (sig === this._reportedViewSig) return;
+    this._reportedViewSig = sig;
+    dailyApi.reportDailyLogsViewed(ids);
   },
 
   _loadSharedLog(logId) {

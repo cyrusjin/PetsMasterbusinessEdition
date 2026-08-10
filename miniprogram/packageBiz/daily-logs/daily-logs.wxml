@@ -65,6 +65,10 @@
               </view>
               <view class="timeline-head-tags">
                 <text wx:if="{{log.isScheduled}}" class="tag tag-schedule">定时待发送</text>
+                <text
+                  wx:elif="{{log.viewLabel}}"
+                  class="tag {{log.userViewed ? 'tag-viewed' : 'tag-unviewed'}}"
+                >{{log.viewLabel}}</text>
                 <button
                   wx:if="{{!log.isScheduled}}"
                   class="timeline-share-btn"

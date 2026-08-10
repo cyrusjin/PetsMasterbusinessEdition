@@ -73,7 +73,9 @@
 .video-play-icon { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 36rpx; margin-left: 6rpx; z-index: 1; }
 .tag-orange { background: #FFF1E7; color: #E98657; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; flex-shrink: 0; }
 .tag-schedule { background: #E8F3FF; color: #2F6FED; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; flex-shrink: 0; }
-.timeline-head-tags { display: flex; align-items: center; gap: 8rpx; flex-shrink: 0; }
+.tag-unviewed { background: #FFF1E7; color: #E98657; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; flex-shrink: 0; }
+.tag-viewed { background: #E8F8EF; color: #1F9D55; font-size: 20rpx; padding: 4rpx 12rpx; border-radius: 8rpx; flex-shrink: 0; }
+.timeline-head-tags { display: flex; align-items: center; gap: 8rpx; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
 .timeline-share-btn {
   width: auto !important;
   height: auto !important;

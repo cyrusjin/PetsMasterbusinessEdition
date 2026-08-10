@@ -123,6 +123,20 @@ function fetchSharedDailyLog(logId) {
     });
 }
 
+function markDailyLogsViewed(logIds) {
+  const ids = [...new Set((logIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+  if (!ids.length) return Promise.resolve({ success: true, marked: 0 });
+  return callDailyService('markDailyLogsViewed', { logIds: ids });
+}
+
+/** 宠主打开动态后上报已查看（失败静默） */
+function reportDailyLogsViewed(logIds) {
+  return markDailyLogsViewed(logIds).catch((err) => {
+    console.warn('[打卡] 标记已查看失败', err);
+    return null;
+  });
+}
+
 module.exports = {
   saveDailyLog,
   updateDailyLog,
@@ -137,6 +151,8 @@ module.exports = {
   fetchMerchantDailyLogs,
   fetchMerchantBoardingLogs,
   fetchSharedDailyLog,
+  markDailyLogsViewed,
+  reportDailyLogsViewed,
   addDailyLogComment,
   listDailyLogComments
 };

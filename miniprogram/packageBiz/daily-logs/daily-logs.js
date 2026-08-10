@@ -82,6 +82,11 @@ function enrichLogs(logs, orders, pets) {
       isScheduled,
       canDeleteScheduled: isScheduled,
       scheduledAt,
+      userViewedAt: Number(log.userViewedAt) || 0,
+      userViewed: !!(Number(log.userViewedAt) || log.userViewed),
+      viewLabel: isScheduled
+        ? ''
+        : ((Number(log.userViewedAt) || log.userViewed) ? '客人已查看' : '客人未查看'),
       comments: Array.isArray(log.comments) ? log.comments : []
     };
   });

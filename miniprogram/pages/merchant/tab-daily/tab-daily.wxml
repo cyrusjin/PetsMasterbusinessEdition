@@ -75,7 +75,7 @@
       <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
       <text class="guest-invite-desc">发给好友，打开即可预约本店寄养</text>
       <view class="guest-invite-btn-wrap">
-        <text class="guest-invite-btn-text">发送给客人预约 🧧</text>
+        <text class="guest-invite-btn-text">发送给客人预约</text>
       </view>
     </button>
 
