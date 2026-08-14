@@ -1247,8 +1247,10 @@ Page({
         totalFeeText: formatMoney(grandTotalFee),
         multiPetFeeItems,
         multiPetDiscountTip: multiResult.discountTip || '',
-        hasMultiPetDiscount: multiResult.hasDiscount,
-        multiPetDiscountTotalText: multiResult.hasDiscount ? multiResult.discountTotalText : '',
+        hasMultiPetDiscount: !!multiResult.discountTip,
+        multiPetDiscountTotalText: multiResult.discountTotal > 0
+          ? multiResult.discountTotalText
+          : '',
         feeBreakdownTitle
       });
     };

@@ -76,7 +76,7 @@
               class="room-item {{item.roomType === room.id ? 'room-selected' : ''}}"
               wx:for="{{item.childOptions}}"
               wx:for-item="room"
-              wx:key="id"
+              wx:key="renderKey"
               bindtap="onRoomTypeSelect"
               data-type="{{room.id}}"
               data-pet-id="{{item.petId}}"

@@ -38,10 +38,12 @@ function splitMediaList(mediaList) {
   const images = [];
   const videos = [];
   const videoThumbs = [];
+  const videoCompressed = [];
   (mediaList || []).forEach((item) => {
     if (item.type === 'video') {
       videos.push(item.path);
       videoThumbs.push(item.thumb || '');
+      videoCompressed.push(!!item.compressed);
     } else if (item.type === 'image') {
       images.push(item.path);
     }
@@ -50,6 +52,7 @@ function splitMediaList(mediaList) {
     images,
     videos,
     videoThumbs,
+    videoCompressed,
     video: videos[0] || '',
     videoThumb: videoThumbs[0] || ''
   };
@@ -438,6 +441,9 @@ Page({
     const remainSlots = 9 - mediaList.length;
     if (remainSlots <= 0) return;
 
+    // 压缩前硬上限：过大视频即使再压也难通过服务端限制
+    const MAX_VIDEO_PICK_BYTES = 200 * 1024 * 1024;
+
     wx.chooseMedia({
       count: remainSlots,
       mediaType: ['image', 'video'],
@@ -447,15 +453,25 @@ Page({
       compressed: true,
       success: (res) => {
         const nextList = [...mediaList];
+        let skippedOversized = 0;
+        const newVideoIds = [];
 
         (res.tempFiles || []).forEach((file) => {
           if (nextList.length >= 9) return;
           if (file.fileType === 'video') {
+            const size = Number(file.size) || 0;
+            if (size > MAX_VIDEO_PICK_BYTES) {
+              skippedOversized += 1;
+              return;
+            }
+            const id = createMediaId('video');
+            newVideoIds.push(id);
             nextList.push({
-              id: createMediaId('video'),
+              id,
               type: 'video',
               path: file.tempFilePath,
-              thumb: file.thumbTempFilePath || ''
+              thumb: file.thumbTempFilePath || '',
+              compressed: false
             });
             return;
           }
@@ -467,17 +483,97 @@ Page({
           });
         });
 
+        if (skippedOversized > 0) {
+          wx.showToast({
+            title: '有视频过大已跳过',
+            icon: 'none'
+          });
+        }
+
         const stats = getMediaStats(nextList);
         this.setData({
           mediaList: nextList,
           canAddMedia: stats.canAddMedia
         });
+        this._precompressVideos(newVideoIds);
       }
     });
   },
 
+  _precompressVideos(videoIds) {
+    const ids = (videoIds || []).filter(Boolean);
+    if (!ids.length) return;
+    if (!this._compressTasks) this._compressTasks = {};
+
+    ids.forEach((id) => {
+      const current = (this.data.mediaList || []).find((item) => item.id === id);
+      if (!current || current.type !== 'video' || current.compressed) return;
+      if (this._compressTasks[id]) return;
+
+      const task = dailyMedia.compressVideoIfNeeded(current.path)
+        .then((compressedPath) => dailyMedia.getLocalFileSize(compressedPath)
+          .then((size) => ({ compressedPath, size })))
+        .then(({ compressedPath, size }) => {
+          const list = this.data.mediaList || [];
+          const index = list.findIndex((item) => item.id === id);
+          if (index < 0) return;
+
+          if (size > dailyMedia.MAX_VIDEO_UPLOAD_BYTES) {
+            const nextList = list.filter((item) => item.id !== id);
+            const stats = getMediaStats(nextList);
+            this.setData({
+              mediaList: nextList,
+              canAddMedia: stats.canAddMedia
+            });
+            wx.showToast({ title: dailyMedia.VIDEO_TOO_LARGE_MSG, icon: 'none' });
+            return;
+          }
+
+          const nextList = list.slice();
+          nextList[index] = {
+            ...nextList[index],
+            path: compressedPath || nextList[index].path,
+            compressed: true
+          };
+          this.setData({ mediaList: nextList });
+        })
+        .catch(() => {
+          // 预压缩失败不阻断，提交时再压缩/上传
+        })
+        .finally(() => {
+          if (this._compressTasks) {
+            delete this._compressTasks[id];
+          }
+        });
+
+      this._compressTasks[id] = task;
+    });
+  },
+
+  _waitVideoReady(item) {
+    if (!item || item.type !== 'video') {
+      return Promise.resolve(item || null);
+    }
+    const task = this._compressTasks && this._compressTasks[item.id];
+    const wait = task ? task.catch(() => null) : Promise.resolve();
+    return wait.then(() => {
+      const latest = (this.data.mediaList || []).find((row) => row.id === item.id);
+      return latest || item;
+    });
+  },
+
+  _waitPendingVideoCompress() {
+    const tasks = Object.values(this._compressTasks || {});
+    if (!tasks.length) return Promise.resolve();
+    wx.showLoading({ title: '视频处理中', mask: true });
+    return Promise.all(tasks.map((task) => task.catch(() => null)));
+  },
+
   onRemoveMedia(e) {
     const id = e.currentTarget.dataset.id;
+    if (this._compressTasks && this._compressTasks[id]) {
+      delete this._compressTasks[id];
+    }
     const mediaList = (this.data.mediaList || []).filter((item) => item.id !== id);
     const stats = getMediaStats(mediaList);
     this.setData({
@@ -612,8 +708,7 @@ Page({
       return;
     }
 
-    const { checkItems, desc, mediaList } = this.data;
-    const { images, videos, videoThumbs } = splitMediaList(mediaList);
+    const { checkItems, desc } = this.data;
     const checks = checkItems.filter((item) => item.checked).map((item) => item.label);
     const shop = app.getShop() || {};
     const storeId = shop.store_id || app.globalData.merchantStoreId || '';
@@ -675,15 +770,51 @@ Page({
       return Promise.all(tasks);
     };
 
-    const uploadPromise = app.isMerchantDemoMode()
-      ? Promise.resolve({
-        images,
-        videos,
-        videoCovers: videoThumbs,
-        video: videos[0] || '',
-        videoCover: videoThumbs[0] || ''
-      })
-      : dailyMedia.uploadDailyMedia(images, videos, storeId, uploadOrderId, videoThumbs);
+    const uploadPromise = (() => {
+      const videoItems = (this.data.mediaList || []).filter((item) => item.type === 'video');
+      const imageItems = (this.data.mediaList || []).filter((item) => item.type === 'image');
+      if (app.isMerchantDemoMode()) {
+        return this._waitPendingVideoCompress().then(() => {
+          const latest = splitMediaList(this.data.mediaList || []);
+          return {
+            images: latest.images,
+            videos: latest.videos,
+            videoCovers: latest.videoThumbs,
+            video: latest.videos[0] || '',
+            videoCover: latest.videoThumbs[0] || ''
+          };
+        });
+      }
+
+      const totalVideos = videoItems.length;
+      if (totalVideos > 0) {
+        wx.showLoading({ title: `上传中 0/${totalVideos}`, mask: true });
+      } else {
+        wx.showLoading({ title: editMode ? '保存中' : (isScheduled ? '定时中' : '提交中'), mask: true });
+      }
+
+      // 边压边传：某个视频预压缩完成后立刻进入上传队列，不必等全部压完
+      return dailyMedia.uploadDailyMedia(
+        imageItems.map((item) => item.path),
+        videoItems.map((item) => item.path),
+        storeId,
+        uploadOrderId,
+        videoItems.map((item) => item.thumb || ''),
+        {
+          skipCompressFlags: videoItems.map((item) => !!item.compressed),
+          prepareItem: (index) => this._waitVideoReady(videoItems[index]).then((ready) => ({
+            path: (ready && ready.path) || videoItems[index].path,
+            thumb: (ready && ready.thumb) || videoItems[index].thumb || '',
+            skipCompress: !!(ready && ready.compressed)
+          })),
+          onProgress: ({ done, total }) => {
+            if (total > 0) {
+              wx.showLoading({ title: `上传中 ${done}/${total}`, mask: true });
+            }
+          }
+        }
+      );
+    })();
 
     uploadPromise
       .then(({ images: cloudImages, videos: cloudVideos, videoCovers: cloudVideoCovers }) => (

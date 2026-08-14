@@ -13,6 +13,7 @@ function getDefaultMultiPetDiscount() {
     enabled: false,
     mode: 'fromSecondPercent',
     percent: 0,
+    amount: 0,
     applyTo: 'boarding'
   };
 }
@@ -20,14 +21,21 @@ function getDefaultMultiPetDiscount() {
 function normalizeMultiPetDiscount(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
   const enabled = src.enabled === true;
+  const mode = src.mode === 'fromSecondFixedPerDay'
+    ? 'fromSecondFixedPerDay'
+    : 'fromSecondPercent';
   let percent = parseFloat(src.percent);
   if (!Number.isFinite(percent) || percent < 0) percent = 0;
   if (percent > 100) percent = 100;
   percent = Math.round(percent);
+  let amount = parseFloat(src.amount);
+  if (!Number.isFinite(amount) || amount < 0) amount = 0;
+  amount = roundMoney(amount);
   return {
     enabled,
-    mode: 'fromSecondPercent',
-    percent: enabled ? percent : 0,
+    mode,
+    percent: enabled && mode === 'fromSecondPercent' ? percent : 0,
+    amount: enabled && mode === 'fromSecondFixedPerDay' ? amount : 0,
     applyTo: 'boarding'
   };
 }
@@ -57,7 +65,7 @@ function roundMoney(amount) {
 }
 
 /**
- * 多宠寄养费：按原价从高到低，首只全价，第 2 只起按折扣。
+ * 多宠寄养费：按原价从高到低，首只全价，第 2 只起按折扣或固定日价。
  * 兼容缺省 / enabled:false → 全部全价。
  * room 模式可用 petRoomTypes（按宠选房），也兼容统一 roomType。
  */
@@ -106,21 +114,39 @@ function calcMultiPetBoardingFees({
   const stayDays = (draft[0] && draft[0].breakdown && draft[0].breakdown.days) || 0;
 
   const items = ranked.map((item, rankIndex) => {
-    const multiFactor = (!discount.enabled || rankIndex === 0)
+    const appliesMultiPetRule = discount.enabled && rankIndex > 0;
+    const usesFixedPrice = appliesMultiPetRule && discount.mode === 'fromSecondFixedPerDay';
+    const multiFactor = (!appliesMultiPetRule || usesFixedPrice)
       ? 1
       : Math.max(0, 1 - (discount.percent / 100));
-    const afterMultiPet = roundMoney(item.originalBoardingFee * multiFactor);
-    const multiPetDiscountAmount = roundMoney(item.originalBoardingFee - afterMultiPet);
+    const fixedBreakdown = usesFixedPrice
+      ? calcStayFeeBreakdown(
+        startDate, endDate, startTime, endTime, rules, discount.amount
+      )
+      : null;
+    const appliedBreakdown = fixedBreakdown || item.breakdown;
+    const appliedBasePrice = usesFixedPrice ? discount.amount : item.basePrice;
+    const fixedExtrasFee = usesFixedPrice
+      ? roundMoney((parseFloat(extrasFeePerDay) || 0) * (appliedBreakdown.days || 0))
+      : item.extrasFee;
+    const afterMultiPet = usesFixedPrice
+      ? roundMoney((appliedBreakdown.baseFee || 0) + fixedExtrasFee)
+      : roundMoney(item.originalBoardingFee * multiFactor);
+    const multiPetDiscountAmount = Math.max(
+      0,
+      roundMoney(item.originalBoardingFee - afterMultiPet)
+    );
     const longTerm = applyLongTermDiscount(afterMultiPet, longTermDiscount, stayDays);
     const boardingFee = longTerm.boardingFee;
-    const discountAmount = roundMoney(item.originalBoardingFee - boardingFee);
+    const discountAmount = Math.max(0, roundMoney(item.originalBoardingFee - boardingFee));
     return {
       pet: item.pet,
       sourceIndex: item.sourceIndex,
       roomType: item.roomType,
-      basePrice: item.basePrice,
-      breakdown: item.breakdown,
-      extrasFee: item.extrasFee,
+      basePrice: appliedBasePrice,
+      originalBasePrice: item.basePrice,
+      breakdown: appliedBreakdown,
+      extrasFee: fixedExtrasFee,
       originalBoardingFee: item.originalBoardingFee,
       boardingFee,
       discountAmount,
@@ -128,6 +154,7 @@ function calcMultiPetBoardingFees({
       longTermDiscountAmount: longTerm.discountAmount,
       discountFactor: multiFactor * longTerm.factor,
       multiPetFactor: multiFactor,
+      multiPetMode: appliesMultiPetRule ? discount.mode : '',
       longTermFactor: longTerm.factor,
       rankIndex,
       isPrimary: rankIndex === 0
@@ -147,10 +174,12 @@ function calcMultiPetBoardingFees({
   const longTermDiscountTotal = roundMoney(
     items.reduce((sum, item) => sum + (item.longTermDiscountAmount || 0), 0)
   );
-  const hasMultiPetDiscount = discount.enabled && multiPetDiscountTotal > 0;
+  const hasMultiPetDiscount = discount.enabled && items.length > 1;
   const hasLongTermDiscount = longTermDiscount.enabled && longTermDiscountTotal > 0;
   const tipParts = [];
-  if (hasMultiPetDiscount && discount.percent > 0) {
+  if (hasMultiPetDiscount && discount.mode === 'fromSecondFixedPerDay') {
+    tipParts.push(`多宠优惠：第 2 只起按 ¥${formatMoney(discount.amount)}/天计费`);
+  } else if (hasMultiPetDiscount && discount.percent > 0) {
     tipParts.push(`多宠优惠：第 2 只起寄养费减 ${formatMoney(discount.percent)}%`);
   }
   if (hasLongTermDiscount) {
@@ -180,6 +209,15 @@ function calcMultiPetBoardingFees({
 
 function validateMultiPetDiscount(raw) {
   if (!raw || raw.enabled !== true) return '';
+  if (raw.mode === 'fromSecondFixedPerDay') {
+    const rawAmount = raw.amount;
+    if (rawAmount === '' || rawAmount == null) return '';
+    const text = String(rawAmount).trim();
+    if (!/^\d+(\.\d{1,2})?$/.test(text)) return '第二只加价金额最多保留两位小数';
+    const amount = Number(text);
+    if (!Number.isFinite(amount) || amount < 0) return '第二只加价金额不能小于 0';
+    return '';
+  }
   const rawPercent = raw.percent;
   // 开启但未填：非必填，保存时视为未启用
   if (rawPercent === '' || rawPercent == null) return '';

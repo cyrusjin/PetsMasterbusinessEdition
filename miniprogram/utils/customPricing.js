@@ -41,9 +41,26 @@ function normalizeCustomChild(item, fallbackId) {
   return { id, name, price, description, photo };
 }
 
-function normalizeCustomChildren(list) {
+function normalizeCustomChildren(list, parentId) {
   if (!Array.isArray(list) || !list.length) return [];
-  return list.map((item) => normalizeCustomChild(item));
+  const usedIds = new Set();
+  return list.map((item, index) => {
+    const rawId = String((item && item.id) || '').trim();
+    let id = rawId;
+    if (!id || usedIds.has(id)) {
+      const parentKey = String(parentId || 'custom').trim() || 'custom';
+      const duplicateKey = rawId ? `_${rawId}_duplicate` : '';
+      const baseId = `${parentKey}_child${duplicateKey}_${index + 1}`;
+      id = baseId;
+      let suffix = 2;
+      while (usedIds.has(id)) {
+        id = `${baseId}_${suffix}`;
+        suffix += 1;
+      }
+    }
+    usedIds.add(id);
+    return normalizeCustomChild({ ...item, id }, id);
+  });
 }
 
 /** 只要挂了子项（含空草稿），就视为有子项：隐藏一级价格 */
@@ -69,7 +86,7 @@ function normalizeCustomItem(item, fallbackId) {
   const description = ((item && item.description) || '').trim().slice(0, MAX_CUSTOM_DESCRIPTION);
   const price = parsePrice(item && item.price);
   const photo = normalizeCustomPhoto(item && item.photo);
-  const children = normalizeCustomChildren(item && item.children);
+  const children = normalizeCustomChildren(item && item.children, id);
   return {
     id,
     name,
@@ -411,8 +428,9 @@ function buildCustomChildOptions(list, parentId) {
   if (!parent || !hasCustomChildren(parent)) return [];
   return (parent.children || [])
     .filter((child) => !!(child.name || '').trim())
-    .map((child) => ({
+    .map((child, index) => ({
       id: child.id,
+      renderKey: `${parent.id}_${child.id}_${index}`,
       name: child.name,
       description: child.description || '',
       photo: getDisplayCustomPhoto(child.photo || parent.photo),

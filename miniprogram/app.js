@@ -2948,7 +2948,13 @@ App({
       holidayPricing: getDefaultHolidayPricing(),
       overtimeRate: 20,
       extras: { pickup: 30, medicine: 20, wash: 80, extraMeal: 15, walk: 25, specialCare: 50 },
-      multiPetDiscount: { enabled: false, mode: 'fromSecondPercent', percent: 0, applyTo: 'boarding' },
+      multiPetDiscount: {
+        enabled: false,
+        mode: 'fromSecondPercent',
+        percent: 0,
+        amount: 0,
+        applyTo: 'boarding'
+      },
       longTermDiscount: { enabled: false, tiers: [], applyTo: 'boarding' }
     };
   },

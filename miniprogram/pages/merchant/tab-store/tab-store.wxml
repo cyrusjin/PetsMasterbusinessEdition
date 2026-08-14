@@ -346,6 +346,7 @@
                 <input
                   class="room-name-input"
                   placeholder="子项名称"
+                  cursor-spacing="100"
                   maxlength="{{maxCustomName}}"
                   value="{{child.name}}"
                   bindinput="onCustomChildField"
@@ -357,6 +358,7 @@
                   class="price-input"
                   type="digit"
                   placeholder="价格"
+                  cursor-spacing="100"
                   value="{{child.price}}"
                   bindinput="onCustomChildField"
                   data-index="{{index}}"
@@ -375,6 +377,7 @@
                 <textarea
                   class="room-desc-input"
                   placeholder="子项描述（选填）"
+                  cursor-spacing="100"
                   value="{{child.description}}"
                   maxlength="{{maxCustomDescription}}"
                   auto-height
@@ -611,25 +614,49 @@
       </view>
 
       <view class="charge-section mt-20">
-        <view class="section-title">多宠折扣</view>
+        <view class="section-title">多宠优惠</view>
         <view class="flex-between" style="align-items:flex-start;margin-bottom:16rpx;gap:20rpx;">
           <view style="flex:1;">
             <text class="form-label" style="margin:0;">开启多宠优惠</text>
-            <text class="charge-hint" style="display:block;margin-top:6rpx;">同一预约多只宠物时，第 2 只起寄养费打折；默认关闭，兼容老规则</text>
+            <text class="charge-hint" style="display:block;margin-top:6rpx;">同一预约多只宠物时，可选折扣或固定加价，两种方式二选一</text>
           </view>
           <switch checked="{{multiPetDiscountEnabled}}" bindchange="onMultiPetDiscountSwitch" color="#E98657" />
         </view>
-        <view class="form-group" wx:if="{{multiPetDiscountEnabled}}">
-          <text class="form-label">第 2 只起优惠比例（%）</text>
-          <input
-            class="form-input"
-            type="number"
-            placeholder="选填，例如 10 表示减 10%"
-            value="{{multiPetDiscountPercent}}"
-            bindinput="onMultiPetDiscountPercentInput"
-          />
-          <text class="charge-hint">选填；仅作用于寄养费，接送费与押金不参与折扣；原价最高的一只按全价计；填则须为整数</text>
-        </view>
+        <block wx:if="{{multiPetDiscountEnabled}}">
+          <radio-group class="day-charge-group" bindchange="onMultiPetDiscountModeChange">
+            <label class="day-charge-item {{multiPetDiscountMode === 'fromSecondPercent' ? 'mode-active' : ''}}">
+              <radio value="fromSecondPercent" checked="{{multiPetDiscountMode === 'fromSecondPercent'}}" color="#E98657" />
+              <text>第二只打折</text>
+            </label>
+            <label class="day-charge-item {{multiPetDiscountMode === 'fromSecondFixedPerDay' ? 'mode-active' : ''}}">
+              <radio value="fromSecondFixedPerDay" checked="{{multiPetDiscountMode === 'fromSecondFixedPerDay'}}" color="#E98657" />
+              <text>第二只加价</text>
+            </label>
+          </radio-group>
+          <view class="form-group" wx:if="{{multiPetDiscountMode === 'fromSecondPercent'}}">
+            <text class="form-label">第 2 只起优惠比例（%）</text>
+            <input
+              class="form-input"
+              type="number"
+              placeholder="选填，例如 10 表示减 10%"
+              value="{{multiPetDiscountPercent}}"
+              bindinput="onMultiPetDiscountPercentInput"
+            />
+            <text class="charge-hint">原价最高的一只按全价计，第 2 只起按比例减免</text>
+          </view>
+          <view class="form-group" wx:if="{{multiPetDiscountMode === 'fromSecondFixedPerDay'}}">
+            <text class="form-label">第 2 只起每只加多少钱（元/天）</text>
+            <input
+              class="form-input"
+              type="digit"
+              placeholder="例如 30，表示每只每天加 30 元"
+              value="{{multiPetDiscountAmount}}"
+              bindinput="onMultiPetDiscountAmountInput"
+            />
+            <text class="charge-hint">原价最高的一只正常计费，第 2 只起每只按此日价计费；入住、离店半天同步折算</text>
+          </view>
+          <text class="charge-hint">仅作用于寄养费，接送费与押金不参与；折扣和加价不会同时生效</text>
+        </block>
       </view>
 
       <view class="charge-section mt-20">
@@ -1084,7 +1111,7 @@
   bind:followed="onOaFollowSheetFollowed"
 />
 <merchant-tab-bar
-  wx:if="{{!isAdminDisabled && !hideMerchantTabBar}}"
+  wx:if="{{!isAdminDisabled && !hideMerchantTabBar && !keyboardVisible}}"
   id="merchantTabBar"
   active="store"
 />

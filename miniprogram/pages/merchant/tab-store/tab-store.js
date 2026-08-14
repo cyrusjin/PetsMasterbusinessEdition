@@ -145,6 +145,7 @@ const {
   getDefaultHolidayPricing,
   normalizeHolidayPricing
 } = require('../../../utils/legalHolidays');
+const { normalizeMultiPetDiscount } = require('../../../utils/multiPetPricing');
 const {
   normalizeLongTermDiscount,
   normalizeLongTermTiersForEdit,
@@ -184,9 +185,12 @@ function pickBillingState(rules) {
   );
   const checkInDayCharge = (rules && rules.checkInDayCharge) || 'full';
   const departureDayCharge = (rules && rules.departureDayCharge) || 'full';
-  const multiPetDiscount = (rules && rules.multiPetDiscount) || {};
+  const multiPetDiscount = normalizeMultiPetDiscount(
+    (rules && rules.multiPetDiscount) || {}
+  );
   const multiPetDiscountEnabled = multiPetDiscount.enabled === true;
   const multiPetPercent = multiPetDiscount.percent;
+  const multiPetAmount = multiPetDiscount.amount;
   const longTermDiscount = (rules && rules.longTermDiscount) || {};
   const longTermDiscountEnabled = longTermDiscount.enabled === true;
   const billingState = {
@@ -206,9 +210,13 @@ function pickBillingState(rules) {
       return list.length ? list : normalizeCustomPricingForUi(getDefaultCustomPricing());
     })(),
     multiPetDiscountEnabled,
+    multiPetDiscountMode: multiPetDiscount.mode,
     multiPetDiscountPercent: multiPetDiscountEnabled && multiPetPercent != null && multiPetPercent !== ''
       ? String(multiPetPercent)
       : (multiPetPercent != null && multiPetPercent !== '' ? String(multiPetPercent) : ''),
+    multiPetDiscountAmount: multiPetDiscountEnabled && multiPetAmount != null && multiPetAmount !== ''
+      ? String(multiPetAmount)
+      : (multiPetAmount != null && multiPetAmount !== '' ? String(multiPetAmount) : ''),
     longTermDiscountEnabled,
     longTermDiscountTiers: normalizeLongTermTiersForEdit(longTermDiscount),
     ...billingState,
@@ -269,13 +277,16 @@ Page({
       ghostSize: 100
     },
     hideMerchantTabBar: false,
+    keyboardVisible: false,
     oaFollowSheetVisible: false,
     pickupFreeMode: 'none',
     pickupFreeTiers: createDefaultPickupFreeTiersForEdit(),
     washPricing: [],
     washFreeMode: 'none',
     multiPetDiscountEnabled: false,
+    multiPetDiscountMode: 'fromSecondPercent',
     multiPetDiscountPercent: '',
+    multiPetDiscountAmount: '',
     longTermDiscountEnabled: false,
     longTermDiscountTiers: [{ minDays: '', zhe: '' }],
     holidayPricingSummary: '默认不加价',
@@ -300,6 +311,14 @@ Page({
 
   onLoad(options) {
     this._formDirty = false;
+    this._keyboardHeightChangeHandler = (res) => {
+      const keyboardVisible = Number(res && res.height) > 0;
+      if (keyboardVisible === this.data.keyboardVisible) return;
+      this.setData({ keyboardVisible });
+    };
+    if (typeof wx.onKeyboardHeightChange === 'function') {
+      wx.onKeyboardHeightChange(this._keyboardHeightChangeHandler);
+    }
     const storeId = String((options && options.store_id) || '').trim();
     if (storeId && redirectGuestShareToReserve(storeId)) {
       return;
@@ -308,6 +327,16 @@ Page({
       app.globalData.storeSettingsTab = '';
       this.setData({ settingsTab: 'advanced' });
     }
+  },
+
+  onUnload() {
+    if (
+      this._keyboardHeightChangeHandler
+      && typeof wx.offKeyboardHeightChange === 'function'
+    ) {
+      wx.offKeyboardHeightChange(this._keyboardHeightChangeHandler);
+    }
+    this._keyboardHeightChangeHandler = null;
   },
 
   onShareAppMessage(res) {
@@ -1617,6 +1646,11 @@ Page({
   _getBillingRulesPayload() {
     const percentRaw = String(this.data.multiPetDiscountPercent || '').trim();
     const percent = /^\d+$/.test(percentRaw) ? Number(percentRaw) : NaN;
+    const amountRaw = String(this.data.multiPetDiscountAmount || '').trim();
+    const amount = /^\d+(\.\d{1,2})?$/.test(amountRaw) ? Number(amountRaw) : NaN;
+    const multiPetMode = this.data.multiPetDiscountMode === 'fromSecondFixedPerDay'
+      ? 'fromSecondFixedPerDay'
+      : 'fromSecondPercent';
     const existing = app.getBillingRules() || {};
     const shopRules = (this.data.shop && this.data.shop.billingRules) || {};
     const holidayPricing = normalizeHolidayPricing(
@@ -1641,11 +1675,15 @@ Page({
       departureCharge: normalizeDepartureCharge(this.data.departureCharge),
       holidayPricing,
       multiPetDiscount: (() => {
-        const enabled = !!this.data.multiPetDiscountEnabled && Number.isInteger(percent);
+        const valueIsValid = multiPetMode === 'fromSecondFixedPerDay'
+          ? Number.isFinite(amount)
+          : Number.isInteger(percent);
+        const enabled = !!this.data.multiPetDiscountEnabled && valueIsValid;
         return {
           enabled,
-          mode: 'fromSecondPercent',
-          percent: enabled ? percent : 0,
+          mode: multiPetMode,
+          percent: enabled && multiPetMode === 'fromSecondPercent' ? percent : 0,
+          amount: enabled && multiPetMode === 'fromSecondFixedPerDay' ? amount : 0,
           applyTo: 'boarding'
         };
       })(),
@@ -1679,6 +1717,26 @@ Page({
     this._markDirty();
     const value = String((e.detail && e.detail.value) || '').replace(/[^\d]/g, '');
     this.setData({ multiPetDiscountPercent: value });
+  },
+
+  onMultiPetDiscountModeChange(e) {
+    this._markDirty();
+    const value = e.detail && e.detail.value;
+    this.setData({
+      multiPetDiscountMode: value === 'fromSecondFixedPerDay'
+        ? 'fromSecondFixedPerDay'
+        : 'fromSecondPercent'
+    });
+  },
+
+  onMultiPetDiscountAmountInput(e) {
+    this._markDirty();
+    let value = String((e.detail && e.detail.value) || '').replace(/[^\d.]/g, '');
+    const dot = value.indexOf('.');
+    if (dot >= 0) {
+      value = `${value.slice(0, dot + 1)}${value.slice(dot + 1).replace(/\./g, '').slice(0, 2)}`;
+    }
+    this.setData({ multiPetDiscountAmount: value });
   },
 
   onLongTermDiscountSwitch(e) {
