@@ -6,9 +6,10 @@ const { refreshUserOrders } = require('../../utils/orderRefresh');
 const { formatOrderCreateTime } = require('../../utils/util');
 const { formatServiceStatus, getOrderServiceKind } = require('../../utils/dailyCheckable');
 const { formatHomeVisitTimeText } = require('../../utils/homeVisitAddress');
+const { applyUserBannerAdPadding } = require('../../utils/userAds');
 
 Page({
-  data: { activeTab: 'all', orders: [], filteredOrders: [] },
+  data: { activeTab: 'all', orders: [], filteredOrders: [], showUserBannerAd: false },
 
   onLoad(options) {
     const tab = (options && options.tab) ? String(options.tab).trim() : '';
@@ -26,6 +27,7 @@ Page({
   onShow() {
     this._syncUserTabBar(1);
     if (guardUserTabPage()) return;
+    applyUserBannerAdPadding(this);
     const gen = (this._showGen || 0) + 1;
     this._showGen = gen;
 

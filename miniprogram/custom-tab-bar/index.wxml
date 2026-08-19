@@ -10,7 +10,6 @@
       mode="aspectFit"
     />
     <view class="tab-bar-text {{selected === index ? 'active' : ''}}">{{item.text}}</view>
-    <!-- 覆盖整格热区，避免 image/text 吞点击 -->
     <view
       class="tab-bar-hit"
       data-index="{{index}}"

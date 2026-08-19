@@ -131,6 +131,7 @@
     "cached-image": "/components/cached-image/cached-image",
     "hidden-admin-entry": "/components/hidden-admin-entry/hidden-admin-entry",
     "oa-follow-banner": "/components/oa-follow-banner/oa-follow-banner",
+    "user-banner-ad": "/components/user-banner-ad/user-banner-ad",
     "daily-comments": "/components/daily-comments/daily-comments"
   },
   "sitemapLocation": "sitemap.json",

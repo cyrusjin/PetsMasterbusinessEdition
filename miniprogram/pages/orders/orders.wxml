@@ -1,4 +1,4 @@
-<view class="container has-tab-bar">
+<view class="container has-tab-bar {{showUserBannerAd ? 'has-user-banner-ad' : ''}}">
   <oa-follow-banner />
   <view class="order-tabs">
     <view class="order-tab {{activeTab === 'all' ? 'active' : ''}}" bindtap="onTab" data-tab="all">全部</view>
@@ -49,4 +49,5 @@
     <text class="empty-icon">📦</text>
     <text class="empty-text">暂无订单</text>
   </view>
+  <user-banner-ad visible="{{showUserBannerAd}}" />
 </view>

@@ -12,7 +12,7 @@ const CACHE_TTL = 60 * 1000;
  * 过审后再打开。不要依赖 getAccountInfoSync().version——
  * 审核期微信常仍返回线上旧版或空，会误命中 default=开启。
  */
-const LOCAL_APP_VERSION = '1.0.7';
+const LOCAL_APP_VERSION = '1.0.8';
 
 let cachedMiniProgramMeta = null;
 

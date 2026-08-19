@@ -1,0 +1,5 @@
+<view class="user-banner-ad" wx:if="{{visible}}" bindtap="onOpen">
+  <image wx:if="{{ad.image}}" class="user-banner-img" src="{{ad.image}}" mode="aspectFill" />
+  <view wx:else class="user-banner-placeholder">Banner 1125 × 225（5:1）</view>
+  <text class="user-banner-badge">广告</text>
+</view>

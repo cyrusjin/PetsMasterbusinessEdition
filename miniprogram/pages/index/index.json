@@ -5,5 +5,7 @@
   "navigationBarTextStyle": "black",
   "enablePullDownRefresh": true,
   "enableShareAppMessage": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "user-native-ad": "/components/user-native-ad/user-native-ad"
+  }
 }

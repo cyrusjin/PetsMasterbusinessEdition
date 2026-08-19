@@ -91,6 +91,13 @@
 .rejected-banner .demo-banner-text {
   color: #E53935;
 }
+.upload-banner {
+  background: #F3F8F1;
+  border-color: #C5E1A5;
+}
+.upload-banner .demo-banner-text {
+  color: #558B2F;
+}
 
 .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; width: 100%; box-sizing: border-box; }
 

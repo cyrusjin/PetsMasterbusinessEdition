@@ -17,6 +17,11 @@ page {
   box-sizing: border-box;
 }
 
+/* 用户端 Banner 贴在 Tab 上方时，把内容再顶起 168rpx */
+.has-tab-bar.has-user-banner-ad {
+  padding-bottom: 336rpx;
+}
+
 /* 卡片 */
 .card {
   background: var(--color-bg-card);

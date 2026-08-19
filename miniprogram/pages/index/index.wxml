@@ -1,4 +1,4 @@
-<view class="home-page has-tab-bar">
+<view class="home-page has-tab-bar {{showUserBannerAd ? 'has-user-banner-ad' : ''}}">
   <view class="home-custom-nav" style="padding-top: {{statusBarHeight}}px; height: {{navTotalHeight}}px;">
     <view class="home-custom-nav-inner" style="height: {{navBarHeight}}px; padding-left: {{navTitlePad}}px; padding-right: {{navTitlePad}}px;">
       <text class="home-nav-title">{{navTitle}}</text>
@@ -302,4 +302,6 @@
       disabled="{{!shareSelectedCount || invitePreparing}}"
     >分享给微信好友</button>
   </view>
+  <user-native-ad visible="{{userNativeAdVisible}}" bindclose="onCloseUserNativeAd" />
+  <user-banner-ad visible="{{showUserBannerAd && !userTabBarHidden}}" />
 </view>

@@ -1,4 +1,4 @@
-<view class="container has-tab-bar">
+<view class="container has-tab-bar {{showUserBannerAd ? 'has-user-banner-ad' : ''}}">
   <oa-follow-banner />
   <view wx:if="{{sharedLoading}}" class="shared-tip">
     <text class="text-gray">正在加载分享动态…</text>
@@ -68,4 +68,5 @@
     <text class="empty-icon">📸</text>
     <text class="empty-text">{{sharedMissing ? '分享的动态不存在或已删除' : '暂无宠物动态'}}</text>
   </view>
+  <user-banner-ad visible="{{showUserBannerAd}}" />
 </view>

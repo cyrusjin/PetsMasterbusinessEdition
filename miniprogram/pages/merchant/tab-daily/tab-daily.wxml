@@ -14,6 +14,9 @@
       <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
     </view>
     <oa-follow-banner scene="merchant" />
+    <view class="demo-banner upload-banner" wx:if="{{dailyUploadActive}}">
+      <text class="demo-banner-text">{{dailyUploadText}} · 可继续操作，不要退出小程序</text>
+    </view>
     <view class="demo-banner" wx:if="{{isDemoMode}}">
       <text class="demo-banner-text">体验模式 · 数据仅保存在本地，提交入驻申请后可使用完整功能</text>
     </view>

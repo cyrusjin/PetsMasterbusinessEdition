@@ -6,13 +6,15 @@ const userFeed = require('../../utils/userFeed');
 const { refreshUserOrders } = require('../../utils/orderRefresh');
 const dailyApi = require('../../utils/daily');
 const { getLogId } = require('../../utils/dailyLogUtil');
+const { applyUserBannerAdPadding } = require('../../utils/userAds');
 
 Page({
   data: {
     logs: [],
     sharedLogId: '',
     sharedLoading: false,
-    sharedMissing: false
+    sharedMissing: false,
+    showUserBannerAd: false
   },
 
   _syncUserTabBar(index) {
@@ -35,6 +37,7 @@ Page({
   onShow() {
     this._syncUserTabBar(2);
     if (guardUserTabPage()) return;
+    applyUserBannerAdPadding(this);
     const gen = (this._showGen || 0) + 1;
     this._showGen = gen;
 

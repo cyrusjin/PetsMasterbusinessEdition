@@ -12,6 +12,7 @@ const {
 const { showValidationAlert } = require('../../utils/formAlert');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const dailyQuickPhrases = require('../utils/dailyQuickPhrases');
+const dailyCheckQueue = require('../utils/dailyCheckQueue');
 
 function getMediaStats(mediaList) {
   const list = mediaList || [];
@@ -22,30 +23,6 @@ function getMediaStats(mediaList) {
     imageCount,
     videoCount,
     canAddMedia: total < 9
-  };
-}
-
-function splitMediaList(mediaList) {
-  const images = [];
-  const videos = [];
-  const videoThumbs = [];
-  const videoCompressed = [];
-  (mediaList || []).forEach((item) => {
-    if (item.type === 'video') {
-      videos.push(item.path);
-      videoThumbs.push(item.thumb || '');
-      videoCompressed.push(!!item.compressed);
-    } else if (item.type === 'image') {
-      images.push(item.path);
-    }
-  });
-  return {
-    images,
-    videos,
-    videoThumbs,
-    videoCompressed,
-    video: videos[0] || '',
-    videoThumb: videoThumbs[0] || ''
   };
 }
 
@@ -528,32 +505,40 @@ Page({
         .then((compressedPath) => dailyMedia.getLocalFileSize(compressedPath)
           .then((size) => ({ compressedPath, size })))
         .then(({ compressedPath, size }) => {
-          const list = this.data.mediaList || [];
-          const index = list.findIndex((item) => item.id === id);
-          if (index < 0) return;
-
           if (size > dailyMedia.MAX_VIDEO_UPLOAD_BYTES) {
-            const nextList = list.filter((item) => item.id !== id);
-            const stats = getMediaStats(nextList);
-            this.setData({
-              mediaList: nextList,
-              canAddMedia: stats.canAddMedia
-            });
-            wx.showToast({ title: dailyMedia.VIDEO_TOO_LARGE_MSG, icon: 'none' });
-            return;
+            if (!this._pageClosed) {
+              const list = this.data.mediaList || [];
+              const nextList = list.filter((item) => item.id !== id);
+              const stats = getMediaStats(nextList);
+              this.setData({
+                mediaList: nextList,
+                canAddMedia: stats.canAddMedia
+              });
+              wx.showToast({ title: dailyMedia.VIDEO_TOO_LARGE_MSG, icon: 'none' });
+            }
+            return { id, removed: true };
           }
 
-          const nextList = list.slice();
-          nextList[index] = {
-            ...nextList[index],
-            path: compressedPath || nextList[index].path,
+          const next = {
+            ...current,
+            path: compressedPath || current.path,
             compressed: true
           };
-          this.setData({ mediaList: nextList });
+          if (!this._pageClosed) {
+            const list = this.data.mediaList || [];
+            const index = list.findIndex((item) => item.id === id);
+            if (index >= 0) {
+              const nextList = list.slice();
+              nextList[index] = { ...nextList[index], ...next };
+              this.setData({ mediaList: nextList });
+            }
+          }
+          return next;
         })
-        .catch(() => {
-          // 预压缩失败不阻断，提交时再压缩/上传
-        })
+        .catch(() => ({
+          ...current,
+          compressed: false
+        }))
         .finally(() => {
           if (this._compressTasks) {
             delete this._compressTasks[id];
@@ -562,25 +547,6 @@ Page({
 
       this._compressTasks[id] = task;
     });
-  },
-
-  _waitVideoReady(item) {
-    if (!item || item.type !== 'video') {
-      return Promise.resolve(item || null);
-    }
-    const task = this._compressTasks && this._compressTasks[item.id];
-    const wait = task ? task.catch(() => null) : Promise.resolve();
-    return wait.then(() => {
-      const latest = (this.data.mediaList || []).find((row) => row.id === item.id);
-      return latest || item;
-    });
-  },
-
-  _waitPendingVideoCompress() {
-    const tasks = Object.values(this._compressTasks || {});
-    if (!tasks.length) return Promise.resolve();
-    wx.showLoading({ title: '视频处理中', mask: true });
-    return Promise.all(tasks.map((task) => task.catch(() => null)));
   },
 
   onRemoveMedia(e) {
@@ -710,6 +676,10 @@ Page({
     return selectedOrders;
   },
 
+  onUnload() {
+    this._pageClosed = true;
+  },
+
   doSubmit(selectedOrders, options = {}) {
     if (this.data.submitting) return;
 
@@ -722,7 +692,7 @@ Page({
       return;
     }
 
-    const { checkItems, desc } = this.data;
+    const { checkItems, desc, mediaList } = this.data;
     const checks = checkItems.filter((item) => item.checked).map((item) => item.label);
     const shop = app.getShop() || {};
     const storeId = shop.store_id || app.globalData.merchantStoreId || '';
@@ -730,153 +700,47 @@ Page({
     const time = util.formatDateTime(isScheduled ? scheduledAt : new Date());
 
     this.setData({ submitting: true });
-    wx.showLoading({ title: editMode ? '保存中' : (isScheduled ? '定时中' : '提交中'), mask: true });
+    wx.hideLoading();
+    this._pendingScheduleOrders = null;
+    try {
+      wx.removeStorageSync('daily_check_edit_log');
+    } catch (err) {
+      // ignore
+    }
 
-    const submitLogs = (cloudImages, cloudVideos, cloudVideoCovers) => {
-      const videoList = cloudVideos || [];
-      const coverList = cloudVideoCovers || [];
-      wx.showLoading({ title: editMode ? '保存中' : (isScheduled ? '定时中' : '提交中'), mask: true });
+    dailyCheckQueue.enqueue({
+      editMode,
+      editLogId,
+      selectedOrders: selectedOrders.map((order) => ({
+        id: order.id,
+        petName: order.petName
+      })),
+      checks,
+      desc,
+      scheduledAt,
+      isScheduled,
+      time,
+      storeId,
+      uploadOrderId,
+      mediaList: (mediaList || []).map((item) => ({ ...item })),
+      compressTasks: Object.assign({}, this._compressTasks || {})
+    });
+
+    wx.showToast({
+      title: '正在后台上传，可继续操作',
+      icon: 'none',
+      duration: 2000
+    });
+
+    const leave = () => {
       if (editMode) {
-        const payload = {
-          id: editLogId,
-          log_id: editLogId,
-          orderId: selectedOrders[0].id,
-          petName: selectedOrders[0].petName,
-          checks,
-          description: desc,
-          images: cloudImages,
-          videos: videoList,
-          videoCovers: coverList,
-          video: videoList[0] || '',
-          videoCover: coverList[0] || '',
-          notifyOwner: true,
-          isAbnormal: false,
-          time,
-          scheduledAt,
-          isScheduled: true,
-          status: 'scheduled'
-        };
-        return app.updateDailyLog(payload).then((res) => [res]);
-      }
-
-      const tasks = selectedOrders.map((order) => {
-        const payload = {
-          orderId: order.id,
-          petName: order.petName,
-          checks,
-          description: desc,
-          images: cloudImages,
-          videos: videoList,
-          videoCovers: coverList,
-          video: videoList[0] || '',
-          videoCover: coverList[0] || '',
-          notifyOwner: true,
-          isAbnormal: false,
-          time
-        };
-        if (isScheduled) {
-          payload.scheduledAt = scheduledAt;
-          payload.isScheduled = true;
-          payload.status = 'scheduled';
-        }
-        return app.saveDailyLog(payload);
-      });
-      return Promise.all(tasks);
-    };
-
-    const uploadPromise = (() => {
-      const videoItems = (this.data.mediaList || []).filter((item) => item.type === 'video');
-      const imageItems = (this.data.mediaList || []).filter((item) => item.type === 'image');
-      if (app.isMerchantDemoMode()) {
-        return this._waitPendingVideoCompress().then(() => {
-          const latest = splitMediaList(this.data.mediaList || []);
-          return {
-            images: latest.images,
-            videos: latest.videos,
-            videoCovers: latest.videoThumbs,
-            video: latest.videos[0] || '',
-            videoCover: latest.videoThumbs[0] || ''
-          };
+        wx.navigateBack({
+          fail: () => wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' })
         });
+        return;
       }
-
-      const totalVideos = videoItems.length;
-      if (totalVideos > 0) {
-        wx.showLoading({ title: `上传中 0/${totalVideos}`, mask: true });
-      } else {
-        wx.showLoading({ title: editMode ? '保存中' : (isScheduled ? '定时中' : '提交中'), mask: true });
-      }
-
-      // 边压边传：某个视频预压缩完成后立刻进入上传队列，不必等全部压完
-      return dailyMedia.uploadDailyMedia(
-        imageItems.map((item) => item.path),
-        videoItems.map((item) => item.path),
-        storeId,
-        uploadOrderId,
-        videoItems.map((item) => item.thumb || ''),
-        {
-          skipCompressFlags: videoItems.map((item) => !!item.compressed),
-          prepareItem: (index) => this._waitVideoReady(videoItems[index]).then((ready) => ({
-            path: (ready && ready.path) || videoItems[index].path,
-            thumb: (ready && ready.thumb) || videoItems[index].thumb || '',
-            skipCompress: !!(ready && ready.compressed)
-          })),
-          onProgress: ({ done, total }) => {
-            if (total > 0) {
-              wx.showLoading({ title: `上传中 ${done}/${total}`, mask: true });
-            }
-          }
-        }
-      );
-    })();
-
-    uploadPromise
-      .then(({ images: cloudImages, videos: cloudVideos, videoCovers: cloudVideoCovers }) => (
-        submitLogs(cloudImages, cloudVideos, cloudVideoCovers)
-      ))
-      .then(() => {
-        wx.hideLoading();
-        this._pendingScheduleOrders = null;
-        try {
-          wx.removeStorageSync('daily_check_edit_log');
-        } catch (err) {
-          // ignore
-        }
-        if (editMode) {
-          wx.showToast({
-            title: `已保存 ${time}`,
-            icon: 'success',
-            duration: 1800
-          });
-          setTimeout(() => {
-            wx.navigateBack({ delta: 1 });
-          }, 700);
-          return;
-        }
-        if (isScheduled) {
-          wx.showToast({
-            title: `已定时 ${time}`,
-            icon: 'success',
-            duration: 2000
-          });
-        } else {
-          wx.showToast({
-            title: selectedOrders.length > 1 ? `已为${selectedOrders.length}只宠物打卡` : '打卡成功',
-            icon: 'success'
-          });
-        }
-        setTimeout(() => {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
-        }, isScheduled ? 900 : 600);
-      })
-      .catch((err) => {
-        wx.hideLoading();
-        const message = (err && err.message) || (err && err.errMsg)
-          || (editMode ? '保存失败' : (isScheduled ? '定时失败' : '打卡失败'));
-        wx.showToast({ title: message, icon: 'none', duration: 3000 });
-      })
-      .finally(() => {
-        this.setData({ submitting: false });
-      });
+      wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+    };
+    setTimeout(leave, 180);
   }
 });

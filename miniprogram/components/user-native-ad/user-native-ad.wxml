@@ -1,0 +1,19 @@
+<view class="user-native-root" wx:if="{{visible}}" catchtouchmove="onTouchMove">
+  <view class="user-native-mask" bindtap="onClose"></view>
+  <view class="user-native-sheet" catchtap="onTouchMove">
+    <view class="user-native-handle"></view>
+    <view class="user-native-close" catchtap="onClose">×</view>
+    <view class="user-native-badge">广告</view>
+    <view class="user-native-cover" bindtap="onOpen">
+      <image wx:if="{{ad.image}}" class="user-native-image" src="{{ad.image}}" mode="aspectFill" />
+      <view wx:else class="user-native-placeholder">
+        <text>半屏广告位</text>
+        <text>1080 × 1440（3:4）</text>
+      </view>
+    </view>
+    <text class="user-native-title">{{ad.title}}</text>
+    <text class="user-native-desc">{{ad.desc}}</text>
+    <view class="user-native-cta" hover-class="user-native-cta-hover" bindtap="onOpen">了解更多</view>
+    <view class="user-native-skip" bindtap="onClose">关闭</view>
+  </view>
+</view>

@@ -23,6 +23,12 @@ const {
   readCachedEnabled,
   isAuditMode
 } = require('../../utils/merchantSwitch');
+const {
+  applyUserBannerAdPadding,
+  shouldShowUserNativeAd,
+  hasShownNativeAdThisLaunch,
+  markNativeAdShown
+} = require('../../utils/userAds');
 
 /** 超过该字数时首页店铺介绍截断，点击查看完整 */
 const INTRO_EXPAND_CHARS = 72;
@@ -67,7 +73,10 @@ Page({
     navBarHeight: 44,
     navTotalHeight: 64,
     navTitlePad: 96,
-    navTitle: '宠物寄养'
+    navTitle: '宠物寄养',
+    showUserBannerAd: false,
+    userTabBarHidden: false,
+    userNativeAdVisible: false
   },
 
   _syncUserTabBar(index) {
@@ -276,6 +285,8 @@ Page({
     this._setTabBarHidden(!!this.data.introPreviewVisible);
     storeDebug.log('首页 onShow');
     if (guardUserTabPage()) return;
+    applyUserBannerAdPadding(this);
+    this._maybeShowNativeAd();
 
     // 始终先渲染缓存，再静默刷新（切 Tab 回首页不阻塞 UI）
     this._refreshPageFromCache();
@@ -647,11 +658,36 @@ Page({
   },
 
   _setTabBarHidden(hidden) {
-    if (typeof this.getTabBar !== 'function') return;
-    const tabBar = this.getTabBar();
-    if (tabBar && typeof tabBar.setData === 'function') {
-      tabBar.setData({ hidden: !!hidden });
+    const next = !!hidden;
+    if (typeof this.getTabBar === 'function') {
+      const tabBar = this.getTabBar();
+      if (tabBar && typeof tabBar.setData === 'function') {
+        tabBar.setData({ hidden: next });
+      }
     }
+    if (this.data.userTabBarHidden !== next) {
+      this.setData({ userTabBarHidden: next });
+    }
+  },
+
+  _maybeShowNativeAd() {
+    if (!shouldShowUserNativeAd()) return;
+    if (hasShownNativeAdThisLaunch()) return;
+    if (this.data.inviteModalVisible || this.data.introPreviewVisible || this.data.reservePickerVisible) {
+      return;
+    }
+    setTimeout(() => {
+      if (hasShownNativeAdThisLaunch()) return;
+      if (this.data.inviteModalVisible || this.data.introPreviewVisible || this.data.reservePickerVisible) {
+        return;
+      }
+      if (!markNativeAdShown()) return;
+      this.setData({ userNativeAdVisible: true });
+    }, 360);
+  },
+
+  onCloseUserNativeAd() {
+    this.setData({ userNativeAdVisible: false });
   },
 
   onOpenIntroPreview(e) {

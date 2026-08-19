@@ -7,6 +7,10 @@
     linear-gradient(180deg, #FFF4E7 0%, #FFF9F2 42%, #FFFDF9 100%);
 }
 
+.home-page.has-user-banner-ad {
+  padding-bottom: 336rpx;
+}
+
 .home-custom-nav {
   position: fixed;
   left: 0;

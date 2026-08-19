@@ -49,7 +49,9 @@ Page({
     navTitle: '日常管理',
     guestShareMulti: false,
     guestShareDesc: '发给客人自己预约，或帮客人填好再发给对方',
-    guestShareBtnText: '发送给客人预约'
+    guestShareBtnText: '发送给客人预约',
+    dailyUploadActive: false,
+    dailyUploadText: ''
   },
 
   onLoad(options) {
@@ -122,6 +124,7 @@ Page({
     hideHomeButton();
     this._syncTabBar();
     this._refreshAnnouncements();
+    this._startDailyUploadWatch();
 
     // 非正式版 / 开关关闭：硬拦截（含员工邀请路径也不进商家界面）
     if (redirectToUserIfMerchantUiBlocked()) return;
@@ -206,14 +209,52 @@ Page({
   },
 
   onHide() {
+    this._stopDailyUploadWatch();
     stopMerchantOrdersPoll(this);
   },
 
   onUnload() {
+    this._stopDailyUploadWatch();
     stopMerchantOrdersPoll(this);
   },
 
   _syncTabBar() {},
+
+  _readDailyUploadState() {
+    return (app.globalData && app.globalData.dailyCheckUpload) || {};
+  },
+
+  _syncDailyUploadBanner() {
+    const st = this._readDailyUploadState();
+    const active = !!st.active;
+    const text = st.text || '正在后台上传打卡';
+    if (this.data.dailyUploadActive !== active || this.data.dailyUploadText !== text) {
+      this.setData({
+        dailyUploadActive: active,
+        dailyUploadText: text
+      });
+    }
+    if (st.needRefresh) {
+      if (app.globalData && app.globalData.dailyCheckUpload) {
+        app.globalData.dailyCheckUpload.needRefresh = false;
+      }
+      this._softRefresh();
+    }
+  },
+
+  _startDailyUploadWatch() {
+    this._syncDailyUploadBanner();
+    if (this._dailyUploadTimer) return;
+    this._dailyUploadTimer = setInterval(() => {
+      this._syncDailyUploadBanner();
+    }, 600);
+  },
+
+  _stopDailyUploadWatch() {
+    if (!this._dailyUploadTimer) return;
+    clearInterval(this._dailyUploadTimer);
+    this._dailyUploadTimer = null;
+  },
 
   onSwitchToUser() {
     if (app.enterUserMode) {
