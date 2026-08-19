@@ -9,6 +9,10 @@ function choosePickupLocation(current = {}) {
   return chooseMapLocation(current, '请允许使用位置信息，以便在地图上选择接送地址');
 }
 
+function chooseVisitLocation(current = {}) {
+  return chooseMapLocation(current, '请允许使用位置信息，以便在地图上选择小区地址');
+}
+
 function chooseMapLocation(current = {}, authTip = '请允许使用位置信息，以便在地图上选择地址') {
   return new Promise((resolve, reject) => {
     const options = {};
@@ -135,14 +139,23 @@ function getPickupLocationValidationMessage(res) {
   return '';
 }
 
+function getVisitLocationValidationMessage(res) {
+  const msg = (getPickupLocationValidationMessage(res) || '')
+    .replace(/接送地址/g, '小区地址')
+    .replace(/具体地点/g, '小区或小区门口');
+  return msg;
+}
+
 module.exports = {
   chooseStoreLocation,
   choosePickupLocation,
+  chooseVisitLocation,
   formatLocationAddress,
   getLocationDisplayLines,
   hasAdminRegion,
   isVagueAddress,
   isValidLocationResult,
   getLocationValidationMessage,
-  getPickupLocationValidationMessage
+  getPickupLocationValidationMessage,
+  getVisitLocationValidationMessage
 };

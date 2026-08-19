@@ -79,6 +79,28 @@
   font-size: 28rpx;
 }
 
+.fee-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 8rpx;
+  padding-left: 24rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.fee-sub-name {
+  flex: 1;
+  min-width: 0;
+  color: #999999;
+}
+
+.fee-sub-amount {
+  flex-shrink: 0;
+  color: #666666;
+}
+
 .fee-grand-total {
   margin-top: 20rpx;
   padding-top: 16rpx;

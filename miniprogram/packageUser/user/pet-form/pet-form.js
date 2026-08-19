@@ -13,6 +13,16 @@ const {
   parseAgeParts
 } = require('../../utils/petForm');
 const { searchBreeds, hasExactBreed } = require('../../utils/petBreeds');
+const {
+  getDraftPet,
+  getUnassignedPet,
+  upsertDraftPet,
+  upsertUnassignedPet,
+  readProxySession,
+  isUnassignedSession,
+  buildProxyReserveUrl,
+  PROXY_GUEST_PICKER_PATH
+} = require('../../../utils/proxyOrder');
 
 function createDefaultHealthFields() {
   return {
@@ -63,8 +73,17 @@ Page({
   },
 
   onLoad(opts) {
+    this._proxyMode = String((opts && opts.proxy) || '') === '1';
+    this._nextAfterSave = String((opts && opts.next) || '').trim();
+    this._proxyPool = String((opts && opts.pool) || '').trim();
+    this._entryServiceLine = String((opts && (opts.serviceLine || opts.line)) || '').trim();
+    if (this._proxyMode) {
+      wx.setNavigationBarTitle({ title: '代填宠物档案' });
+    }
     if (opts.id) {
-      const pet = app.getPets().find((p) => p.id === opts.id);
+      const pet = this._proxyMode
+        ? (getDraftPet(opts.id) || getUnassignedPet(opts.id))
+        : app.getPets().find((p) => p.id === opts.id);
       if (pet) {
         const petType = normalizePetType(pet.type || pet.petType);
         const health = normalizePetHealthFields(pet);
@@ -250,16 +269,51 @@ Page({
     this.setData({ saving: true });
     wx.showLoading({ title: '保存中', mask: true });
 
-    ensureLogin()
-      .then(() => uploadPetPhoto(this.data.photo))
-      .then((photo) => {
-        const payload = buildPetPayload({ ...this.data, photo });
-        return app.savePet(payload);
-      })
+    const persist = (photo) => {
+      const payload = buildPetPayload({ ...this.data, photo });
+      if (this._proxyMode) {
+        const fromList = this._nextAfterSave === 'list';
+        const saveToUnassigned = fromList
+          || this._proxyPool === 'unassigned'
+          || isUnassignedSession(readProxySession());
+        if (fromList) {
+          return Promise.resolve(upsertUnassignedPet(payload));
+        }
+        const saved = upsertDraftPet(payload);
+        if (saveToUnassigned) upsertUnassignedPet(saved);
+        return Promise.resolve(saved);
+      }
+      return app.savePet(payload);
+    };
+
+    const uploadThenSave = this._proxyMode
+      ? uploadPetPhoto(this.data.photo).catch(() => this.data.photo)
+      : ensureLogin().then(() => uploadPetPhoto(this.data.photo));
+
+    Promise.resolve(uploadThenSave)
+      .then((photo) => persist(photo))
       .then(() => {
         wx.hideLoading();
         wx.showToast({ title: '保存成功', icon: 'success' });
-        setTimeout(() => wx.navigateBack(), 1000);
+        setTimeout(() => {
+          if (this._proxyMode && this._nextAfterSave === 'list') {
+            wx.navigateBack({
+              fail: () => wx.redirectTo({ url: PROXY_GUEST_PICKER_PATH })
+            });
+            return;
+          }
+          if (this._proxyMode && this._nextAfterSave === 'reserve') {
+            const url = this._entryServiceLine
+              ? buildProxyReserveUrl(this._entryServiceLine)
+              : `${PROXY_GUEST_PICKER_PATH}&continueOrder=1`;
+            wx.redirectTo({
+              url,
+              fail: () => wx.navigateBack()
+            });
+            return;
+          }
+          wx.navigateBack();
+        }, 400);
       })
       .catch((error) => {
         wx.hideLoading();

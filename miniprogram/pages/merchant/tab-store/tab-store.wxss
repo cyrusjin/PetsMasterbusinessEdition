@@ -16,6 +16,30 @@
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 }
 
+.service-rule-tabs {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.service-rule-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 8rpx;
+  font-size: 26rpx;
+  color: #888;
+  background: #fff;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 12rpx;
+}
+
+.service-rule-tab.active {
+  color: #E98657;
+  background: #FFF1E7;
+  border-color: #E98657;
+  font-weight: 600;
+}
+
 .settings-tab {
   flex: 1;
   text-align: center;
@@ -24,6 +48,16 @@
   color: #888;
   border-radius: 12rpx;
   font-weight: 500;
+}
+
+.settings-tabs-primary .settings-tab {
+  padding: 16rpx 4rpx;
+  font-size: 24rpx;
+}
+
+.settings-subtabs {
+  background: #F7F8FA;
+  box-shadow: none;
 }
 
 .settings-tab.active {
@@ -944,4 +978,337 @@
   color: #ffffff;
   font-weight: 600;
 }
+
+.scope-badge {
+  flex-shrink: 0;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+}
+
+.scope-badge.shared {
+  color: #2E7D32;
+  background: #E8F5E9;
+}
+
+.module-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 8rpx 8rpx 16rpx;
+}
+
+.module-section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333333;
+}
+
+.module-section-desc {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.service-lines-tip {
+  display: block;
+  margin: -8rpx 0 24rpx;
+  font-size: 24rpx;
+  color: #888888;
+  line-height: 1.6;
+}
+
+.service-line-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.service-line-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 20rpx;
+  background: #F7F8FA;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 20rpx;
+  box-sizing: border-box;
+}
+
+.service-line-item.active {
+  background: #FFF1E7;
+  border-color: #E98657;
+}
+
+.service-line-icon {
+  width: 72rpx;
+  height: 72rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #E98657;
+  background: #fff;
+  border-radius: 20rpx;
+}
+
+.service-line-item.enabled .service-line-icon,
+.service-module-head.enabled .service-line-icon {
+  color: #fff;
+  background: #E98657;
+}
+
+.service-line-enter {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #E98657;
+  font-weight: 600;
+}
+
+.service-module-head {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.service-line-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.service-line-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.service-line-name {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333333;
+}
+
+.service-line-desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #999999;
+  line-height: 1.4;
+}
+
+.service-line-status {
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  font-weight: 600;
+}
+
+.service-line-status.off {
+  color: #999999;
+  background: #F0F2F5;
+}
+
+.service-line-status.todo {
+  color: #E98657;
+  background: #FFF1E7;
+}
+
+.service-line-status.pending {
+  color: #8A6A4A;
+  background: #F5E6D6;
+}
+
+.service-line-status.ready {
+  color: #2E7D32;
+  background: #E8F5E9;
+}
+
+.visit-service-head {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.visit-service-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.visit-service-card.enabled .visit-service-head {
+  margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #F2F3F5;
+}
+
+.service-line-switch {
+  flex-shrink: 0;
+  transform: scale(0.86);
+  transform-origin: center right;
+}
+
+.service-disabled-hint {
+  display: block;
+  margin-bottom: 16rpx;
+  padding: 12rpx 16rpx;
+  font-size: 22rpx;
+  color: #E98657;
+  line-height: 1.5;
+  background: #FFF8F0;
+  border-radius: 12rpx;
+}
+
+.service-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 36rpx 28rpx;
+  background: #F7F8FA;
+  border-radius: 16rpx;
+}
+
+.service-placeholder-badge {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: #8A6A4A;
+  background: #F5E6D6;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+}
+
+.service-placeholder-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333333;
+}
+
+.service-placeholder-desc {
+  font-size: 24rpx;
+  color: #888888;
+  line-height: 1.6;
+}
+
+.wash-title-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.wash-condition-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx dashed #F2DEC9;
+}
+
+.wash-condition-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.wash-condition-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333333;
+}
+
+.wash-condition-desc {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.wash-condition-body {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  background: #FFF9F4;
+  border-radius: 16rpx;
+}
+
+.wash-condition-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.wash-condition-types {
+  align-items: flex-start;
+  margin-top: 16rpx;
+}
+
+.wash-condition-label {
+  flex-shrink: 0;
+  width: 120rpx;
+  font-size: 24rpx;
+  color: #666666;
+  line-height: 64rpx;
+}
+
+.wash-condition-hint {
+  display: block;
+  margin: 8rpx 0 0 132rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.wash-condition-or {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin: 16rpx 0 4rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #E98657;
+}
+
+.wash-condition-or-line {
+  flex: 1;
+  height: 1rpx;
+  background: #F2DEC9;
+}
+
+.wash-pet-type-group {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.wash-pet-type-item {
+  padding: 10rpx 18rpx;
+  font-size: 24rpx;
+  color: #666666;
+  background: #fff;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 999rpx;
+}
+
+.wash-pet-type-item.active {
+  color: #E98657;
+  background: #FFF1E7;
+  border-color: #E98657;
+  font-weight: 600;
+}
+
+.visit-service-card {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  border-bottom: none;
+  background: #FFF9F4;
+  box-sizing: border-box;
+}
+
+.visit-service-card.is-alt {
+  background: #F4F6F8;
+}
+
 

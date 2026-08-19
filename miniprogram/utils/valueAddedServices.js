@@ -92,14 +92,15 @@ function updateValueAddedServiceField(list, index, field, rawValue) {
   return next.map((item) => normalizeValueAddedItem(item, item.id));
 }
 
-function validateValueAddedServices(list) {
+function validateValueAddedServices(list, options) {
+  const requireContent = !options || options.requireContent !== false;
   const normalized = normalizeValueAddedServices(list);
   for (let i = 0; i < normalized.length; i += 1) {
     const item = normalized[i];
     const label = item.name || `第${i + 1}项增值服务`;
     if (!item.name) return `请填写第${i + 1}项增值服务名称`;
     if (!(parseFloat(item.price) > 0)) return `请填写${label}的金额`;
-    if (!item.description && !item.photo) {
+    if (requireContent && !item.description && !item.photo) {
       return `请填写${label}的描述或上传图片`;
     }
   }
@@ -150,7 +151,8 @@ function uploadValueAddedServicePhotos(list, fallbackList) {
  * 用户预约页可选列表；preserveChecked 时按 id 保留勾选状态。
  */
 function buildValueAddedSelectList(services, preserveChecked) {
-  const normalized = normalizeValueAddedServices(services);
+  const normalized = normalizeValueAddedServices(services)
+    .filter((item) => item.name && parseFloat(item.price) > 0);
   const checkedMap = {};
   if (Array.isArray(preserveChecked)) {
     preserveChecked.forEach((item) => {

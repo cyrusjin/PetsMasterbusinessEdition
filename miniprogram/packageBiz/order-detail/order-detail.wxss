@@ -58,6 +58,10 @@
   box-sizing: border-box;
 }
 
+.detail-action-row .detail-action-btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .detail-action-btn {
   width: 100%;
   min-width: 0;
@@ -77,6 +81,16 @@
 
 .detail-action-full {
   width: 100%;
+}
+
+.detail-action-share-btn {
+  margin: 0;
+  background: #E98657;
+  color: #FFFFFF;
+}
+
+.detail-action-share-btn::after {
+  border: none;
 }
 
 .detail-action-btn.is-disabled {

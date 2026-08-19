@@ -215,6 +215,51 @@
   letter-spacing: 1rpx;
 }
 
+.guest-invite-actions {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  width: 100%;
+  margin-top: 28rpx;
+  box-sizing: border-box;
+}
+
+.guest-invite-action {
+  margin: 0;
+  min-width: 0;
+  min-height: 80rpx;
+  padding: 0 12rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(90deg, #F09A68 0%, #E98657 55%, #E07542 100%);
+  box-shadow: 0 10rpx 24rpx rgba(233, 134, 87, 0.28);
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 80rpx;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.guest-invite-action::after {
+  border: none;
+}
+
+.guest-invite-action-alt {
+  background: #FFFFFF;
+  color: #E98657;
+  border: 2rpx solid #E98657;
+  box-shadow: none;
+}
+
+.guest-invite-action-hover {
+  opacity: 0.92;
+}
+
 .share-actions-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -348,6 +393,7 @@
 }
 .go-check-btn::after { border: none; }
 .expiring-tag { font-size: 20rpx; color: #E53935; background: #FFEBEE; padding: 2rpx 10rpx; border-radius: 8rpx; }
+.service-tag { font-size: 20rpx; color: #E98657; background: #FFF1E7; padding: 2rpx 10rpx; border-radius: 8rpx; }
 
 .quick-entry-row,
 .share-staff-row {

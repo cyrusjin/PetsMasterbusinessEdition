@@ -14,6 +14,7 @@ const { calcWashFee, formatWashPricingSummary } = require('../../../utils/washPr
 const { resolveStorePickupDrivingDistance } = require('../../utils/mapDistance');
 const { choosePickupLocation, formatLocationAddress, getPickupLocationValidationMessage } = require('../../../utils/location');
 const { isOrderEditTimeOnly } = require('../../utils/orderActions');
+const { getOrderServiceKind } = require('../../../utils/dailyCheckable');
 const { showValidationAlert } = require('../../../utils/formAlert');
 const { getPetBookingConflictMessage, toRangeMs } = require('../../utils/bookingOverlap');
 const { calcMultiPetBoardingFees } = require('../../../utils/multiPetPricing');
@@ -79,6 +80,12 @@ Page({
     const order = app.getOrders().find((o) => o.id === this.orderId);
     if (!order) {
       wx.showToast({ title: '订单不存在', icon: 'none' });
+      setTimeout(() => wx.navigateBack(), 800);
+      return;
+    }
+    const kind = getOrderServiceKind(order);
+    if (kind === 'wash' || kind === 'homeFeeding') {
+      wx.showToast({ title: '洗护和上门预约暂不支持改单', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 800);
       return;
     }

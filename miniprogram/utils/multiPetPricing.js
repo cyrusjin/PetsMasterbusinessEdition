@@ -5,17 +5,34 @@ const { findCustomPrice } = require('./customPricing');
 const {
   normalizeLongTermDiscount,
   applyLongTermDiscount,
-  buildLongTermDiscountTip
+  buildLongTermDiscountTip,
+  parseZhe,
+  formatZhe
 } = require('./longTermDiscount');
 
 function getDefaultMultiPetDiscount() {
   return {
     enabled: false,
     mode: 'fromSecondPercent',
+    zhe: 0,
     percent: 0,
     amount: 0,
     applyTo: 'boarding'
   };
+}
+
+function zheToPercentOff(zhe) {
+  return Math.round((10 - zhe) * 10 * 100) / 100;
+}
+
+/** 优先读 zhe（折）；旧数据 percent 表示减免百分比，如 10 表示减 10% = 9 折。 */
+function resolveMultiPetZhe(src) {
+  const srcObj = src && typeof src === 'object' ? src : {};
+  const fromZhe = parseZhe(srcObj.zhe);
+  if (fromZhe != null) return fromZhe;
+  const percent = parseFloat(srcObj.percent);
+  if (!Number.isFinite(percent) || percent <= 0 || percent >= 100) return null;
+  return parseZhe((100 - percent) / 10);
 }
 
 function normalizeMultiPetDiscount(raw) {
@@ -24,16 +41,15 @@ function normalizeMultiPetDiscount(raw) {
   const mode = src.mode === 'fromSecondFixedPerDay'
     ? 'fromSecondFixedPerDay'
     : 'fromSecondPercent';
-  let percent = parseFloat(src.percent);
-  if (!Number.isFinite(percent) || percent < 0) percent = 0;
-  if (percent > 100) percent = 100;
-  percent = Math.round(percent);
+  const zhe = resolveMultiPetZhe(src);
+  const percent = zhe != null ? zheToPercentOff(zhe) : 0;
   let amount = parseFloat(src.amount);
   if (!Number.isFinite(amount) || amount < 0) amount = 0;
   amount = roundMoney(amount);
   return {
     enabled,
     mode,
+    zhe: enabled && mode === 'fromSecondPercent' && zhe != null ? zhe : 0,
     percent: enabled && mode === 'fromSecondPercent' ? percent : 0,
     amount: enabled && mode === 'fromSecondFixedPerDay' ? amount : 0,
     applyTo: 'boarding'
@@ -118,7 +134,9 @@ function calcMultiPetBoardingFees({
     const usesFixedPrice = appliesMultiPetRule && discount.mode === 'fromSecondFixedPerDay';
     const multiFactor = (!appliesMultiPetRule || usesFixedPrice)
       ? 1
-      : Math.max(0, 1 - (discount.percent / 100));
+      : (discount.zhe
+        ? Math.max(0, Math.min(1, discount.zhe / 10))
+        : Math.max(0, 1 - (discount.percent / 100)));
     const fixedBreakdown = usesFixedPrice
       ? calcStayFeeBreakdown(
         startDate, endDate, startTime, endTime, rules, discount.amount
@@ -179,8 +197,11 @@ function calcMultiPetBoardingFees({
   const tipParts = [];
   if (hasMultiPetDiscount && discount.mode === 'fromSecondFixedPerDay') {
     tipParts.push(`多宠优惠：第 2 只起按 ¥${formatMoney(discount.amount)}/天计费`);
-  } else if (hasMultiPetDiscount && discount.percent > 0) {
-    tipParts.push(`多宠优惠：第 2 只起寄养费减 ${formatMoney(discount.percent)}%`);
+  } else if (hasMultiPetDiscount && (discount.zhe > 0 || discount.percent > 0)) {
+    const zheText = formatZhe(discount.zhe) || formatZhe(resolveMultiPetZhe(discount));
+    tipParts.push(zheText
+      ? `多宠优惠：第 2 只起寄养费 ${zheText} 折`
+      : `多宠优惠：第 2 只起寄养费减 ${formatMoney(discount.percent)}%`);
   }
   if (hasLongTermDiscount) {
     tipParts.push(buildLongTermDiscountTip(longTermDiscount, stayDays));
@@ -218,21 +239,31 @@ function validateMultiPetDiscount(raw) {
     if (!Number.isFinite(amount) || amount < 0) return '第二只加价金额不能小于 0';
     return '';
   }
+  const hasZhe = raw.zhe != null && raw.zhe !== '' && Number(raw.zhe) !== 0;
   const rawPercent = raw.percent;
+  const hasPercent = rawPercent != null && rawPercent !== '' && Number(rawPercent) !== 0;
   // 开启但未填：非必填，保存时视为未启用
-  if (rawPercent === '' || rawPercent == null) return '';
-  if (typeof rawPercent === 'string' && !/^\d+$/.test(String(rawPercent).trim())) {
-    return '多宠折扣比例须为整数';
+  if (!hasZhe && !hasPercent) return '';
+  if (hasZhe) {
+    if (typeof raw.zhe === 'string' && !/^\d+(\.\d)?$/.test(String(raw.zhe).trim())) {
+      return '多宠折扣最多 1 位小数，例如 8.5 表示 8.5 折';
+    }
+    const zhe = parseZhe(raw.zhe);
+    if (zhe == null) return '多宠折扣需在 0.1–9.9 折之间，例如 8.5 表示 8.5 折';
+    return '';
   }
-  const percent = Number(rawPercent);
-  if (!Number.isInteger(percent)) return '多宠折扣比例须为整数';
-  if (percent < 0 || percent > 100) return '多宠折扣需在 0–100 之间';
+  if (typeof rawPercent === 'string' && !/^\d+(\.\d)?$/.test(String(rawPercent).trim())) {
+    return '多宠折扣最多 1 位小数，例如 8.5 表示 8.5 折';
+  }
+  const zheFromPercent = parseZhe((100 - Number(rawPercent)) / 10);
+  if (zheFromPercent == null) return '多宠折扣需在 0.1–9.9 折之间，例如 8.5 表示 8.5 折';
   return '';
 }
 
 module.exports = {
   getDefaultMultiPetDiscount,
   normalizeMultiPetDiscount,
+  resolveMultiPetZhe,
   getPetBasePrice,
   resolvePetRoomType,
   calcMultiPetBoardingFees,

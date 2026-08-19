@@ -1,0 +1,48 @@
+<view class="reserve-picker-root">
+  <view class="reserve-picker-mask" catchtouchmove="onTouchMove" bindtap="onClose"></view>
+  <view class="reserve-picker-sheet" catchtap="onTouchMove">
+    <view class="reserve-picker-head">
+      <view>
+        <text class="reserve-picker-title">{{pickerTitle}}</text>
+        <text class="reserve-picker-sub">{{pickerSub}}</text>
+      </view>
+      <text class="reserve-picker-close" bindtap="onClose">关闭</text>
+    </view>
+    <view wx:if="{{!cards.length}}" class="reserve-picker-empty">请先在门店设置中开通并完善至少一项服务</view>
+    <block wx:if="{{isProxy}}">
+      <view
+        wx:for="{{cards}}"
+        wx:key="key"
+        class="reserve-picker-item"
+        hover-class="reserve-picker-item-hover"
+        bindtap="onPickProxy"
+        data-service-line="{{item.key}}"
+      >
+        <text class="reserve-picker-emoji">{{item.emoji}}</text>
+        <view class="reserve-picker-copy">
+          <text class="reserve-picker-name">{{item.pickerTitle || item.name}}</text>
+          <text class="reserve-picker-desc">{{item.pickerDesc}}</text>
+        </view>
+        <text class="reserve-picker-arrow">›</text>
+      </view>
+    </block>
+    <block wx:else>
+      <button
+        wx:for="{{cards}}"
+        wx:key="key"
+        class="reserve-picker-item"
+        open-type="share"
+        data-share-type="customer"
+        data-service-line="{{item.key}}"
+        hover-class="reserve-picker-item-hover"
+      >
+        <text class="reserve-picker-emoji">{{item.emoji}}</text>
+        <view class="reserve-picker-copy">
+          <text class="reserve-picker-name">{{item.pickerTitle || item.name}}</text>
+          <text class="reserve-picker-desc">{{item.pickerDesc}}</text>
+        </view>
+        <text class="reserve-picker-arrow">›</text>
+      </button>
+    </block>
+  </view>
+</view>

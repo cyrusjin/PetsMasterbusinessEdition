@@ -14,11 +14,21 @@
     <copyable-detail-row label="服务类型" value="{{order.serviceType}}" />
     <copyable-detail-row label="宠主" value="{{order.contactName || order.userNickName}}" />
     <copyable-detail-row label="联系电话" value="{{order.contactPhone || order.userPhone}}" />
+    <block wx:if="{{order.serviceLine === 'homeFeeding'}}">
+      <copyable-detail-row label="小区地址" value="{{order.visitAddress}}" stack="{{true}}" />
+      <copyable-detail-row wx:if="{{order.visitLocationName && order.visitLocationName !== order.visitAddress}}" label="小区名称" value="{{order.visitLocationName}}" />
+      <copyable-detail-row label="门牌号" value="{{order.visitRoomNo}}" />
+      <copyable-detail-row label="开门方式" value="{{order.visitEntryMethod}}" stack="{{true}}" />
+    </block>
     <copyable-detail-row wx:if="{{order.contactIdCard}}" label="身份证号" value="{{order.contactIdCard}}" />
     <copyable-detail-row wx:if="{{order.emergencyPhone}}" label="紧急联系电话" value="{{order.emergencyPhone}}" />
-    <copyable-detail-row label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
-    <copyable-detail-row label="{{order.billingMode === 'custom' ? '收费项目' : '房间'}}" value="{{order.roomName}}" />
-    <copyable-detail-row label="接送服务" value="{{order.needPickup ? '需要' : '不需要'}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'wash'}}" label="到店时间" value="{{order.startDate}} {{order.startTime}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding'}}" label="上门时间" value="{{order.startDate}}{{order.endDate && order.endDate !== order.startDate ? ' ~ ' + order.endDate : ''}} {{order.startTime}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding' && order.roomName}}" label="服务项目" value="{{order.roomName}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'wash' && order.roomName}}" label="洗护项目" value="{{order.roomName}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="{{order.billingMode === 'custom' ? '收费项目' : '房间'}}" value="{{order.roomName}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="接送服务" value="{{order.needPickup ? '需要' : '不需要'}}" />
     <block wx:if="{{order.needPickup}}">
       <copyable-detail-row label="接送地址" value="{{order.pickupAddress}}" stack="{{true}}" />
       <copyable-detail-row label="接送联系电话" value="{{order.pickupContactPhone}}" />
@@ -26,16 +36,16 @@
       <copyable-detail-row label="接送范围" value="{{pickupLegsText}}" />
       <copyable-detail-row label="接送进度" value="{{pickupProgressText}}" />
     </block>
-    <copyable-detail-row label="洗护服务" value="{{order.needWash ? '需要' : '不需要'}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="洗护服务" value="{{order.needWash ? '需要' : '不需要'}}" />
     <copyable-detail-row
       wx:if="{{order.valueAddedServices && order.valueAddedServices.length}}"
       label="增值服务"
       value="{{valueAddedServicesText}}"
       stack="{{true}}"
     />
-    <copyable-detail-row label="天数" value="{{order.days}}天" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="天数" value="{{order.days}}天" />
     <copyable-detail-row label="特殊需求" value="{{order.specialNeeds}}" stack="{{true}}" />
-    <copyable-detail-row wx:if="{{order.contractSigned || order.contractSnapshot || order.contractId}}" label="协议状态" value="{{order.contractSigned ? '已签署' : '待签署'}}" />
+    <copyable-detail-row wx:if="{{(order.contractSigned || order.contractSnapshot || order.contractId) && (order.serviceLine === 'boarding' || !order.serviceLine)}}" label="协议状态" value="{{order.contractSigned ? '已签署' : '待签署'}}" />
   </view>
 
   <view class="card" wx:if="{{order.editPendingConfirm}}">
@@ -98,9 +108,14 @@
   <view class="card">
     <view class="card-title">操作</view>
     <view class="detail-actions">
-      <view class="detail-action-row" wx:if="{{order.status === 'boarding' || order.contractSigned || order.contractSnapshot || order.contractId}}">
+      <view class="detail-action-row" wx:if="{{canDailyCheck || order.status === 'boarding' || order.status === 'completed' || order.contractSigned || order.contractSnapshot || order.contractId}}">
         <view
-          wx:if="{{order.status === 'boarding'}}"
+          wx:if="{{canDailyCheck}}"
+          class="detail-action-btn detail-action-primary"
+          bindtap="onGoDailyCheck"
+        >去打卡</view>
+        <view
+          wx:if="{{canDailyCheck || order.status === 'boarding' || order.status === 'completed'}}"
           class="detail-action-btn detail-action-blue"
           bindtap="onGoDaily"
         >打卡记录</view>
@@ -112,10 +127,10 @@
       </view>
       <view class="detail-action-row" wx:if="{{(canMerchantOperate || order.editPendingConfirm) && (order.status === 'boarding' || order.status === 'pending' || order.status === 'awaiting_arrival')}}">
         <view
-          wx:if="{{canMerchantOperate && order.status === 'boarding'}}"
+          wx:if="{{canMerchantOperate && (order.status === 'boarding' || canDailyCheck)}}"
           class="detail-action-btn detail-action-danger"
           bindtap="onComplete"
-        >结束寄养</view>
+        >{{completeActionLabel || '结束寄养'}}</view>
         <view
           wx:if="{{!order.pricePendingConfirm && (order.status === 'pending' || order.status === 'awaiting_arrival' || order.status === 'boarding')}}"
           class="detail-action-btn detail-action-warning"
@@ -126,6 +141,13 @@
         class="detail-action-btn detail-action-primary detail-action-full {{exporting ? 'is-disabled' : ''}}"
         bindtap="onExportShare"
       >{{exporting ? '导出中...' : '导出订单详情并分享给好友'}}</view>
+      <button
+        wx:if="{{canShareProxy}}"
+        class="detail-action-btn detail-action-primary detail-action-full detail-action-share-btn"
+        open-type="share"
+        data-share-type="proxy"
+        hover-class="none"
+      >把代下单发送给客人</button>
     </view>
   </view>
 

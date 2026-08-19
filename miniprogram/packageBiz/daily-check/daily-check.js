@@ -4,23 +4,14 @@ const dailyMedia = require('../utils/dailyMedia');
 const dailyApi = require('../../utils/daily');
 const merchantDemo = require('../../utils/merchantDemo');
 const { buildDailyCheckOrderOptions } = require('../../utils/dailyStats');
+const {
+  filterDailyCheckableOrders,
+  getDefaultCheckItems,
+  getDailyCheckItemsForOrders
+} = require('../../utils/dailyCheckable');
 const { showValidationAlert } = require('../../utils/formAlert');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const dailyQuickPhrases = require('../utils/dailyQuickPhrases');
-
-function getDefaultCheckItems() {
-  return [
-    { key: 'feed', label: '喂食', icon: '🍖', checked: false },
-    { key: 'water', label: '饮水', icon: '💧', checked: false },
-    { key: 'walk', label: '遛弯', icon: '🚶', checked: false },
-    { key: 'poop', label: '排便', icon: '💩', checked: false },
-    { key: 'play', label: '玩耍', icon: '🎾', checked: false },
-    { key: 'medicine', label: '喂药', icon: '💊', checked: false },
-    { key: 'spirit', label: '精神状态', icon: '😊', checked: true },
-    { key: 'arrival', label: '到店检查', icon: '🏠', checked: false },
-    { key: 'departure', label: '离店检查', icon: '🚪', checked: false }
-  ];
-}
 
 function getMediaStats(mediaList) {
   const list = mediaList || [];
@@ -143,10 +134,20 @@ Page({
 
     const checks = Array.isArray(log.checks) ? log.checks : [];
     const checkSet = new Set(checks);
-    const checkItems = getDefaultCheckItems().map((item) => ({
+    const sourceOrder = (app.getOrders() || []).find((item) => item.id === orderId);
+    const checkItems = getDailyCheckItemsForOrders(sourceOrder ? [sourceOrder] : []).map((item) => ({
       ...item,
       checked: checkSet.has(item.label)
     }));
+    checks.forEach((label) => {
+      if (!label || checkItems.some((item) => item.label === label)) return;
+      checkItems.push({
+        key: `extra_${label}`,
+        label,
+        icon: '✓',
+        checked: true
+      });
+    });
 
     const mediaList = [];
     (log.images || []).forEach((path) => {
@@ -260,23 +261,34 @@ Page({
   },
 
   _applyFromCache(logs) {
-    const boardingOrders = app.getOrders().filter((o) => o.status === 'boarding');
+    const checkableOrders = filterDailyCheckableOrders(app.getOrders());
     const selectedSet = new Set(this._selectedOrderIds);
     if (this._prefillOrderId) {
       selectedSet.add(this._prefillOrderId);
     }
-    const orderOptions = buildDailyCheckOrderOptions(boardingOrders, logs || [], {
+    const orderOptions = buildDailyCheckOrderOptions(checkableOrders, logs || [], {
       selectedIds: [...selectedSet]
     });
     this._selectedOrderIds = orderOptions.filter((item) => item.selected).map((item) => item.id);
     if (this._prefillOrderId) {
       this._prefillOrderId = '';
     }
-    this.setData({
+    const patch = {
       orderOptions,
       selectedCount: this._selectedOrderIds.length,
       loadingPets: false
-    });
+    };
+    if (!this.data.editMode) {
+      patch.checkItems = this._buildCheckItems(checkableOrders);
+    }
+    this.setData(patch);
+  },
+
+  _buildCheckItems(allCheckableOrders) {
+    const ids = new Set(this._selectedOrderIds);
+    const selected = (allCheckableOrders || filterDailyCheckableOrders(app.getOrders()))
+      .filter((order) => ids.has(order.id));
+    return getDailyCheckItemsForOrders(selected, this.data.checkItems);
   },
 
   _refreshData({ force } = {}) {
@@ -298,8 +310,8 @@ Page({
       return refreshMerchantOrders(app, { force });
     }).then(() => {
       if (!app.canAccessMerchantBackend()) return;
-      const boardingOrders = app.getOrders().filter((o) => o.status === 'boarding');
-      const orderIds = boardingOrders.map((o) => o.id).filter(Boolean);
+      const checkableOrders = filterDailyCheckableOrders(app.getOrders());
+      const orderIds = checkableOrders.map((o) => o.id).filter(Boolean);
 
       if (app.isMerchantDemoMode()) {
         this._applyFromCache(merchantDemo.getDemoDailyLogs());
@@ -337,7 +349,8 @@ Page({
     this._selectedOrderIds = orderOptions.filter((item) => item.selected).map((item) => item.id);
     this.setData({
       orderOptions,
-      selectedCount: this._selectedOrderIds.length
+      selectedCount: this._selectedOrderIds.length,
+      checkItems: this._buildCheckItems()
     });
   },
 
@@ -354,7 +367,8 @@ Page({
     this._selectedOrderIds = allSelected ? [] : orderOptions.map((item) => item.id);
     this.setData({
       orderOptions,
-      selectedCount: this._selectedOrderIds.length
+      selectedCount: this._selectedOrderIds.length,
+      checkItems: this._buildCheckItems()
     });
   },
 
@@ -587,7 +601,7 @@ Page({
       desc: '',
       mediaList: [],
       canAddMedia: true,
-      checkItems: getDefaultCheckItems()
+      checkItems: this._buildCheckItems()
     });
     this._syncQuickPhrases('');
   },

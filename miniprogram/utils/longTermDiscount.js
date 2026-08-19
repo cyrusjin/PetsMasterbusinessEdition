@@ -1,5 +1,6 @@
 /**
- * 长期寄养折扣：梯度「住满 N 天 → X 折」（8 折 = 付原价 80%）。
+ * 长期寄养折扣：梯度「住满 N 天 → X 折」（8.5 折 = 付原价 85%）。
+ * 折扣支持一位小数，范围 0.1–9.9。
  * 仅作用于寄养费，接送费与押金不参与。
  * 兼容旧结构 { enabled, minDays, zhe }。
  */
@@ -33,13 +34,41 @@ function parseIntInRange(value, min, max) {
   return n;
 }
 
+/** 0.1–9.9 折，最多一位小数。8.5 表示按原价 85% 收取。 */
+function parseZhe(value) {
+  if (value === '' || value == null) return null;
+  const n = Number(String(value).trim());
+  if (!Number.isFinite(n)) return null;
+  const zhe = Math.round(n * 10) / 10;
+  if (zhe < 0.1 || zhe > 9.9) return null;
+  return zhe;
+}
+
+function sanitizeZheInput(value) {
+  let text = String(value == null ? '' : value).replace(/[^\d.]/g, '');
+  const dot = text.indexOf('.');
+  if (dot >= 0) {
+    text = `${text.slice(0, dot + 1)}${text.slice(dot + 1).replace(/\./g, '').slice(0, 1)}`;
+    const intPart = text.slice(0, text.indexOf('.'));
+    const decPart = text.slice(text.indexOf('.'));
+    return `${intPart.slice(0, 2)}${decPart}`;
+  }
+  return text.slice(0, 2);
+}
+
+function formatZhe(zhe) {
+  const n = parseZhe(zhe);
+  if (n == null) return '';
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
 function createEmptyLongTermTier() {
   return { minDays: '', zhe: '' };
 }
 
 function legacyToTiers(src) {
   const minDays = parsePositiveInt(src.minDays);
-  const zhe = parseIntInRange(src.zhe, 1, 9);
+  const zhe = parseZhe(src.zhe);
   if (minDays && zhe) return [{ minDays, zhe }];
   return [];
 }
@@ -52,7 +81,7 @@ function normalizeTier(rawTiers, src) {
   const mapped = list.map((tier) => {
     const item = tier && typeof tier === 'object' ? tier : {};
     const minDays = parsePositiveInt(item.minDays);
-    const zhe = parseIntInRange(item.zhe, 1, 9);
+    const zhe = parseZhe(item.zhe);
     if (!minDays || !zhe) return null;
     return { minDays, zhe };
   }).filter(Boolean);
@@ -85,7 +114,7 @@ function normalizeLongTermTiersForEdit(raw) {
   if (!list || !list.length) {
     const legacy = legacyToTiers(src);
     if (legacy.length) {
-      return legacy.map((t) => ({ minDays: String(t.minDays), zhe: String(t.zhe) }));
+      return legacy.map((t) => ({ minDays: String(t.minDays), zhe: formatZhe(t.zhe) }));
     }
     return [createEmptyLongTermTier()];
   }
@@ -93,7 +122,7 @@ function normalizeLongTermTiersForEdit(raw) {
     const item = tier && typeof tier === 'object' ? tier : {};
     return {
       minDays: item.minDays != null && item.minDays !== '' ? String(item.minDays) : '',
-      zhe: item.zhe != null && item.zhe !== '' ? String(item.zhe) : ''
+      zhe: item.zhe != null && item.zhe !== '' ? (formatZhe(item.zhe) || String(item.zhe)) : ''
     };
   });
   return edited.length ? edited : [createEmptyLongTermTier()];
@@ -116,14 +145,11 @@ function removeLongTermTier(tiers, index) {
 function updateLongTermTierField(tiers, index, field, value) {
   const list = Array.isArray(tiers) ? tiers.map((t) => ({ ...t })) : [];
   if (index < 0 || index >= list.length) return list;
-  const next = String(value == null ? '' : value).replace(/[^\d]/g, '');
+  const next = field === 'zhe'
+    ? sanitizeZheInput(value)
+    : String(value == null ? '' : value).replace(/[^\d]/g, '');
   list[index] = { ...list[index], [field]: next };
   return list;
-}
-
-function formatZhe(zhe) {
-  const n = parseIntInRange(zhe, 1, 9);
-  return n != null ? String(n) : '';
 }
 
 function matchLongTermTier(discount, stayDays) {
@@ -210,12 +236,11 @@ function validateLongTermDiscount(raw) {
     if (!Number.isInteger(minDays) || minDays <= 0) return `${label}天数须为正整数`;
     if (minDays > 365) return `${label}天数不能超过 365`;
 
-    if (typeof zheRaw === 'string' && !/^\d+$/.test(String(zheRaw).trim())) {
-      return `${label}折扣须为整数`;
+    if (typeof zheRaw === 'string' && !/^\d+(\.\d)?$/.test(String(zheRaw).trim())) {
+      return `${label}折扣最多 1 位小数，例如 8.5 表示 8.5 折`;
     }
-    const zhe = Number(zheRaw);
-    if (!Number.isInteger(zhe)) return `${label}折扣须为整数`;
-    if (zhe < 1 || zhe > 9) return `${label}折扣需在 1–9 折之间（如 8 表示 8 折）`;
+    const zhe = parseZhe(zheRaw);
+    if (zhe == null) return `${label}折扣需在 0.1–9.9 折之间，例如 8.5 表示 8.5 折`;
 
     if (seen[minDays]) return `天数 ${minDays} 重复，请合并或修改梯度`;
     seen[minDays] = true;
@@ -232,6 +257,8 @@ module.exports = {
   removeLongTermTier,
   updateLongTermTierField,
   formatZhe,
+  parseZhe,
+  sanitizeZheInput,
   matchLongTermTier,
   getLongTermDiscountFactor,
   applyLongTermDiscount,

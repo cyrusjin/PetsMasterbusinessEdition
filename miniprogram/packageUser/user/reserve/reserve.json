@@ -1,5 +1,6 @@
 {
-  "navigationBarTitleText": "预约寄养",
+  "navigationBarTitleText": "预约服务",
+  "enableShareAppMessage": true,
   "usingComponents": {
     "calendar": "/components/calendar/calendar",
     "boarding-contract-modal": "/components/boarding-contract-modal/boarding-contract-modal",

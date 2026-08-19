@@ -1,5 +1,80 @@
 <view class="order-fee-detail">
-  <block wx:if="{{detail.ready}}">
+  <block wx:if="{{detail.isHomeVisit}}">
+    <view class="fee-breakdown">
+      <view class="fee-breakdown-title copyable-fee" bindtap="onCopyValue" data-value="费用明细（¥{{detail.basePriceText}}/次）">费用明细（¥{{detail.basePriceText}}/次）</view>
+    </view>
+    <view class="fee-extra-row copyable-fee" bindtap="onCopyValue" data-value="上门喂养费 ¥{{detail.visitFeeText}}">
+      <text class="text-gray">上门喂养费</text>
+      <text>¥{{detail.visitFeeText}}</text>
+    </view>
+    <view
+      class="fee-sub-row copyable-fee"
+      wx:for="{{detail.visitItems}}"
+      wx:key="id"
+      bindtap="onCopyValue"
+      data-value="{{item.name}} ¥{{item.feeText}}"
+    >
+      <text class="fee-sub-name">{{item.name}}</text>
+      <text class="fee-sub-amount">¥{{item.feeText}}</text>
+    </view>
+    <view class="fee-extra-row copyable-fee" wx:if="{{detail.visitPackageName}}" bindtap="onCopyValue" data-value="{{detail.visitPackageName}}">
+      <text class="text-gray">服务项目</text>
+      <text>{{detail.visitPackageName}}</text>
+    </view>
+    <text class="charge-summary-tip copyable-fee" wx:if="{{detail.visitCalcText}}" bindtap="onCopyValue" data-value="{{detail.visitCalcText}}">{{detail.visitCalcText}}</text>
+    <text class="charge-summary-tip copyable-fee" wx:if="{{detail.visitDistanceText}}" bindtap="onCopyValue" data-value="{{detail.visitDistanceText}}">{{detail.visitDistanceText}}</text>
+    <block wx:if="{{detail.hasValueAdded}}">
+      <view class="fee-extra-row copyable-fee" wx:for="{{detail.valueAddedItems}}" wx:key="id" bindtap="onCopyValue" data-value="{{item.name}} ¥{{item.priceText}}">
+        <text class="text-gray">{{item.name}}</text>
+        <text>¥{{item.priceText}}</text>
+      </view>
+    </block>
+    <view class="flex-between fee-grand-total copyable-fee" bindtap="onCopyValue" data-value="费用合计 ¥{{detail.totalFeeText}}">
+      <text>费用合计</text>
+      <text class="fee-highlight">¥{{detail.totalFeeText}}</text>
+    </view>
+  </block>
+  <block wx:elif="{{detail.isWashLine}}">
+    <view class="fee-breakdown">
+      <view class="fee-breakdown-title copyable-fee" bindtap="onCopyValue" data-value="费用明细">费用明细</view>
+    </view>
+    <view class="fee-extra-row copyable-fee" bindtap="onCopyValue" data-value="洗护 ¥{{detail.washFeeText}}">
+      <text class="text-gray">洗护服务</text>
+      <text>¥{{detail.washFeeText}}</text>
+    </view>
+    <view
+      class="fee-sub-row copyable-fee"
+      wx:for="{{detail.washItems}}"
+      wx:key="id"
+      bindtap="onCopyValue"
+      data-value="{{item.name}} ¥{{item.feeText}}"
+    >
+      <text class="fee-sub-name">{{item.name}}</text>
+      <text class="fee-sub-amount">¥{{item.feeText}}</text>
+    </view>
+    <view
+      class="fee-extra-row copyable-fee"
+      wx:for="{{detail.washValueAddedItems}}"
+      wx:key="id"
+      bindtap="onCopyValue"
+      data-value="{{item.name}} ¥{{item.priceText}}"
+    >
+      <text class="text-gray">{{item.name}}</text>
+      <text>¥{{item.priceText}}</text>
+    </view>
+    <block wx:if="{{detail.hasValueAdded}}">
+      <view class="fee-extra-row copyable-fee" wx:for="{{detail.valueAddedItems}}" wx:key="id" bindtap="onCopyValue" data-value="{{item.name}} ¥{{item.priceText}}">
+        <text class="text-gray">{{item.name}}</text>
+        <text>¥{{item.priceText}}</text>
+      </view>
+    </block>
+    <text class="charge-summary-tip copyable-fee" wx:if="{{detail.washCalcText}}" bindtap="onCopyValue" data-value="{{detail.washCalcText}}">{{detail.washCalcText}}</text>
+    <view class="flex-between fee-grand-total copyable-fee" bindtap="onCopyValue" data-value="费用合计 ¥{{detail.totalFeeText}}">
+      <text>费用合计</text>
+      <text class="fee-highlight">¥{{detail.totalFeeText}}</text>
+    </view>
+  </block>
+  <block wx:elif="{{detail.ready}}">
     <view class="fee-breakdown">
       <view class="fee-breakdown-title copyable-fee" bindtap="onCopyValue" data-value="费用明细（¥{{detail.basePriceText}}/天）">费用明细（¥{{detail.basePriceText}}/天）</view>
       <view class="fee-day-row copyable-fee" wx:for="{{detail.dailyBreakdown}}" wx:key="date" bindtap="onCopyValue" data-value="{{item.dateDisplay}} {{item.dayLabel}} {{item.factorText}} ¥{{item.feeText}}">
@@ -19,10 +94,32 @@
       <text class="text-gray">接送运费</text>
       <text>¥{{detail.shippingFeeText}}</text>
     </view>
-    <view class="fee-extra-row copyable-fee" wx:if="{{detail.needWash}}" bindtap="onCopyValue" data-value="洗护 ¥{{detail.washFeeText}}">
-      <text class="text-gray">洗护服务</text>
-      <text>¥{{detail.washFeeText}}</text>
-    </view>
+    <block wx:if="{{detail.needWash}}">
+      <view class="fee-extra-row copyable-fee" bindtap="onCopyValue" data-value="洗护 ¥{{detail.washFeeText}}">
+        <text class="text-gray">洗护服务</text>
+        <text>¥{{detail.washFeeText}}</text>
+      </view>
+      <view
+        class="fee-sub-row copyable-fee"
+        wx:for="{{detail.washItems}}"
+        wx:key="id"
+        bindtap="onCopyValue"
+        data-value="{{item.name}} ¥{{item.feeText}}"
+      >
+        <text class="fee-sub-name">{{item.name}}</text>
+        <text class="fee-sub-amount">¥{{item.feeText}}</text>
+      </view>
+      <view
+        class="fee-extra-row copyable-fee"
+        wx:for="{{detail.washValueAddedItems}}"
+        wx:key="id"
+        bindtap="onCopyValue"
+        data-value="{{item.name}} ¥{{item.priceText}}"
+      >
+        <text class="text-gray">{{item.name}}</text>
+        <text>¥{{item.priceText}}</text>
+      </view>
+    </block>
     <block wx:if="{{detail.hasValueAdded}}">
       <view class="fee-extra-row copyable-fee" wx:for="{{detail.valueAddedItems}}" wx:key="id" bindtap="onCopyValue" data-value="{{item.name}} ¥{{item.priceText}}">
         <text class="text-gray">{{item.name}}</text>
@@ -48,10 +145,32 @@
       <text class="text-gray">接送运费</text>
       <text>¥{{detail.shippingFeeText}}</text>
     </view>
-    <view class="fee-extra-row copyable-fee" wx:if="{{detail.needWash}}" bindtap="onCopyValue" data-value="洗护 ¥{{detail.washFeeText}}">
-      <text class="text-gray">洗护服务</text>
-      <text>¥{{detail.washFeeText}}</text>
-    </view>
+    <block wx:if="{{detail.needWash}}">
+      <view class="fee-extra-row copyable-fee" bindtap="onCopyValue" data-value="洗护 ¥{{detail.washFeeText}}">
+        <text class="text-gray">洗护服务</text>
+        <text>¥{{detail.washFeeText}}</text>
+      </view>
+      <view
+        class="fee-sub-row copyable-fee"
+        wx:for="{{detail.washItems}}"
+        wx:key="id"
+        bindtap="onCopyValue"
+        data-value="{{item.name}} ¥{{item.feeText}}"
+      >
+        <text class="fee-sub-name">{{item.name}}</text>
+        <text class="fee-sub-amount">¥{{item.feeText}}</text>
+      </view>
+      <view
+        class="fee-extra-row copyable-fee"
+        wx:for="{{detail.washValueAddedItems}}"
+        wx:key="id"
+        bindtap="onCopyValue"
+        data-value="{{item.name}} ¥{{item.priceText}}"
+      >
+        <text class="text-gray">{{item.name}}</text>
+        <text>¥{{item.priceText}}</text>
+      </view>
+    </block>
     <block wx:if="{{detail.hasValueAdded}}">
       <view class="fee-extra-row copyable-fee" wx:for="{{detail.valueAddedItems}}" wx:key="id" bindtap="onCopyValue" data-value="{{item.name}} ¥{{item.priceText}}">
         <text class="text-gray">{{item.name}}</text>

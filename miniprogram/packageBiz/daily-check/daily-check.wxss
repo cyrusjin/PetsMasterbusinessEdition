@@ -9,6 +9,7 @@
 .pet-select-name-row { display: flex; align-items: center; gap: 12rpx; flex-wrap: wrap; }
 .pet-select-name { font-size: 28rpx; color: #333333; font-weight: 600; }
 .pet-select-meta { font-size: 22rpx; color: #666666; }
+.service-tag { font-size: 20rpx; color: #E98657; background: #FFF1E7; padding: 2rpx 10rpx; border-radius: 8rpx; }
 .pet-select-date { display: block; font-size: 22rpx; margin-top: 6rpx; }
 .empty-hint { font-size: 24rpx; color: #999999; text-align: center; padding: 24rpx 0; }
 .check-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16rpx; }

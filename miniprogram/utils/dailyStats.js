@@ -1,3 +1,5 @@
+const { getOrderServiceKind, getOrderServiceLabel } = require('./dailyCheckable');
+
 function normalizeOrderId(value) {
   return String(value || '').trim();
 }
@@ -69,6 +71,9 @@ function buildBoardingListWithDailyStats(orders, pets, logs, refDate = new Date(
     const orderKey = normalizeOrderId(order.id || order.order_id);
     const todayCheckCount = orderKey ? (todayCountMap[orderKey] || 0) : 0;
     const expiringToday = isExpiringToday(order.endDate, refDate);
+    const serviceKind = getOrderServiceKind(order);
+    const serviceLabel = getOrderServiceLabel(serviceKind);
+    const isBoarding = serviceKind === 'boarding';
     // 只保留列表展示字段，减小 setData 体积
     return {
       id: order.id || order.order_id,
@@ -79,7 +84,11 @@ function buildBoardingListWithDailyStats(orders, pets, logs, refDate = new Date(
       todayCheckCount,
       needsCheck: todayCheckCount === 0,
       isExpiringToday: expiringToday,
-      expiring: expiringToday
+      expiring: expiringToday,
+      serviceKind,
+      serviceLabel,
+      dateLabel: isBoarding ? '到期' : '预约',
+      dateText: isBoarding ? (order.endDate || '') : (order.startDate || order.endDate || '')
     };
   });
 
@@ -112,7 +121,9 @@ function buildDailyCheckOrderOptions(orders, logs, options = {}) {
       petGender,
       petBreed,
       todayCheckCount,
-      selected: selectedSet.has(order.id)
+      selected: selectedSet.has(order.id),
+      serviceKind: getOrderServiceKind(order),
+      serviceLabel: getOrderServiceLabel(order)
     };
   }).sort((a, b) => {
     const countDiff = (a.todayCheckCount || 0) - (b.todayCheckCount || 0);

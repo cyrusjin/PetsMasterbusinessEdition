@@ -3,9 +3,9 @@ const { hasMerchantApplication, hasMerchantCapability } = require('../../utils/r
 
 const SCENE_COPY = {
   user: {
-    bannerText: '关注服务号接收毛孩子的寄养动态',
+    bannerText: '关注服务号接收毛孩子的服务动态',
     sheetTitle: '关注服务号',
-    sheetHeadline: '关注服务号，接收寄养动态',
+    sheetHeadline: '关注服务号，接收服务动态',
     sheetDesc: '商家打卡后，服务号会第一时间通知你'
   },
   merchant: {

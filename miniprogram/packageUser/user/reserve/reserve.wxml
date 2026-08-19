@@ -1,9 +1,73 @@
+<template name="washProductRow">
+  <view
+    class="wash-item-row {{item.selected ? 'is-selected' : ''}} {{item.disabled ? 'is-disabled' : ''}}"
+    bindtap="onSelectWashProduct"
+    data-id="{{item.id}}"
+  >
+    <view class="wash-item-photo" wx:if="{{item.photo}}" catchtap="onPreviewWashProductPhoto" data-url="{{item.photo}}">
+      <cached-image custom-class="wash-item-photo-img" src="{{item.photo}}" mode="aspectFill" />
+    </view>
+    <view class="wash-item-photo wash-item-photo-empty" wx:else>
+      <text class="wash-item-icon">🛁</text>
+    </view>
+    <view class="wash-item-main">
+      <view class="wash-item-head">
+        <text class="wash-item-name">{{item.title}}</text>
+        <text class="wash-item-price">¥{{item.priceText}}</text>
+      </view>
+      <text class="wash-item-desc" wx:if="{{item.bodyText}}">{{item.bodyText}}</text>
+      <text class="wash-item-disabled" wx:if="{{item.disabled}}">{{item.disabledTip}}</text>
+    </view>
+  </view>
+</template>
+<template name="washVasRow">
+  <view
+    class="wash-item-row {{item.selected ? 'is-selected' : ''}} {{item.disabled ? 'is-disabled' : ''}}"
+    bindtap="onSelectWashVas"
+    data-id="{{item.id}}"
+  >
+    <view class="wash-item-photo" wx:if="{{item.photo}}" catchtap="onPreviewWashProductPhoto" data-url="{{item.photo}}">
+      <cached-image custom-class="wash-item-photo-img" src="{{item.photo}}" mode="aspectFill" />
+    </view>
+    <view class="wash-item-photo wash-item-photo-empty" wx:else>
+      <text class="wash-item-icon">✨</text>
+    </view>
+    <view class="wash-item-main">
+      <view class="wash-item-head">
+        <text class="wash-item-name">{{item.title}}</text>
+        <text class="wash-item-price">¥{{item.priceText}}</text>
+      </view>
+      <text class="wash-item-desc" wx:if="{{item.bodyText}}">{{item.bodyText}}</text>
+      <text class="wash-item-disabled" wx:if="{{item.disabled}}">{{item.disabledTip}}</text>
+    </view>
+  </view>
+</template>
+
 <view class="container">
+  <view class="proxy-banner" wx:if="{{proxyMode}}">正在为当前客人下单。可多选其宠物，或再新增档案。保存后发给客人，对方打开即视为已确认。</view>
+
   <view class="card" wx:if="{{!store}}">
     <text class="empty-store-tip">请通过商家分享的店铺链接进入后再预约</text>
   </view>
 
-  <view class="card" wx:if="{{store && store.isOpen}}">
+  <view class="card" wx:if="{{store && store.isOpen && serviceOptions.length > 1 && !lockServiceLine}}">
+    <view class="card-title">选择服务 <text class="required-star">*</text></view>
+    <view class="service-line-tabs">
+      <view
+        class="service-line-tab {{serviceLine === item.key ? 'active' : ''}}"
+        wx:for="{{serviceOptions}}"
+        wx:key="key"
+        bindtap="onSelectServiceLine"
+        data-key="{{item.key}}"
+      >{{item.name}}</view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{store && store.isOpen && !serviceOptions.length}}">
+    <text class="empty-store-tip">商家暂未开放可预约服务，请稍后再试或联系商家</text>
+  </view>
+
+  <view class="card" wx:if="{{store && store.isOpen && serviceOptions.length}}">
     <view class="card-title"><text>选择宠物 <text class="required-star">*</text></text><text class="text-gray pet-multi-hint">可多选</text></view>
     <view class="reception-range-tip" wx:if="{{hasReceptionRestriction && receptionRangeText}}">本店接待：{{receptionRangeText}}</view>
     <view wx:if="{{pets.length > 0}}">
@@ -27,14 +91,14 @@
         <view wx:elif="{{item.receptionBlocked}}" class="tag tag-gray">不可选</view>
       </view>
     </view>
-    <view wx:elif="{{!pets.length}}" class="text-gray pet-empty-tip">暂无宠物档案</view>
+    <view wx:elif="{{!pets.length}}" class="text-gray pet-empty-tip">{{proxyMode ? '请先新增客人的宠物档案' : '暂无宠物档案'}}</view>
     <view wx:if="{{pets.length > 0 && selectablePetCount === 0}}" class="text-gray pet-empty-tip">
       当前宠物均不在本店接待范围内，请新增符合「{{receptionRangeText}}」的宠物档案
     </view>
     <button class="btn-add-pet" bindtap="onGoPets">+ 新增宠物档案</button>
   </view>
 
-  <view class="card" wx:if="{{store && store.isOpen && (billingMode === 'room' || billingMode === 'custom')}}">
+  <view class="card" wx:if="{{store && store.isOpen && serviceLine === 'boarding' && (billingMode === 'room' || billingMode === 'custom')}}">
     <view class="card-title">
       <text wx:if="{{billingMode === 'custom'}}">选择收费项目 <text class="required-star">*</text></text>
       <text wx:else>选择房间 <text class="required-star">*</text></text>
@@ -134,24 +198,164 @@
     <view class="text-gray pet-empty-tip" wx:if="{{!petRoomSections.length}}">请先选择宠物</view>
   </view>
 
-  <block wx:if="{{store && store.isOpen}}">
+  <block wx:if="{{store && store.isOpen && serviceOptions.length}}">
+    <view class="card" wx:if="{{serviceLine === 'wash'}}">
+      <view class="card-title"><text>选择洗护项目 <text class="required-star">*</text></text><text class="text-gray pet-multi-hint">每个品种限选一项</text></view>
+      <view class="wash-item-list" wx:if="{{washProductOptions.length}}">
+        <block wx:for="{{washProductOptions}}" wx:key="id">
+          <template is="washProductRow" data="{{item}}" />
+        </block>
+      </view>
+      <view class="text-gray pet-empty-tip" wx:else>暂无可预约的洗护项目</view>
+      <view class="wash-vas-block" wx:if="{{washVasOptions.length}}">
+        <view class="pickup-inline-head">
+          <text class="pickup-inline-title">增值服务（可多选）</text>
+        </view>
+        <view class="wash-item-list">
+          <block wx:for="{{washVasOptions}}" wx:key="id">
+            <template is="washVasRow" data="{{item}}" />
+          </block>
+        </view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{serviceLine === 'homeFeeding'}}">
+      <view class="card-title"><text>选择上门服务 <text class="required-star">*</text></text><text class="text-gray pet-multi-hint" wx:if="{{visitServices.length > 1}}">每个品种限选一项</text></view>
+      <text class="visit-kind-tip" wx:if="{{visitPetKindTip}}">{{visitPetKindTip}}</text>
+      <text class="visit-cover-tip" wx:if="{{visitCoverTip}}">{{visitCoverTip}}</text>
+      <view class="visit-service-list" wx:if="{{visitServices.length}}">
+        <view
+          class="visit-service-row {{item.selected ? 'is-selected' : ''}}"
+          wx:for="{{visitServices}}"
+          wx:for-index="visitIndex"
+          wx:key="id"
+          bindtap="onSelectVisitService"
+          data-service-id="{{item.id}}"
+          data-index="{{visitIndex}}"
+        >
+          <view class="visit-service-main">
+            <view class="visit-service-head">
+              <view class="visit-service-title">
+                <text class="visit-service-name">{{item.name}}</text>
+                <text class="visit-service-duration" wx:if="{{item.durationText}}">{{item.durationText}}</text>
+              </view>
+              <text class="visit-service-price">¥{{item.priceText}}/次</text>
+            </view>
+            <text class="visit-service-desc" wx:if="{{item.description}}">{{item.description}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="text-gray pet-empty-tip" wx:else>暂无适合已选宠物的上门服务</view>
+      <view class="visit-vas-block" wx:if="{{valueAddedList.length}}">
+        <view class="pickup-inline-head">
+          <text class="pickup-inline-title">增值服务（可选）</text>
+        </view>
+        <view class="extra-item" wx:for="{{valueAddedList}}" wx:key="id">
+          <view
+            class="extra-item-photo"
+            wx:if="{{item.photo}}"
+            catchtap="onPreviewValueAddedPhoto"
+            data-url="{{item.photo}}"
+          >
+            <cached-image custom-class="extra-item-photo-img" src="{{item.photo}}" mode="aspectFill" />
+          </view>
+          <view class="extra-item-main">
+            <view class="flex-between">
+              <text>{{item.name}}</text>
+              <text class="text-gray">¥{{item.priceText}}</text>
+            </view>
+            <text class="extra-item-desc" wx:if="{{item.description}}">{{item.description}}</text>
+          </view>
+          <switch checked="{{item.checked}}" bindchange="onValueAddedChange" data-id="{{item.id}}" color="#E98657" />
+        </view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{serviceLine === 'homeFeeding'}}">
+      <view class="card-title">上门地址 <text class="required-star">*</text></view>
+      <text class="visit-kind-tip" wx:if="{{visitPetKindTip}}">{{visitPetKindTip}}</text>
+      <view class="form-group">
+        <text class="form-label">小区地址 <text class="required-star">*</text></text>
+        <view class="pickup-address-box" bindtap="onChoosePickupAddress">
+          <view class="pickup-address-main">
+            <text class="pickup-address-text {{pickupAddress ? '' : 'pickup-address-placeholder'}}">{{pickupAddress || '点击选择小区地址'}}</text>
+            <text class="pickup-address-sub" wx:if="{{pickupLocationName && pickupLocationName !== pickupAddress}}">{{pickupLocationName}}</text>
+          </view>
+          <text class="pickup-address-action">选择小区</text>
+        </view>
+      </view>
+      <view class="form-group">
+        <text class="form-label">门牌号 <text class="required-star">*</text></text>
+        <input
+          class="form-input"
+          placeholder="如 3栋2单元501"
+          value="{{visitRoomNo}}"
+          bindinput="onVisitRoomNoInput"
+        />
+      </view>
+      <view class="form-group">
+        <text class="form-label">联系人 <text class="required-star">*</text></text>
+        <input
+          class="form-input"
+          placeholder="请输入联系人姓名"
+          value="{{contactName}}"
+          bindinput="onContactNameInput"
+          bindblur="onContactBlur"
+        />
+      </view>
+      <view class="form-group">
+        <text class="form-label">联系电话 <text class="required-star">*</text></text>
+        <input
+          class="form-input"
+          type="number"
+          maxlength="11"
+          placeholder="请输入11位手机号"
+          value="{{contactPhone}}"
+          bindinput="onContactPhoneInput"
+          bindblur="onContactBlur"
+        />
+      </view>
+      <view class="form-group visit-entry-group">
+        <text class="form-label">开门方式 <text class="required-star">*</text></text>
+        <textarea
+          class="form-textarea"
+          placeholder="小区、单元、入户门等进入方式"
+          value="{{visitEntryMethod}}"
+          bindinput="onVisitEntryMethodInput"
+        />
+      </view>
+    </view>
+
     <view class="card">
-      <view class="card-title"><text>选择寄养时间 <text class="required-star">*</text></text></view>
-      <calendar startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
-      <view wx:if="{{startDate && endDate}}" class="time-pickers mt-20">
+      <view class="card-title"><text>{{dateCardTitle}} <text class="required-star">*</text></text></view>
+      <view wx:if="{{serviceLine === 'wash'}}" class="time-pickers">
         <view class="time-row">
-          <text class="time-label">入住时间 <text class="required-star">*</text></text>
-          <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
+          <text class="time-label">到店日期 <text class="required-star">*</text></text>
+          <picker mode="date" value="{{startDate || minDate}}" start="{{minDate}}" bindchange="onWashDateChange">
+            <view class="time-picker-box {{startDate ? '' : 'time-picker-placeholder'}}">{{startDate || '选择日期'}}</view>
+          </picker>
         </view>
         <view class="time-row">
+          <text class="time-label">到店时间 <text class="required-star">*</text></text>
+          <view class="time-picker-box {{startTime ? '' : 'time-picker-placeholder'}}" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
+        </view>
+      </view>
+      <calendar wx:else startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
+      <view wx:if="{{serviceLine !== 'wash' && startDate && endDate}}" class="time-pickers mt-20">
+        <view class="time-row">
+          <text class="time-label">{{timeLabel}} <text class="required-star">*</text></text>
+          <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
+        </view>
+        <view class="time-row" wx:if="{{serviceLine === 'boarding'}}">
           <text class="time-label">离店时间 <text class="required-star">*</text></text>
           <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
         </view>
       </view>
-      <view wx:if="{{startDate && endDate}}" class="date-summary mt-20">
-        <view class="flex-between"><text>开始：{{startDate}} {{startTime || '待选择'}}</text><text>结束：{{endDate}} {{endTime || '待选择'}}</text></view>
+      <view wx:if="{{startDate && (serviceLine === 'wash' || endDate)}}" class="date-summary mt-20">
+        <view class="flex-between" wx:if="{{serviceLine === 'boarding'}}"><text>开始：{{startDate}} {{startTime || '待选择'}}</text><text>结束：{{endDate}} {{endTime || '待选择'}}</text></view>
+        <view class="flex-between" wx:elif="{{serviceLine === 'homeFeeding'}}"><text>{{startDate}}{{endDate !== startDate ? ' ~ ' + endDate : ''}} {{startTime || '待选择'}}</text></view>
 
-        <view class="pickup-inline" wx:if="{{store.hasPickup}}">
+        <view class="pickup-inline" wx:if="{{serviceLine === 'boarding' && store.hasPickup}}">
           <view class="pickup-inline-head">
             <text class="pickup-inline-title">接送服务</text>
             <switch checked="{{needPickup}}" bindchange="onPickupChange" color="#E98657" />
@@ -214,10 +418,23 @@
           </view>
         </view>
 
-        <view class="pickup-inline" wx:if="{{store.hasWash}}">
+        <view class="pickup-inline" wx:if="{{serviceLine === 'boarding' && store.hasBoardingExtraWash}}">
           <view class="pickup-inline-head">
-            <text class="pickup-inline-title">洗护服务</text>
+            <text class="pickup-inline-title">额外美容洗护</text>
             <switch checked="{{needWash}}" bindchange="onWashChange" color="#E98657" />
+          </view>
+          <text class="text-gray pet-multi-hint extra-wash-hint" wx:if="{{needWash && store.hasWashLine}}">洗护项目每个品种限选一项，增值服务可多选</text>
+          <text class="room-step-label" wx:if="{{needWash && store.hasWashLine && washProductOptions.length}}">洗护项目</text>
+          <view class="wash-item-list extra-wash-products" wx:if="{{needWash && store.hasWashLine && washProductOptions.length}}">
+            <block wx:for="{{washProductOptions}}" wx:key="id">
+              <template is="washProductRow" data="{{item}}" />
+            </block>
+          </view>
+          <text class="room-step-label" wx:if="{{needWash && store.hasWashLine && washVasOptions.length}}">增值服务</text>
+          <view class="wash-item-list extra-wash-products" wx:if="{{needWash && store.hasWashLine && washVasOptions.length}}">
+            <block wx:for="{{washVasOptions}}" wx:key="id">
+              <template is="washVasRow" data="{{item}}" />
+            </block>
           </view>
           <view class="pickup-notice-box pickup-notice-inline" wx:if="{{needWash && (store.washNotice || washPricingSummary || (store.washNoticePhotos && store.washNoticePhotos.length))}}">
             <text class="pickup-notice-title" wx:if="{{store.washNotice || (store.washNoticePhotos && store.washNoticePhotos.length)}}">洗护须知</text>
@@ -242,11 +459,11 @@
                 <cached-image custom-class="boarding-notice-photo" src="{{item}}" mode="aspectFill" />
               </view>
             </view>
-            <text class="pickup-pricing-summary" wx:if="{{washPricingSummary}}">{{washPricingSummary}}</text>
+            <text class="pickup-pricing-summary" wx:if="{{!store.hasWashLine && washPricingSummary}}">{{washPricingSummary}}</text>
           </view>
         </view>
 
-        <view class="pickup-inline" wx:if="{{valueAddedList.length}}">
+        <view class="pickup-inline" wx:if="{{serviceLine === 'boarding' && valueAddedList.length}}">
           <view class="pickup-inline-head">
             <text class="pickup-inline-title">增值服务</text>
           </view>
@@ -273,19 +490,21 @@
         <block wx:if="{{feeReady}}">
           <view class="fee-breakdown">
             <view class="fee-breakdown-title">{{feeBreakdownTitle}}</view>
-            <view class="fee-pet-row" wx:for="{{multiPetFeeItems}}" wx:key="petId" wx:if="{{multiPetFeeItems.length > 1}}">
-              <text class="fee-day-date">{{item.name}}{{item.roomName ? ' · ' + item.roomName : ''}}</text>
-              <text class="fee-day-label">寄养费</text>
-              <text class="fee-day-factor" wx:if="{{item.discountAmountText}}">已减 ¥{{item.discountAmountText}}</text>
-              <text class="fee-day-amount">¥{{item.boardingFeeText}}</text>
-            </view>
-            <view class="fee-day-row" wx:for="{{dailyBreakdown}}" wx:key="date">
+            <block wx:if="{{serviceLine === 'boarding' && multiPetFeeItems.length > 1}}">
+              <view class="fee-pet-row" wx:for="{{multiPetFeeItems}}" wx:key="petId">
+                <text class="fee-day-date">{{item.name}}{{item.roomName ? ' · ' + item.roomName : ''}}</text>
+                <text class="fee-day-label">寄养费</text>
+                <text class="fee-day-factor" wx:if="{{item.discountAmountText}}">已减 ¥{{item.discountAmountText}}</text>
+                <text class="fee-day-amount">¥{{item.boardingFeeText}}</text>
+              </view>
+            </block>
+            <view class="fee-day-row" wx:for="{{dailyBreakdown}}" wx:key="date" wx:if="{{serviceLine === 'boarding'}}">
               <text class="fee-day-date">{{item.dateDisplay}}</text>
               <text class="fee-day-label">{{item.dayLabel}}</text>
               <text class="fee-day-factor">{{item.factorText}}</text>
               <text class="fee-day-amount">¥{{item.feeText}}</text>
             </view>
-            <view class="fee-discount-tip" wx:if="{{hasMultiPetDiscount && multiPetDiscountTip}}">
+            <view class="fee-discount-tip" wx:if="{{serviceLine !== 'homeFeeding' && hasMultiPetDiscount && multiPetDiscountTip}}">
               <text>{{multiPetDiscountTip}}</text>
               <text wx:if="{{multiPetDiscountTotalText}}">，共优惠 ¥{{multiPetDiscountTotalText}}</text>
             </view>
@@ -306,15 +525,49 @@
                 <text class="pickup-fee-meta-line pickup-fee-meta-calc">{{pickupFeeCalcText}}</text>
               </view>
             </view>
-            <view class="fee-pickup-block" wx:if="{{needWash && washFeeReady}}">
+            <view class="fee-pickup-block" wx:if="{{serviceLine === 'homeFeeding' && visitFeeReady}}">
+              <view class="fee-day-row fee-pickup-row">
+                <text class="fee-day-date">上门</text>
+                <text class="fee-day-label">上门喂养费</text>
+                <text class="fee-day-factor"></text>
+                <text class="fee-day-amount">¥{{visitFeeText}}</text>
+              </view>
+              <view class="fee-sub-row" wx:for="{{multiPetFeeItems}}" wx:key="petId">
+                <text class="fee-sub-name">{{item.name}}{{item.roomName ? ' · ' + item.roomName : ''}}</text>
+                <text class="fee-sub-amount">¥{{item.boardingFeeText}}</text>
+              </view>
+              <view class="pickup-fee-meta" wx:if="{{visitDistanceText}}">
+                <text class="pickup-fee-meta-line">{{visitDistanceText}}</text>
+              </view>
+              <view class="pickup-fee-meta" wx:if="{{visitHolidayText}}">
+                <text class="pickup-fee-meta-line">{{visitHolidayText}}</text>
+              </view>
+              <view class="fee-discount-tip" wx:if="{{hasMultiPetDiscount && multiPetDiscountTip}}">
+                <text>{{multiPetDiscountTip}}</text>
+                <text wx:if="{{multiPetDiscountTotalText}}">，共优惠 ¥{{multiPetDiscountTotalText}}</text>
+              </view>
+            </view>
+            <view class="fee-pickup-block" wx:if="{{(serviceLine === 'wash' || needWash) && washFeeReady}}">
               <view class="fee-day-row fee-pickup-row">
                 <text class="fee-day-date">洗护</text>
                 <text class="fee-day-label">洗护服务费</text>
                 <text class="fee-day-factor"></text>
                 <text class="fee-day-amount">¥{{washFeeText}}</text>
               </view>
-              <view class="pickup-fee-meta" wx:if="{{washFeeCalcText}}">
+              <view class="fee-sub-row" wx:for="{{washFeeItems}}" wx:key="petId">
+                <text class="fee-sub-name">{{item.name}}{{item.roomName ? ' · ' + item.roomName : ''}}</text>
+                <text class="fee-sub-amount">¥{{item.boardingFeeText}}</text>
+              </view>
+              <view class="pickup-fee-meta" wx:if="{{washFeeCalcText && !washFeeItems.length}}">
                 <text class="pickup-fee-meta-line pickup-fee-meta-calc">{{washFeeCalcText}}</text>
+              </view>
+            </view>
+            <view class="fee-pickup-block" wx:if="{{hasWashVasSelected}}">
+              <view class="fee-day-row fee-pickup-row" wx:for="{{washVasOptions}}" wx:key="id" wx:if="{{item.selected}}">
+                <text class="fee-day-date">洗护增值</text>
+                <text class="fee-day-label">{{item.title}}</text>
+                <text class="fee-day-factor"></text>
+                <text class="fee-day-amount">¥{{item.priceText}}</text>
               </view>
             </view>
             <view class="fee-pickup-block" wx:if="{{hasValueAddedSelected}}">
@@ -330,21 +583,23 @@
             <text wx:if="{{pickupFeeStandard}}">{{pickupFeeStandard}}</text>
             <text>{{pickupFeePendingText || '请在地图选择接送地址后查看总费用'}}</text>
           </view>
+          <view class="fee-pending-tip fee-pickup-pending" wx:if="{{serviceLine === 'homeFeeding' && visitFeePending}}">
+            <text>{{visitFeePendingText || '请选择小区地址后查看费用'}}</text>
+          </view>
           <view class="flex-between mt-16 fee-total-row" wx:if="{{totalDisplayReady}}">
-            <text>共计 {{daysText}} 天 · 总费用</text>
+            <text wx:if="{{serviceLine === 'boarding'}}">共计 {{daysText}} 天 · 总费用</text>
+            <text wx:else>总费用</text>
             <text class="fee-highlight">¥{{grandTotalFeeText}}</text>
           </view>
-          <text class="charge-summary-tip" wx:if="{{totalDisplayReady}}">{{chargeSummary}}</text>
+          <text class="charge-summary-tip" wx:if="{{totalDisplayReady && serviceLine !== 'homeFeeding' && chargeSummary}}">{{chargeSummary}}</text>
         </block>
         <view wx:else class="fee-pending-tip">
-          <text wx:if="{{!startTime || !endTime}}">请选择入住时间和离店时间后查看费用</text>
-          <text wx:elif="{{billingMode === 'room' && !roomsReady}}">请为每只宠物选择房间后查看费用</text>
-          <text wx:elif="{{billingMode === 'custom' && !roomsReady}}">请为每只宠物选择收费项目后查看费用</text>
+          <text>{{feePendingText}}</text>
         </view>
       </view>
     </view>
 
-    <view class="card" wx:if="{{store.notice || (store.noticePhotos && store.noticePhotos.length)}}">
+    <view class="card" wx:if="{{serviceLine === 'boarding' && (store.notice || (store.noticePhotos && store.noticePhotos.length))}}">
       <view class="card-title">寄养须知</view>
       <view
         wx:if="{{store.notice}}"
@@ -369,7 +624,32 @@
       </view>
     </view>
 
-    <view class="card">
+    <view class="card" wx:if="{{serviceLine === 'homeFeeding' && store.homeFeeding && (store.homeFeeding.notice || (store.homeFeeding.noticePhotos && store.homeFeeding.noticePhotos.length))}}">
+      <view class="card-title">上门喂养须知</view>
+      <view
+        wx:if="{{store.homeFeeding.notice}}"
+        class="notice-preview {{homeNoticeExpandable ? 'notice-preview-expandable' : ''}}"
+        bindtap="onOpenNoticePreview"
+        data-title="上门喂养须知"
+        data-expandable="{{homeNoticeExpandable}}"
+      >
+        <text class="boarding-notice-text {{homeNoticeExpandable ? 'notice-text-clamped' : ''}}">{{store.homeFeeding.notice}}</text>
+        <text class="notice-more-link" wx:if="{{homeNoticeExpandable}}">查看完整</text>
+      </view>
+      <view class="boarding-notice-photos" wx:if="{{store.homeFeeding.noticePhotos && store.homeFeeding.noticePhotos.length}}">
+        <view
+          class="boarding-notice-photo-item"
+          wx:for="{{store.homeFeeding.noticePhotos}}"
+          wx:key="*this"
+          bindtap="onPreviewHomeNoticePhoto"
+          data-url="{{item}}"
+        >
+          <cached-image custom-class="boarding-notice-photo" src="{{item}}" mode="aspectFill" />
+        </view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{serviceLine !== 'homeFeeding'}}">
       <view class="card-title">联系信息</view>
       <view class="form-group">
         <text class="form-label">联系人 <text class="required-star">*</text></text>
@@ -393,7 +673,7 @@
           bindblur="onContactBlur"
         />
       </view>
-      <view class="form-group">
+      <view class="form-group" wx:if="{{serviceLine === 'boarding'}}">
         <text class="form-label">身份证号</text>
         <input
           class="form-input"
@@ -405,7 +685,7 @@
           bindblur="onContactBlur"
         />
       </view>
-      <view class="form-group">
+      <view class="form-group" wx:if="{{serviceLine === 'boarding'}}">
         <text class="form-label">紧急联系电话</text>
         <input
           class="form-input"
@@ -439,13 +719,13 @@
       />
     </view>
 
-    <view class="card">
-      <view class="card-title"><text>寄养协议 <text class="required-star">*</text></text></view>
+    <view class="card" wx:if="{{serviceLine === 'boarding'}}">
+      <view class="card-title"><text>服务协议 <text class="required-star">*</text></text></view>
       <view class="contract-preview" bindtap="onOpenContractPreview">
         <image class="contract-preview-icon" src="/images/card/card-settings.png" mode="aspectFit" />
         <view class="contract-info">
-          <text class="contract-title">宠物寄养服务电子协议</text>
-          <text class="contract-desc">含甲乙双方信息、寄养条款、赔付与免责约定</text>
+          <text class="contract-title">{{contractTitle}}</text>
+          <text class="contract-desc">{{contractDesc}}</text>
         </view>
         <text class="contract-link">查看全文</text>
       </view>
@@ -455,7 +735,7 @@
         </view>
         <view class="contract-agree-text-wrap">
           <text class="contract-agree-text">我已阅读并同意</text>
-          <text class="contract-link-inline" catchtap="onOpenContractPreview">《宠物寄养服务电子协议》</text>
+          <text class="contract-link-inline" catchtap="onOpenContractPreview">{{contractAgreeName}}</text>
         </view>
       </view>
       <view class="contract-signed-row" wx:if="{{agreedToContract && signedContractDraft}}">
@@ -468,7 +748,11 @@
       </view>
     </view>
 
-    <button class="btn-primary {{agreedToContract ? '' : 'btn-disabled'}}" bindtap="onSubmit" disabled="{{!agreedToContract}}">提交预约</button>
+    <button
+      class="btn-primary {{serviceLine !== 'boarding' || agreedToContract ? '' : 'btn-disabled'}}"
+      bindtap="onSubmit"
+      disabled="{{submitting || (serviceLine === 'boarding' && !agreedToContract)}}"
+    >{{submitBtnText}}</button>
   </block>
 
   <view class="card closed-tip" wx:if="{{store && !store.isOpen}}">
@@ -511,6 +795,20 @@
   bind:close="onCloseOaFollowSheet"
   bind:followed="onOaFollowSheetFollowed"
 />
+
+<view class="proxy-share-root" wx:if="{{proxyShareVisible}}">
+  <view class="proxy-share-mask" catchtouchmove="onProxyShareTouchMove"></view>
+  <view class="proxy-share-sheet" catchtap="onProxyShareTouchMove">
+    <text class="proxy-share-title">发给客人</text>
+    <text class="proxy-share-desc">客人打开后会进入店铺首页，宠物档案和订单会绑定到其账号，预约视为已确认。也可稍后在订单详情里再次发送。</text>
+    <button
+      class="btn-primary proxy-share-btn"
+      open-type="share"
+      data-share-type="proxy"
+    >把代下单发送给客人</button>
+    <view class="proxy-share-later" bindtap="onCloseProxyShare">稍后在订单详情发送</view>
+  </view>
+</view>
 
 <view class="notice-full-mask" wx:if="{{noticePreviewVisible}}" catchtouchmove="onNoticePreviewTouchMove" bindtap="onCloseNoticePreview">
   <view class="notice-full-sheet" catchtap="onNoticePreviewSheetTap">

@@ -9,6 +9,8 @@ const USER_TAB = {
   DAILY: 2
 };
 
+const { isDailyCheckableOrder } = require('./dailyCheckable');
+
 function getSeenAt(key) {
   try {
     return wx.getStorageSync(key) || 0;
@@ -62,7 +64,7 @@ function countUserNewDailyLogs(orders, logs) {
   const seenAt = getSeenAt(BADGE_KEYS.USER_DAILY_SEEN_AT);
   const boardingIds = new Set(
     (orders || [])
-      .filter((o) => o.status === 'boarding')
+      .filter(isDailyCheckableOrder)
       .map((o) => o.id || o.order_id)
       .filter(Boolean)
   );
@@ -117,7 +119,7 @@ function enrichLogsWithUnread(logs, orders) {
   const seenAt = getSeenAt(BADGE_KEYS.USER_DAILY_SEEN_AT);
   const boardingIds = new Set(
     (orders || [])
-      .filter((o) => o.status === 'boarding')
+      .filter(isDailyCheckableOrder)
       .map((o) => o.id || o.order_id)
       .filter(Boolean)
   );

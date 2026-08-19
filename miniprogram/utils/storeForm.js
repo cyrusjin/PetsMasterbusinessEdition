@@ -10,17 +10,32 @@ const {
 } = require('./storePhotos');
 const { normalizeDepartureCharge } = require('./billing');
 const { isVagueAddress } = require('./location');
-const { validateWeightPricing } = require('./weightPricing');
+const { validateWeightPricing, getDefaultWeightPricing } = require('./weightPricing');
 const { validateRoomPricing } = require('./roomPricing');
 const { validateCustomPricing } = require('./customPricing');
 const { validatePickupPricing } = require('./pickupPricing');
 const { validateWashService } = require('./washPricing');
+const { validateWashProducts, isWashProductsComplete } = require('./washProducts');
+const { normalizeHomeFeeding, validateHomeFeedingAdvanced, remapHomeFeedingError } = require('./homeFeeding');
+const {
+  isHomeVisitPricingComplete,
+  validateHomeVisitPricing,
+  hasHomeVisitPricingDraft
+} = require('./homeVisitPricing');
 const { validateMultiPetDiscount } = require('./multiPetPricing');
 const { validateLongTermDiscount } = require('./longTermDiscount');
 const { validateValueAddedServices } = require('./valueAddedServices');
 const { validateMobilePhone } = require('./phone');
+const {
+  normalizeServiceLines,
+  hasEnabledServiceLine,
+  hasReadyServiceLine,
+  isServiceLineEnabled
+} = require('./serviceLines');
 
 const DEFAULT_LOGO = '/images/default-avatar.png';
+const OPEN_NEED_SERVICE_LINE = '请至少打开一个服务后再开始营业';
+const OPEN_NEED_READY_SERVICE = '请先完善服务资料并打开对应开关后再开始营业';
 
 function normalizeDeposit(value) {
   if (value === '' || value === null || value === undefined) return 0;
@@ -62,6 +77,20 @@ function validateBillingRules(billingRules) {
   return '';
 }
 
+/** 默认体重价视为可用；未选收费模式时按系统默认按体重价判断 */
+function isBoardingPricingComplete(shop, billingRules) {
+  const rules = billingRules || {};
+  const resolved = rules.billingMode
+    ? rules
+    : {
+        billingMode: 'weight',
+        weightPricing: (rules.weightPricing && rules.weightPricing.length)
+          ? rules.weightPricing
+          : getDefaultWeightPricing()
+      };
+  return !validateBillingRules(resolved);
+}
+
 function buildBillingRulesFromPayload(payload, shop) {
   return {
     ...payload.billingRules,
@@ -77,7 +106,7 @@ function buildBillingRulesFromPayload(payload, shop) {
 }
 
 /** 开店必填的基础设置 */
-function validateBasicStoreForm(payload) {
+function validateBasicStoreForm(payload, options) {
   const shop = payload.shop || {};
   const receptionRange = normalizeReceptionRange(payload.receptionRange || shop.receptionRange || shop.range);
   const storePhotos = normalizeStorePhotos(payload.storePhotos || shop.storePhotos);
@@ -100,9 +129,6 @@ function validateBasicStoreForm(payload) {
   if (!receptionRange.length) return '请选择接待范围';
   if (!storePhotos.length) return '请至少上传1张店铺照片';
 
-  const billingError = validateBillingRules(billingRules);
-  if (billingError) return billingError;
-
   const contactPhone = (shop.contactPhone || '').trim();
   const phoneError = validateMobilePhone(contactPhone, {
     emptyMsg: '请填写联系电话',
@@ -117,8 +143,58 @@ function validateBasicStoreForm(payload) {
     return '请先签署入驻合作协议';
   }
 
-  const notice = (shop.notice || '').trim();
-  if (notice.length > MAX_NOTICE_TEXT) return `寄养须知不超过${MAX_NOTICE_TEXT}字`;
+  const serviceLines = normalizeServiceLines(shop.serviceLines);
+  const washProducts = payload.washProducts != null ? payload.washProducts : shop.washProducts;
+  const homeFeeding = normalizeHomeFeeding(shop.homeFeeding || payload.homeFeeding);
+  if (!options || options.requireServiceLines !== false) {
+    if (!hasEnabledServiceLine(serviceLines)) {
+      return OPEN_NEED_SERVICE_LINE;
+    }
+    if (!hasReadyServiceLine(serviceLines, {
+      boardingComplete: isBoardingPricingComplete(shop, billingRules),
+      washComplete: isWashProductsComplete(washProducts),
+      homeFeedingComplete: isHomeFeedingPricingComplete(shop, homeFeeding.billingRules)
+    })) {
+      return OPEN_NEED_READY_SERVICE;
+    }
+  }
+
+  const boardingOn = isServiceLineEnabled(serviceLines, 'boarding');
+  const washOn = isServiceLineEnabled(serviceLines, 'wash');
+  const homeOn = isServiceLineEnabled(serviceLines, 'homeFeeding');
+
+  if (boardingOn) {
+    const billingError = validateBillingRules(billingRules);
+    if (billingError) return billingError;
+    const notice = (shop.notice || '').trim();
+    if (notice.length > MAX_NOTICE_TEXT) return `到店寄养须知不超过${MAX_NOTICE_TEXT}字`;
+  }
+
+  if (washOn) {
+    const washError = validateWashProducts(washProducts, { required: true });
+    if (washError) return washError;
+    const washVas = payload.washValueAddedServices != null
+      ? payload.washValueAddedServices
+      : shop.washValueAddedServices;
+    const washVasError = validateWashProducts(washVas, { required: false, noun: '洗护增值服务' });
+    if (washVasError) return washVasError;
+  }
+
+  if (homeOn) {
+    const homeRules = homeFeeding.billingRules || payload.homeFeedingBillingRules || {};
+    if (isHomeVisitPricingComplete(homeFeeding)) {
+      // 猫/狗按次上门价已完善
+    } else if (hasHomeVisitPricingDraft(homeFeeding) || !isBoardingPricingComplete({
+      status: shop.status,
+      notice: homeFeeding.notice,
+      noticePhotos: homeFeeding.noticePhotos
+    }, homeRules)) {
+      const visitErr = validateHomeVisitPricing(homeFeeding, { required: true });
+      return visitErr || '请完善上门服务项目价格';
+    }
+    const homeNotice = (homeFeeding.notice || '').trim();
+    if (homeNotice.length > MAX_NOTICE_TEXT) return `上门喂养须知不超过${MAX_NOTICE_TEXT}字`;
+  }
 
   return '';
 }
@@ -180,6 +256,11 @@ function validateStoreForm(payload) {
   return validateAdvancedStoreForm(payload);
 }
 
+function isHomeFeedingPricingComplete(shop) {
+  const hf = normalizeHomeFeeding(shop && shop.homeFeeding);
+  return isHomeVisitPricingComplete(hf);
+}
+
 function isBasicStoreComplete(shop, billingRules) {
   if (!shop) return false;
   return !validateBasicStoreForm({
@@ -193,12 +274,16 @@ function isBasicStoreComplete(shop, billingRules) {
 
 module.exports = {
   DEFAULT_LOGO,
+  OPEN_NEED_SERVICE_LINE,
+  OPEN_NEED_READY_SERVICE,
   normalizeDeposit,
   hasValidLogo,
   validateStoreForm,
   validateBasicStoreForm,
   validateAdvancedStoreForm,
   validateBillingRules,
+  isBoardingPricingComplete,
+  isHomeFeedingPricingComplete,
   receptionAllowsCustomBilling,
   isBasicStoreComplete,
   MAX_INTRO_TEXT,

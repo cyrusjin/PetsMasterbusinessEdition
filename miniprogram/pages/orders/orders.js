@@ -4,6 +4,8 @@ const { guardUserTabPage } = require('../../utils/shell');
 const badgeUtil = require('../../utils/badge');
 const { refreshUserOrders } = require('../../utils/orderRefresh');
 const { formatOrderCreateTime } = require('../../utils/util');
+const { formatServiceStatus, getOrderServiceKind } = require('../../utils/dailyCheckable');
+const { formatHomeVisitTimeText } = require('../../utils/homeVisitAddress');
 
 Page({
   data: { activeTab: 'all', orders: [], filteredOrders: [] },
@@ -62,10 +64,20 @@ Page({
       app.getUserScopedOrders().sort((a, b) => (b.createTime || 0) - (a.createTime || 0))
     ).map((o) => {
       const pet = pets.find((p) => p.id === o.petId);
+      const kind = getOrderServiceKind(o);
+      let serviceTimeText = `${o.startDate || ''} ~ ${o.endDate || ''}`.trim();
+      if (kind === 'homeFeeding') {
+        serviceTimeText = formatHomeVisitTimeText(o) || `${o.startDate || ''} ${o.startTime || ''}`.trim() || '--';
+      } else if (kind === 'wash') {
+        serviceTimeText = `${o.startDate || ''} ${o.startTime || ''}`.trim() || '--';
+      }
       return {
         ...o,
         petPhoto: pet ? pet.photo : '',
-        createTimeText: formatOrderCreateTime(o) || '--'
+        createTimeText: formatOrderCreateTime(o) || '--',
+        statusLabel: formatServiceStatus(o),
+        serviceTimeLabel: kind === 'wash' ? '到店时间' : (kind === 'homeFeeding' ? '上门时间' : '寄养时间'),
+        serviceTimeText
       };
     });
     const sig = orders.map((o) => [

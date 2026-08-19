@@ -1,18 +1,21 @@
 const app = getApp();
 const { guardUserTabPage } = require('../../utils/shell');
-const { buildStoreShareConfig, buildTimelineShareConfig, resolveShareStoreId } = require('../../utils/storeShare');
+const { buildStoreShareConfig, buildTimelineShareConfig, resolveShareStoreId, listGuestShareCards, prefetchStoreShareImage } = require('../../utils/storeShare');
 const storeDebug = require('../../utils/storeDebug');
 const { refreshUserOrders } = require('../../utils/orderRefresh');
 const { resolveEntryStoreId, enterStoreAndRefresh } = require('../../utils/storeEntry');
 const { formatOrderCreateTime } = require('../../utils/util');
+const { formatServiceStatus } = require('../../utils/dailyCheckable');
 const {
   isAuthorizedNickName,
   getDisplayNickName,
   getNickNameCapability
 } = require('../../utils/userAuth');
 const { copyText } = require('../../utils/clipboard');
+const { hideHomeButton, getCustomNavMetrics } = require('../../utils/navBar');
 const petApi = require('../../utils/pet');
 const butler = require('../../utils/petButler');
+const { claimProxyOrdersForGuest, extractProxyClaimToken } = require('../../utils/proxyOrder');
 const {
   getMiniProgramMeta,
   fetchRemoteAppConfig,
@@ -54,7 +57,17 @@ Page({
     inviteModalVisible: false,
     sharePets: [],
     shareSelectedCount: 0,
-    invitePreparing: false
+    invitePreparing: false,
+    homeServiceCards: [],
+    reservePickerVisible: false,
+    reserveCardTitle: '预约服务',
+    reserveCardSub: '通过商家分享链接进入后预约',
+    reserveButtonText: '请先绑定店铺',
+    statusBarHeight: 20,
+    navBarHeight: 44,
+    navTotalHeight: 64,
+    navTitlePad: 96,
+    navTitle: '宠物寄养'
   },
 
   _syncUserTabBar(index) {
@@ -63,9 +76,30 @@ Page({
     if (tabBar) tabBar.setData({ selected: index });
   },
 
+  _initCustomNav() {
+    const metrics = getCustomNavMetrics();
+    let windowWidth = 375;
+    try {
+      const sys = wx.getSystemInfoSync ? wx.getSystemInfoSync() : {};
+      windowWidth = Number(sys.windowWidth) || windowWidth;
+    } catch (err) {
+      // ignore
+    }
+    const menuLeft = metrics.menuButton && metrics.menuButton.left;
+    const navTitlePad = menuLeft
+      ? Math.max(12, windowWidth - menuLeft + 8)
+      : 96;
+    this.setData({
+      statusBarHeight: metrics.statusBarHeight,
+      navBarHeight: metrics.navBarHeight,
+      navTotalHeight: metrics.totalHeight,
+      navTitlePad
+    });
+  },
+
   _syncNavTitle(currentStore) {
     const name = currentStore && currentStore.name ? String(currentStore.name).trim() : '';
-    wx.setNavigationBarTitle({ title: name || '宠物寄养' });
+    this.setData({ navTitle: name || '宠物寄养' });
   },
 
   _getEntryContext() {
@@ -77,6 +111,14 @@ Page({
     return { storeId, enterOptions, launchOptions, fromEnter: !!fromEnter };
   },
 
+  _isProxyClaimEntry(options) {
+    return !!(
+      extractProxyClaimToken(options)
+      || extractProxyClaimToken(options && options.query)
+      || (app.globalData && app.globalData.pendingProxyClaimToken)
+    );
+  },
+
   _applyStoreEntry(storeId, options) {
     if (!storeId) return Promise.resolve();
     if (app.shouldIgnoreShareEntry && app.shouldIgnoreShareEntry()) {
@@ -84,6 +126,7 @@ Page({
       return refreshUserOrders(app, { force: false }).then(() => this._refreshPage());
     }
     const prevId = app.getStoreId();
+    const silent = !!(options && options.silent) || this._isProxyClaimEntry(options);
     const gen = (this._storeEntryGen = (this._storeEntryGen || 0) + 1);
     this._storeEntryId = storeId;
     this._storeEntryPromise = enterStoreAndRefresh(app, storeId, options)
@@ -95,9 +138,10 @@ Page({
           storeId,
           prevId,
           switched,
-          storeName: (store && store.name) || ''
+          storeName: (store && store.name) || '',
+          silent
         });
-        if (switched && store && store.name) {
+        if (!silent && switched && store && store.name) {
           wx.showToast({ title: `已进入${store.name}`, icon: 'none' });
         }
         return this._refreshPage();
@@ -108,6 +152,39 @@ Page({
         }
       });
     return this._storeEntryPromise;
+  },
+
+  _consumeProxyClaim(options) {
+    const token = extractProxyClaimToken(options)
+      || extractProxyClaimToken(wx.getEnterOptionsSync ? wx.getEnterOptionsSync() : {})
+      || (app.globalData && app.globalData.pendingProxyClaimToken)
+      || '';
+    if (!token) return Promise.resolve();
+    if (this._consumedProxyToken === token || this._proxyClaiming === token) {
+      return this._proxyClaimPromise || Promise.resolve();
+    }
+    this._proxyClaiming = token;
+    if (app.globalData) app.globalData.pendingProxyClaimToken = token;
+    this._proxyClaimPromise = app.ensureCloudAndLogin()
+      .then(() => claimProxyOrdersForGuest(app, token))
+      .then(() => {
+        this._consumedProxyToken = token;
+        if (app.globalData && app.globalData.pendingProxyClaimToken === token) {
+          app.globalData.pendingProxyClaimToken = '';
+        }
+        const refreshPets = app.loadPets ? app.loadPets({ force: true }) : Promise.resolve();
+        const refreshOrders = app.loadOrders ? app.loadOrders({ force: true }) : Promise.resolve();
+        return Promise.all([refreshPets.catch(() => {}), refreshOrders.catch(() => {})]);
+      })
+      .then(() => this._refreshPage())
+      .catch((err) => {
+        console.error('[代下单] 绑定到客人账号失败', err);
+      })
+      .finally(() => {
+        if (this._proxyClaiming === token) this._proxyClaiming = '';
+        this._proxyClaimPromise = null;
+      });
+    return this._proxyClaimPromise;
   },
 
   _applyAuditUi() {
@@ -149,6 +226,8 @@ Page({
   },
 
   onLoad(options) {
+    hideHomeButton();
+    this._initCustomNav();
     storeDebug.logEntryOptions('首页 onLoad', options);
 
     const petInvite = String((options && (options.pet_invite || options.inviteId)) || '').trim();
@@ -172,19 +251,27 @@ Page({
     this._refreshPageFromCache();
     this._syncMerchantSwitch();
 
+    const proxyToken = extractProxyClaimToken(options);
+    if (proxyToken && app.globalData) {
+      app.globalData.pendingProxyClaimToken = proxyToken;
+    }
+
     if (storeId) {
       // 尽早登记，避免 App 并行刷新用户时冲掉绑店
       if (app.globalData) {
         app.globalData.pendingEntryStoreId = storeId;
       }
       this._lastAppliedEnterSig = `${storeId}|onload`;
-      this._applyStoreEntry(storeId, { query: options });
+      this._applyStoreEntry(storeId, { query: options, silent: !!proxyToken })
+        .then(() => this._consumeProxyClaim(options));
       return;
     }
     storeDebug.logStoreState('首页 onLoad', app);
+    this._consumeProxyClaim(options);
   },
 
   onShow() {
+    hideHomeButton();
     this._syncUserTabBar(0);
     this._setTabBarHidden(!!this.data.introPreviewVisible);
     storeDebug.log('首页 onShow');
@@ -207,10 +294,17 @@ Page({
       });
       if (needRebind) {
         this._lastAppliedEnterSig = enterSig;
-        this._applyStoreEntry(storeId, enterOptions);
+        this._applyStoreEntry(storeId, {
+          ...enterOptions,
+          query: (enterOptions && enterOptions.query) || enterOptions,
+          silent: this._isProxyClaimEntry(enterOptions)
+        })
+          .then(() => this._consumeProxyClaim(enterOptions));
         return;
       }
     }
+
+    this._consumeProxyClaim(enterOptions);
 
     const gen = (this._showGen || 0) + 1;
     this._showGen = gen;
@@ -380,8 +474,37 @@ Page({
     };
   },
 
+  _homeServiceCards(store) {
+    return listGuestShareCards(store);
+  },
+
+  _reserveCardCopy(store, cards) {
+    if (!store) {
+      return {
+        reserveCardTitle: '预约服务',
+        reserveCardSub: '通过商家分享链接进入后预约',
+        reserveButtonText: '请先绑定店铺'
+      };
+    }
+    const list = cards || [];
+    if (list.length === 1) {
+      return {
+        reserveCardTitle: '预约服务',
+        reserveCardSub: list[0].homeSub || '点此选择服务并预约',
+        reserveButtonText: '立即预约'
+      };
+    }
+    const names = list.map((item) => item.name).filter(Boolean);
+    return {
+      reserveCardTitle: '预约服务',
+      reserveCardSub: names.length ? `${names.join('、')}，点选后预约` : '专业照护，到店安心寄养',
+      reserveButtonText: '立即预约'
+    };
+  },
+
   _applyPageData(payload) {
     const currentStore = payload.currentStore;
+    const homeServiceCards = this._homeServiceCards(currentStore);
     this.setData({
       ...this._buildUserViewState(payload.userInfo),
       currentStore,
@@ -397,9 +520,12 @@ Page({
         (isAuditMode(app) ? '提醒 · 指南 · 小工具' : 'AI 问诊 · 提醒 · 小工具'),
       butlerFootText: payload.butlerFootText || '点开看看',
       auditMode: typeof payload.auditMode === 'boolean' ? payload.auditMode : isAuditMode(app),
-      introExpandable: isIntroExpandable(currentStore && currentStore.intro)
+      introExpandable: isIntroExpandable(currentStore && currentStore.intro),
+      homeServiceCards,
+      ...this._reserveCardCopy(currentStore, homeServiceCards)
     });
     this._syncNavTitle(currentStore);
+    prefetchStoreShareImage(currentStore);
   },
 
   _refreshPageFromCache() {
@@ -415,7 +541,8 @@ Page({
         return {
           ...o,
           petPhoto: pet ? pet.photo : '',
-          createTimeText: formatOrderCreateTime(o) || '--'
+          createTimeText: formatOrderCreateTime(o) || '--',
+          statusLabel: formatServiceStatus(o)
         };
       });
     this._applyPageData({
@@ -448,7 +575,8 @@ Page({
             return {
               ...o,
               petPhoto: pet ? pet.photo : '',
-              createTimeText: formatOrderCreateTime(o) || '--'
+              createTimeText: formatOrderCreateTime(o) || '--',
+              statusLabel: formatServiceStatus(o)
             };
           });
         this._applyPageData({
@@ -582,6 +710,14 @@ Page({
     copyText(wechatId, '已复制微信号');
   },
 
+  _navigateToReserve(line) {
+    const key = String(line || '').trim();
+    const url = key
+      ? `/packageUser/user/reserve/reserve?serviceLine=${encodeURIComponent(key)}`
+      : '/packageUser/user/reserve/reserve';
+    wx.navigateTo({ url });
+  },
+
   onGoReserve() {
     const storeId = app.getStoreId();
     const currentStore = app.getCurrentStore();
@@ -594,7 +730,24 @@ Page({
       });
       return;
     }
-    wx.navigateTo({ url: '/packageUser/user/reserve/reserve' });
+    const cards = this.data.homeServiceCards || [];
+    if (cards.length > 1) {
+      this.setData({ reservePickerVisible: true });
+      return;
+    }
+    this._navigateToReserve(cards.length === 1 ? cards[0].key : '');
+  },
+
+  onCloseReservePicker() {
+    this.setData({ reservePickerVisible: false });
+  },
+
+  onReservePickerTouchMove() {},
+
+  onPickReserveService(e) {
+    const line = String((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.line) || '').trim();
+    this.setData({ reservePickerVisible: false });
+    this._navigateToReserve(line);
   },
   onGoPets() { wx.navigateTo({ url: '/packageUser/user/pets/pets' }); },
   onGoPetButler() { wx.navigateTo({ url: '/packageUser/user/pet-butler/pet-butler' }); },

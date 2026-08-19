@@ -24,9 +24,29 @@ function resolveStoreDisplayUrls(store) {
   const washNoticePhotos = Array.isArray(store.washNoticePhotos)
     ? store.washNoticePhotos.filter(Boolean)
     : [];
+  const washProducts = Array.isArray(store.washProducts) ? store.washProducts.slice() : [];
+  const washValueAddedServices = Array.isArray(store.washValueAddedServices)
+    ? store.washValueAddedServices.slice()
+    : [];
+  const washProductPhotos = washProducts.map((item) => (item && item.photo) || '');
+  const washVasPhotos = washValueAddedServices.map((item) => (item && item.photo) || '');
+  const homeFeeding = store.homeFeeding && typeof store.homeFeeding === 'object'
+    ? { ...store.homeFeeding }
+    : null;
+  const homeNoticePhotos = Array.isArray(homeFeeding && homeFeeding.noticePhotos)
+    ? homeFeeding.noticePhotos.filter(Boolean)
+    : [];
   const logo = store.logo || '';
-  const remoteList = [logo, ...storePhotos, ...introPhotos, ...noticePhotos, ...washNoticePhotos]
-    .filter((url) => url && (isCloudFileId(url) || isHttpUrl(url)));
+  const remoteList = [
+    logo,
+    ...storePhotos,
+    ...introPhotos,
+    ...noticePhotos,
+    ...washNoticePhotos,
+    ...washProductPhotos,
+    ...washVasPhotos,
+    ...homeNoticePhotos
+  ].filter((url) => url && (isCloudFileId(url) || isHttpUrl(url)));
 
   if (!remoteList.length) {
     return Promise.resolve({
@@ -35,6 +55,11 @@ function resolveStoreDisplayUrls(store) {
       introPhotos,
       noticePhotos,
       washNoticePhotos,
+      washProducts,
+      washValueAddedServices,
+      homeFeeding: homeFeeding
+        ? { ...homeFeeding, noticePhotos: homeNoticePhotos }
+        : store.homeFeeding,
       logo: logo || ''
     });
   }
@@ -44,21 +69,48 @@ function resolveStoreDisplayUrls(store) {
     resolveMediaUrls(introPhotos),
     resolveMediaUrls(noticePhotos),
     resolveMediaUrls(washNoticePhotos),
+    resolveMediaUrls(washProductPhotos.filter(Boolean)),
+    resolveMediaUrls(washVasPhotos.filter(Boolean)),
+    resolveMediaUrls(homeNoticePhotos),
     logo ? resolveImageUrl(logo) : Promise.resolve('')
   ]).then(([
     resolvedPhotos,
     resolvedIntroPhotos,
     resolvedNoticePhotos,
     resolvedWashNoticePhotos,
+    resolvedWashProductPhotos,
+    resolvedWashVasPhotos,
+    resolvedHomeNoticePhotos,
     resolvedLogo
-  ]) => ({
-    ...store,
-    storePhotos: resolvedPhotos.filter(Boolean),
-    introPhotos: resolvedIntroPhotos.filter(Boolean),
-    noticePhotos: resolvedNoticePhotos.filter(Boolean),
-    washNoticePhotos: resolvedWashNoticePhotos.filter(Boolean),
-    logo: resolvedLogo || logo || ''
-  }));
+  ]) => {
+    let photoCursor = 0;
+    const nextWashProducts = washProducts.map((item) => {
+      if (!item || !item.photo) return item;
+      const photo = resolvedWashProductPhotos[photoCursor] || item.photo;
+      photoCursor += 1;
+      return { ...item, photo };
+    });
+    let vasCursor = 0;
+    const nextWashVas = washValueAddedServices.map((item) => {
+      if (!item || !item.photo) return item;
+      const photo = resolvedWashVasPhotos[vasCursor] || item.photo;
+      vasCursor += 1;
+      return { ...item, photo };
+    });
+    return {
+      ...store,
+      storePhotos: resolvedPhotos.filter(Boolean),
+      introPhotos: resolvedIntroPhotos.filter(Boolean),
+      noticePhotos: resolvedNoticePhotos.filter(Boolean),
+      washNoticePhotos: resolvedWashNoticePhotos.filter(Boolean),
+      washProducts: nextWashProducts,
+      washValueAddedServices: nextWashVas,
+      homeFeeding: homeFeeding
+        ? { ...homeFeeding, noticePhotos: resolvedHomeNoticePhotos.filter(Boolean) }
+        : store.homeFeeding,
+      logo: resolvedLogo || logo || ''
+    };
+  });
 }
 
 module.exports = {

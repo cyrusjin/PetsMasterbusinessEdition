@@ -99,3 +99,216 @@
   flex-shrink: 0;
   line-height: 1;
 }
+
+.proxy-guests-page {
+  padding-bottom: 180rpx;
+}
+.guest-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #F2DEC9;
+}
+.guest-item:last-child {
+  border-bottom: none;
+}
+.guest-item-unassigned {
+  background: #FFF8F2;
+  margin: 0 -16rpx;
+  padding: 24rpx 16rpx;
+  border-radius: 16rpx;
+  border-bottom: none;
+}
+.guest-avatar-unassigned {
+  background: #FFE6D4;
+  color: #C45A2A;
+}
+.guest-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: #FFF1E7;
+  color: #E98657;
+  font-size: 28rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.guest-info {
+  flex: 1;
+  min-width: 0;
+}
+.guest-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333333;
+}
+.guest-meta {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #999999;
+}
+.guest-pets {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #666666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guest-order-btn {
+  flex-shrink: 0;
+  min-width: 112rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #ffffff;
+  background: #E98657;
+  border-radius: 999rpx;
+}
+.guest-order-btn-hover {
+  opacity: 0.88;
+}
+.proxy-guests-spacer {
+  height: 24rpx;
+}
+.proxy-guests-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 -8rpx 24rpx rgba(61, 43, 31, 0.06);
+}
+.proxy-add-btn {
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #E98657;
+  background: #ffffff;
+  border: 2rpx dashed #E98657;
+  border-radius: 16rpx;
+}
+.proxy-add-btn-hover {
+  background: #FFF1E7;
+}
+
+.reserve-picker-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 21000;
+}
+.reserve-picker-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+.reserve-picker-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #FFFFFF;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 28rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  z-index: 1;
+}
+.reserve-picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+.reserve-picker-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #3d2b1f;
+}
+.reserve-picker-sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #9a8575;
+  line-height: 1.45;
+  padding-right: 24rpx;
+}
+.reserve-picker-close {
+  font-size: 26rpx;
+  color: #E98657;
+  padding: 8rpx 0 8rpx 24rpx;
+}
+.reserve-picker-empty {
+  padding: 40rpx 8rpx 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #999999;
+}
+.reserve-picker-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 24rpx 8rpx;
+  border-bottom: 1rpx solid #F2DEC9;
+  box-sizing: border-box;
+}
+.reserve-picker-item:last-child {
+  border-bottom: none;
+}
+.reserve-picker-item-hover {
+  opacity: 0.86;
+}
+.reserve-picker-emoji {
+  flex-shrink: 0;
+  width: 72rpx;
+  height: 72rpx;
+  margin-right: 20rpx;
+  border-radius: 20rpx;
+  background: #FFF1E7;
+  font-size: 36rpx;
+  line-height: 72rpx;
+  text-align: center;
+}
+.reserve-picker-copy {
+  flex: 1;
+  min-width: 0;
+}
+.reserve-picker-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #3D2B1F;
+}
+.reserve-picker-desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #A98972;
+  line-height: 1.45;
+}
+.reserve-picker-arrow {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  color: #E98657;
+  font-size: 40rpx;
+  font-weight: 300;
+}

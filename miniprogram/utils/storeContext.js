@@ -16,6 +16,10 @@ const {
 const { normalizeWashPricing, normalizeWashFreeMinDays } = require('./washPricing');
 const { resolveStoreValueAddedServices } = require('./valueAddedServices');
 const { normalizePickupFreeTiers } = require('./pickupPricing');
+const { compactWashProducts } = require('./washProducts');
+const { normalizeHomeFeeding } = require('./homeFeeding');
+const { normalizeServiceLines, getBookableServiceOptions } = require('./serviceLines');
+const { isHomeVisitPricingComplete } = require('./homeVisitPricing');
 
 function mergeBillingRules(store, defaults) {
   const fromStore = (store && store.billingRules) || {};
@@ -78,6 +82,20 @@ function buildUserStoreView(store) {
   const washNoticePhotos = Array.isArray(normalized.washNoticePhotos)
     ? normalized.washNoticePhotos.filter(Boolean)
     : [];
+  const washProducts = compactWashProducts(normalized.washProducts);
+  const washValueAddedServices = compactWashProducts(normalized.washValueAddedServices);
+  const homeFeeding = normalizeHomeFeeding(normalized.homeFeeding);
+  const serviceLines = normalizeServiceLines(normalized.serviceLines);
+  const serviceOptions = getBookableServiceOptions(normalized, {
+    washComplete: washProducts.length > 0,
+    homeFeedingComplete: isHomeVisitPricingComplete(homeFeeding)
+  });
+  const hasWashLine = serviceOptions.some((item) => item.key === 'wash');
+  const hasHomeFeedingLine = serviceOptions.some((item) => item.key === 'homeFeeding');
+  const hasBoardingLine = serviceOptions.some((item) => item.key === 'boarding');
+  const homeNoticePhotos = Array.isArray(homeFeeding.noticePhotos)
+    ? homeFeeding.noticePhotos.filter(Boolean)
+    : [];
   const valueAddedServices = resolveStoreValueAddedServices(normalized);
   const address = formatLocationAddress({
     name: normalized.locationName,
@@ -118,6 +136,18 @@ function buildUserStoreView(store) {
       : '',
     washNotice: (normalized.washNotice || '').trim(),
     washNoticePhotos,
+    washProducts,
+    washValueAddedServices,
+    homeFeeding: {
+      ...homeFeeding,
+      noticePhotos: homeNoticePhotos
+    },
+    serviceLines,
+    serviceOptions,
+    hasWashLine,
+    hasHomeFeedingLine,
+    hasBoardingLine,
+    hasBoardingExtraWash: hasWashLine || normalized.washService === 'yes',
     valueAddedServices,
     hasValueAddedServices: valueAddedServices.length > 0,
     isOpen: isStoreOpenForUsers(normalized.status),
@@ -149,10 +179,16 @@ function prepareUserStoreView(store) {
   if (!view) return Promise.resolve(null);
   const hasHttpsMedia = (url) => typeof url === 'string' && url.startsWith('https://');
   const listHasCloud = (list) => (list || []).some((url) => isCloudFileId(url));
+  const washProductPhotos = (view.washProducts || []).map((item) => item && item.photo).filter(Boolean);
+  const washVasPhotos = (view.washValueAddedServices || []).map((item) => item && item.photo).filter(Boolean);
+  const homeNoticePhotos = (view.homeFeeding && view.homeFeeding.noticePhotos) || [];
   const photosOk = !listHasCloud(view.storePhotos)
     && !listHasCloud(view.introPhotos)
     && !listHasCloud(view.noticePhotos)
-    && !listHasCloud(view.washNoticePhotos);
+    && !listHasCloud(view.washNoticePhotos)
+    && !listHasCloud(washProductPhotos)
+    && !listHasCloud(washVasPhotos)
+    && !listHasCloud(homeNoticePhotos);
   const logoOk = !view.logo || hasHttpsMedia(view.logo);
   if (photosOk && logoOk) {
     return Promise.resolve(view);

@@ -99,3 +99,114 @@
   border-radius: 12rpx;
   line-height: 1.5;
 }
+
+.service-tabs {
+  display: flex;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-card);
+  margin-bottom: 16rpx;
+  padding: 8rpx;
+  box-shadow: var(--shadow-card);
+}
+
+.service-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 24rpx;
+  color: var(--color-text-tertiary);
+  border-radius: 12rpx;
+}
+
+.service-tab.active {
+  background: #E98657;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.date-filter {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-card);
+  margin-bottom: 20rpx;
+  padding: 16rpx 20rpx 20rpx;
+  box-shadow: var(--shadow-card);
+}
+
+.date-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.date-preset {
+  padding: 8rpx 18rpx;
+  font-size: 24rpx;
+  color: #666666;
+  background: #F7F8FA;
+  border-radius: 999rpx;
+}
+
+.date-preset.active {
+  color: #FFFFFF;
+  background: #E98657;
+  font-weight: 600;
+}
+
+.date-preset-clear {
+  margin-left: auto;
+  padding: 8rpx 16rpx;
+  font-size: 24rpx;
+  color: #E98657;
+}
+
+.date-preset-clear.disabled {
+  color: #CCCCCC;
+}
+
+.date-range-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.date-range-row picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-range-box {
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #333333;
+  background: #F7F8FA;
+  border-radius: 12rpx;
+}
+
+.date-range-box.placeholder {
+  color: #999999;
+}
+
+.date-range-sep {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #999999;
+}
+
+.order-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 4rpx;
+}
+
+.service-tag {
+  font-size: 20rpx;
+  color: #E98657;
+  background: #FFF1E7;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+}

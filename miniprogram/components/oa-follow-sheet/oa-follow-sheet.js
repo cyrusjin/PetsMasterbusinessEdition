@@ -18,7 +18,7 @@ Component({
     },
     headline: {
       type: String,
-      value: '关注服务号，接收寄养动态'
+      value: '关注服务号，接收服务动态'
     },
     desc: {
       type: String,

@@ -123,7 +123,11 @@ function redirectToUserIfMerchantUiBlocked() {
 function ensureMerchantPageAllowed() {
   const app = typeof getApp === 'function' ? getApp() : null;
   if (redirectToUserIfMerchantUiBlocked()) return Promise.resolve(true);
-  return fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
+  // 启动时已拉过开关且允许进入，切 Tab 不再重复打远程接口
+  if (app && app.globalData && app.globalData.merchantSwitchEnabled === true) {
+    return Promise.resolve(false);
+  }
+  return fetchMerchantSwitchEnabled({ force: false }).then((enabled) => {
     applyMerchantSwitchToApp(app, enabled);
     if (!enabled || isMerchantUiBlocked()) {
       try {

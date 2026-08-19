@@ -1,10 +1,12 @@
 const app = getApp();
 const storeApi = require('../../../utils/store');
-const { enableStoreShareMenu, buildMerchantTimelineShareConfig, buildStaffShareConfig, buildMerchantShareConfig } = require('../../../utils/storeShare');
+const { enableStoreShareMenu, buildMerchantTimelineShareConfig, buildStaffShareConfig, buildMerchantShareConfig, listGuestShareCards, shouldOpenGuestSharePicker, openGuestSharePicker, prefetchStoreShareImage } = require('../../../utils/storeShare');
+const { openProxyGuestPicker } = require('../../../utils/proxyOrder');
 const {
   buildBoardingListWithDailyStats,
   countUncheckedBoardingPets
 } = require('../../../utils/dailyStats');
+const { filterDailyCheckableOrders } = require('../../../utils/dailyCheckable');
 const badgeUtil = require('../../../utils/badge');
 const merchantDemo = require('../../../utils/merchantDemo');
 const { countPendingPickupTasks } = require('../../../utils/pickupManage');
@@ -44,7 +46,10 @@ Page({
     statusBarHeight: 20,
     navBarHeight: 44,
     navTotalHeight: 64,
-    navTitle: '日常管理'
+    navTitle: '日常管理',
+    guestShareMulti: false,
+    guestShareDesc: '发给客人自己预约，或帮客人填好再发给对方',
+    guestShareBtnText: '发送给客人预约'
   },
 
   onLoad(options) {
@@ -70,13 +75,13 @@ Page({
       const shareStoreId = String((options && options.store_id) || '').trim();
       if (shareStoreId && !inviteFromOptions) {
         const { redirectGuestShareToReserve } = require('../../../utils/storeShare');
-        if (redirectGuestShareToReserve(shareStoreId)) return;
+        if (redirectGuestShareToReserve(shareStoreId, options && options.serviceLine)) return;
       }
     }
     const shop = app.getShop();
     if (shop && shop.store_id) {
       app.globalData.merchantStoreId = shop.store_id;
-      this.setData({ shop });
+      this._applyShopData(shop);
       this._syncNavTitle(shop);
     }
   },
@@ -87,6 +92,24 @@ Page({
       statusBarHeight: metrics.statusBarHeight,
       navBarHeight: metrics.navBarHeight,
       navTotalHeight: metrics.totalHeight
+    });
+  },
+
+  _guestSharePatch(shop) {
+    const cards = listGuestShareCards(shop);
+    const multi = cards.length > 1;
+    return {
+      guestShareMulti: multi,
+      guestShareDesc: '发给客人自己预约，或帮客人填好再发给对方',
+      guestShareBtnText: multi ? '选择服务后发送' : '发送给客人预约'
+    };
+  },
+
+  _applyShopData(shop, extra) {
+    this.setData({
+      shop: shop || {},
+      ...(extra || {}),
+      ...this._guestSharePatch(shop)
     });
   },
 
@@ -261,8 +284,7 @@ Page({
     app.refreshMerchantStore()
       .then((shop) => {
         if (!shop || !shop.store_id) {
-          this.setData({
-            shop: shop || {},
+          this._applyShopData(shop || {}, {
             boardingList: [],
             pendingOrderCount: 0,
             pickupPendingCount: 0,
@@ -271,7 +293,7 @@ Page({
           });
           return null;
         }
-        this.setData({ shop, isStoreOwner: app.isStoreOwner() });
+        this._applyShopData(shop, { isStoreOwner: app.isStoreOwner() });
         return Promise.all([
           app.loadOrders({ force: true }),
           app.loadPets({ force: true }),
@@ -307,7 +329,7 @@ Page({
       return this._bootstrapPage();
     }
 
-    this.setData({ shop, isStoreOwner: app.isStoreOwner() });
+    this._applyShopData(shop, { isStoreOwner: app.isStoreOwner() });
     // 先用本地订单立刻刷新列表（不堵网络）
     this._applyBoardingData(shop, { skipRemoteLogs: true });
 
@@ -329,14 +351,13 @@ Page({
     if (isAdminDisabled) {
       return app.ensureMerchantStore({ force: true }).then((shop) => {
         this._bootstrapped = true;
-        this.setData({
+        this._applyShopData(shop || {}, {
           adminDisableReason: (shop && shop.adminDisableReason) || '',
           boardingList: [],
           pendingOrderCount: 0,
           pickupPendingCount: 0,
           uncheckedPetCount: 0,
-          staffCount: 0,
-          shop: shop || {}
+          staffCount: 0
         });
       });
     }
@@ -345,14 +366,14 @@ Page({
       merchantDemo.ensureDemoData();
       const shop = merchantDemo.getDemoShop();
       app.globalData.merchantStoreId = shop.store_id;
-      this.setData({ shop, staffCount: 0, isStoreOwner: false });
+      this._applyShopData(shop, { staffCount: 0, isStoreOwner: false });
       this._bootstrapped = true;
       return this._applyBoardingData(shop);
     }
 
     const cachedShop = app.getShop();
     if (cachedShop && cachedShop.store_id && !isPendingReview && !isApplyRejected) {
-      this.setData({ shop: cachedShop, isStoreOwner: app.isStoreOwner() });
+      this._applyShopData(cachedShop, { isStoreOwner: app.isStoreOwner() });
       this._applyBoardingData(cachedShop, { skipRemoteLogs: true });
     }
 
@@ -365,8 +386,7 @@ Page({
             const demoShop = merchantDemo.getDemoShop();
             app.globalData.merchantStoreId = demoShop.store_id;
             this._bootstrapped = true;
-            this.setData({
-              shop: demoShop,
+            this._applyShopData(demoShop, {
               isStoreOwner: false,
               isDemoMode: true,
               boardingList: [],
@@ -379,8 +399,7 @@ Page({
           }
           // 无店铺时停留在本页空态，避免 reLaunch 自身导致白屏循环
           this._bootstrapped = true;
-          this.setData({
-            shop: shop || {},
+          this._applyShopData(shop || {}, {
             isStoreOwner,
             boardingList: [],
             pendingOrderCount: 0,
@@ -390,7 +409,7 @@ Page({
           });
           return null;
         }
-        this.setData({ shop, isStoreOwner });
+        this._applyShopData(shop, { isStoreOwner });
         if (isPendingReview || isApplyRejected) {
           this._bootstrapped = true;
           this.setData({
@@ -424,13 +443,13 @@ Page({
     const pendingOrderCount = badgeUtil.countMerchantPendingOrders(orders);
     const pickupPendingCount = countPendingPickupTasks(orders);
     const pets = app.getPets();
-    const boardingOrders = orders.filter((o) => o.status === 'boarding');
-    const orderIds = boardingOrders.map((o) => o.id || o.order_id).filter(Boolean);
+    const checkableOrders = filterDailyCheckableOrders(orders);
+    const orderIds = checkableOrders.map((o) => o.id || o.order_id).filter(Boolean);
 
     const finish = (logs) => {
       if (logs) this._cachedDailyLogs = logs;
       const boardingList = buildBoardingListWithDailyStats(
-        boardingOrders,
+        checkableOrders,
         pets,
         logs || this._cachedDailyLogs || []
       );
@@ -442,6 +461,7 @@ Page({
         uncheckedPetCount: countUncheckedBoardingPets(boardingList)
       });
       this._syncNavTitle(storeShop);
+      prefetchStoreShareImage(storeShop);
     };
 
     if (app.isMerchantDemoMode()) {
@@ -513,10 +533,32 @@ Page({
           path: '/pages/merchant/tab-daily/tab-daily'
         };
       }
-      return buildMerchantShareConfig(this);
+      const serviceLine = res && res.target && res.target.dataset && res.target.dataset.serviceLine;
+      return buildMerchantShareConfig(this, { serviceLine });
     }
     // 右上角菜单转发：默认按分享给客人
     return buildMerchantShareConfig(this);
+  },
+
+  onShareToGuest() {
+    if (this.data.isDemoMode) {
+      wx.showToast({ title: '体验模式不可分享给客人', icon: 'none' });
+      return;
+    }
+    if (!this._guardMerchantFeature()) return;
+    if (shouldOpenGuestSharePicker(this.data.shop)) {
+      openGuestSharePicker();
+    }
+  },
+
+  onProxyOrder() {
+    if (!this._guardMerchantFeature()) return;
+    const cards = listGuestShareCards(this.data.shop);
+    if (!cards.length) {
+      wx.showToast({ title: '请先在门店设置中开通服务', icon: 'none' });
+      return;
+    }
+    openProxyGuestPicker();
   },
 
   onShareTimeline() {

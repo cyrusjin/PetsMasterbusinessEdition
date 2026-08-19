@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "disableScroll": true,
+  "backgroundColor": "#00000000",
+  "backgroundColorContent": "#00000000",
+  "enableShareAppMessage": true,
+  "usingComponents": {}
+}

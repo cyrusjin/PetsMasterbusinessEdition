@@ -12,31 +12,28 @@ const CACHE_TTL = 60 * 1000;
  * 过审后再打开。不要依赖 getAccountInfoSync().version——
  * 审核期微信常仍返回线上旧版或空，会误命中 default=开启。
  */
-const LOCAL_APP_VERSION = '1.0.6';
+const LOCAL_APP_VERSION = '1.0.7';
+
+let cachedMiniProgramMeta = null;
 
 function getMiniProgramMeta() {
+  if (cachedMiniProgramMeta) return cachedMiniProgramMeta;
   try {
     const info = wx.getAccountInfoSync && wx.getAccountInfoSync();
     const mp = (info && info.miniProgram) || {};
     const wxVersion = String(mp.version || '').trim();
-    const meta = {
+    cachedMiniProgramMeta = {
       envVersion: String(mp.envVersion || '').trim(),
       // 始终用本地构建号请求服务端，保证可按本包单独关商家入口
       version: LOCAL_APP_VERSION,
       wxVersion,
       appId: String(mp.appId || '').trim()
     };
-    console.log('[merchantSwitch] getAccountInfoSync', {
-      raw: mp,
-      envVersion: meta.envVersion || '(空)',
-      localVersion: meta.version,
-      wxVersion: meta.wxVersion || '(空)',
-      appId: meta.appId || '(空)'
-    });
-    return meta;
+    return cachedMiniProgramMeta;
   } catch (err) {
     console.warn('[merchantSwitch] getAccountInfoSync failed', err);
-    return { envVersion: '', version: LOCAL_APP_VERSION, wxVersion: '', appId: '' };
+    cachedMiniProgramMeta = { envVersion: '', version: LOCAL_APP_VERSION, wxVersion: '', appId: '' };
+    return cachedMiniProgramMeta;
   }
 }
 

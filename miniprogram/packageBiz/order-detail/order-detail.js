@@ -1,7 +1,6 @@
 const app = getApp();
 const { normalizeOrderFees } = require('../../utils/orderFees');
 const { buildPetDetailView } = require('../../utils/petSnapshot');
-const { formatOrderStatus } = require('../utils/orderDetailView');
 const { formatPickupLegs } = require('../utils/pickupInfo');
 const { formatPickupProgress } = require('../../utils/pickupManage');
 const { loadOrderFeeDetail, buildOrderFeeDetail } = require('../utils/orderFeeDetail');
@@ -12,6 +11,14 @@ const { canMerchantModifyOrder } = require('../utils/orderActions');
 const { attachOrderDisplayNo } = require('../../utils/displayNo');
 const { formatOrderCreateTime } = require('../../utils/util');
 const { buildPendingEditLines, getPendingEditTotalFee } = require('../utils/pendingEdit');
+const { attachVisitAddressFields } = require('../../utils/homeVisitAddress');
+const {
+  isDailyCheckableOrder,
+  formatServiceStatus,
+  getCompleteServiceCopy
+} = require('../../utils/dailyCheckable');
+const { canShareProxyOrder, buildProxyShareConfig } = require('../../utils/proxyOrder');
+const { prefetchStoreShareImage, resolveShareImageUrl } = require('../../utils/storeShare');
 
 Page({
   data: {
@@ -30,11 +37,15 @@ Page({
     pendingEditTotalFee: null,
     exporting: false,
     refreshing: false,
-    canMerchantOperate: true
+    canMerchantOperate: true,
+    canDailyCheck: false,
+    canShareProxy: false,
+    completeActionLabel: '结束寄养'
   },
 
   onLoad(opts) {
     this.orderId = opts.id;
+    prefetchStoreShareImage(app.getShop());
     this._loadOrder();
     this._refreshOrder({ force: false });
   },
@@ -60,13 +71,13 @@ Page({
   _loadOrder() {
     const found = attachOrderDisplayNo(app.getOrders().find((o) => o.id === this.orderId));
     if (!found) return;
-    const order = {
+    const order = attachVisitAddressFields({
       ...found,
       createTimeText: formatOrderCreateTime(found)
-    };
+    });
     const fees = normalizeOrderFees(order);
     const petView = buildPetDetailView(order.petSnapshot, order);
-    const statusLabel = formatOrderStatus(order.status);
+    const statusLabel = formatServiceStatus(order);
     const feeDetail = buildOrderFeeDetail(order, app.getStoreBillingRules(), {
       store: app.getCurrentStore()
     });
@@ -74,6 +85,8 @@ Page({
       order,
       petView,
       statusLabel,
+      canDailyCheck: isDailyCheckableOrder(order),
+      completeActionLabel: getCompleteServiceCopy(order).button,
       pickupLegsText: formatPickupLegs(order),
       pickupProgressText: formatPickupProgress(order),
       valueAddedServicesText: Array.isArray(order.valueAddedServices) && order.valueAddedServices.length
@@ -87,7 +100,8 @@ Page({
       feeDetail,
       pendingEditLines: order.editPendingConfirm ? buildPendingEditLines(order) : [],
       pendingEditTotalFee: order.editPendingConfirm ? getPendingEditTotalFee(order) : null,
-      canMerchantOperate: canMerchantModifyOrder(order)
+      canMerchantOperate: canMerchantModifyOrder(order),
+      canShareProxy: canShareProxyOrder(order)
     });
     this._resolvePetPhoto(petView.photo);
     loadOrderFeeDetail(app, order).then((nextDetail) => {
@@ -113,6 +127,12 @@ Page({
     const order = this.data.order;
     if (!order || !order.id) return;
     wx.navigateTo({ url: '/packageBiz/daily-logs/daily-logs?orderId=' + order.id });
+  },
+
+  onGoDailyCheck() {
+    const order = this.data.order;
+    if (!order || !order.id) return;
+    wx.navigateTo({ url: '/packageBiz/daily-check/daily-check?orderId=' + order.id });
   },
 
   onGoContract() {
@@ -183,9 +203,10 @@ Page({
       });
       return;
     }
+    const copy = getCompleteServiceCopy(order);
     wx.showModal({
-      title: '结束寄养',
-      content: '确认结束寄养服务吗？',
+      title: copy.title,
+      content: copy.content,
       success: (r) => {
         if (!r.confirm) return;
         app.updateOrder(order.id, { status: 'completed' })
@@ -226,5 +247,22 @@ Page({
       .finally(() => {
         this.setData({ exporting: false });
       });
+  },
+
+  onShareAppMessage() {
+    const order = this.data.order || {};
+    if (canShareProxyOrder(order)) {
+      return buildProxyShareConfig({
+        shop: app.getShop(),
+        storeId: order.store_id,
+        token: order.proxyClaimToken,
+        petName: order.petName
+      });
+    }
+    return {
+      title: (order.petName ? `${order.petName}的预约` : '订单详情'),
+      path: `packageBiz/order-detail/order-detail?id=${encodeURIComponent(order.id || '')}`,
+      imageUrl: resolveShareImageUrl(app.getShop())
+    };
   }
 });

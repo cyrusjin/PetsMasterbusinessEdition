@@ -19,7 +19,10 @@
       <text>🐱</text>
     </view>
     <view class="open-success-actions">
-      <view class="open-success-btn open-success-btn-primary">
+      <view class="open-success-btn open-success-btn-primary" wx:if="{{guestShareMulti}}" bindtap="onShareOpenSuccess">
+        <text class="open-success-btn-text">发给自己或朋友</text>
+      </view>
+      <view class="open-success-btn open-success-btn-primary" wx:else>
         <text class="open-success-btn-text">发给自己或朋友</text>
         <button
           class="open-success-btn-hit"

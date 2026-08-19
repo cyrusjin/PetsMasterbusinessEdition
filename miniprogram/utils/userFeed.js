@@ -1,6 +1,7 @@
 const { dedupeDailyLogs, getLogId } = require('./dailyLogUtil');
 const { formatTimeLabel } = require('./dailyTimeline');
 const { enrichLogsWithVideoUrls, normalizeLogVideos } = require('./mediaUrl');
+const { isDailyCheckableOrder } = require('./dailyCheckable');
 
 function isUnpublishedScheduledLog(log) {
   if (!log) return false;
@@ -42,7 +43,7 @@ function getUserScopedDailyLogs(app, orders) {
 function getUserBoardingOrderIds(orders) {
   return [...new Set(
     (orders || [])
-      .filter((o) => o.status === 'boarding')
+      .filter(isDailyCheckableOrder)
       .map((o) => o.id || o.order_id)
       .filter(Boolean)
   )];

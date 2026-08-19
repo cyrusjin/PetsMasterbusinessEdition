@@ -28,7 +28,20 @@
   "libVersion": "3.5.5",
   "packOptions": {
     "ignore": [],
-    "include": []
+    "include": [
+      {
+        "type": "folder",
+        "value": "packageBiz/share-guest"
+      },
+      {
+        "type": "folder",
+        "value": "packageUser/user/proxy-claim"
+      },
+      {
+        "type": "file",
+        "value": "packageUser/utils/homeVisitFee.js"
+      }
+    ]
   },
   "appid": "wx327ccf77cdedc252",
   "projectname": "PetMasterBusiness"

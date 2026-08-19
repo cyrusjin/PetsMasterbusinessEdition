@@ -13,7 +13,7 @@
           <view class="year-switch">切换年份</view>
         </picker>
       </view>
-      <text class="tip-desc">按国务院放假安排展示休息日（含调休假期，不含补班日）。可在各节日下全选、一键设置，也可添加或删除任意日期；勾选并填写固定加价金额（元/天）后生效。</text>
+      <text class="tip-desc">{{tipDesc}}</text>
       <text class="tip-source" wx:if="{{sourceText}}">{{sourceText}}</text>
     </view>
 
@@ -105,7 +105,7 @@
           focus="{{batchSetVisible}}"
           bindinput="onBatchSetAmountInput"
         />
-        <text class="amount-unit">元/天</text>
+        <text class="amount-unit">{{amountUnit}}</text>
       </view>
       <view class="add-date-actions">
         <button class="btn-ghost" bindtap="onCancelBatchSet">取消</button>

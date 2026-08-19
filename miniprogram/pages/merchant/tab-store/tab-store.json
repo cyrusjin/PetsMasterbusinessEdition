@@ -5,6 +5,7 @@
   "backgroundColorTop": "#E98657",
   "backgroundColor": "#F7F8FA",
   "enablePullDownRefresh": true,
+  "enableShareAppMessage": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
     "cached-image": "/components/cached-image/cached-image",

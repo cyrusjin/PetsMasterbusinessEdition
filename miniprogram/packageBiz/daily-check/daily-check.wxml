@@ -16,13 +16,14 @@
         <view class="pet-select-info">
           <view class="pet-select-name-row">
             <text class="pet-select-name">{{item.petName}}</text>
+            <text class="service-tag" wx:if="{{item.serviceLabel}}">{{item.serviceLabel}}</text>
             <text class="pet-select-meta">{{item.petGender}} · {{item.petBreed}}</text>
           </view>
           <text class="text-gray pet-select-date">{{item.startDate}} ~ {{item.endDate}} · 今日打卡 {{item.todayCheckCount}} 次</text>
         </view>
       </view>
     </view>
-    <view wx:else class="empty-hint">暂无寄养中的宠物</view>
+    <view wx:else class="empty-hint">暂无进行中的服务</view>
   </view>
 
   <view wx:if="{{selectedCount > 0}}">

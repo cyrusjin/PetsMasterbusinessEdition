@@ -60,24 +60,36 @@
       </view>
     </view>
 
-    <button
-      class="guest-invite-card"
-      open-type="share"
-      data-share-type="customer"
-      hover-class="guest-invite-card-hover"
-    >
+    <view class="guest-invite-card">
       <view class="guest-invite-frame" aria-hidden="true"></view>
       <view class="guest-invite-corner guest-invite-corner-tl" aria-hidden="true">✨</view>
       <view class="guest-invite-corner guest-invite-corner-tr" aria-hidden="true">💰</view>
       <view class="guest-invite-corner guest-invite-corner-bl" aria-hidden="true">🧧</view>
       <view class="guest-invite-corner guest-invite-corner-br" aria-hidden="true">🎉</view>
-      <text class="guest-invite-title">发送给客人预约</text>
+      <text class="guest-invite-title">发给客人</text>
       <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
-      <text class="guest-invite-desc">发给好友，打开即可预约本店寄养</text>
-      <view class="guest-invite-btn-wrap">
-        <text class="guest-invite-btn-text">发送给客人预约</text>
+      <text class="guest-invite-desc">{{guestShareDesc}}</text>
+      <view class="guest-invite-actions">
+        <button
+          wx:if="{{!guestShareMulti}}"
+          class="guest-invite-action"
+          open-type="share"
+          data-share-type="customer"
+          hover-class="guest-invite-action-hover"
+        >发送给客人预约</button>
+        <view
+          wx:else
+          class="guest-invite-action"
+          hover-class="guest-invite-action-hover"
+          bindtap="onShareToGuest"
+        >{{guestShareBtnText}}</view>
+        <view
+          class="guest-invite-action guest-invite-action-alt"
+          hover-class="guest-invite-action-hover"
+          bindtap="onProxyOrder"
+        >代客人下单</view>
       </view>
-    </button>
+    </view>
 
     <view class="card" wx:if="{{isStoreOwner && !isDemoMode}}">
       <view class="card-title">员工协作</view>
@@ -101,7 +113,7 @@
     </view>
 
     <view class="card" wx:if="{{boardingList.length > 0}}">
-      <view class="card-title">在住宠物 ({{boardingList.length}})</view>
+      <view class="card-title">服务中宠物 ({{boardingList.length}})</view>
       <view class="boarding-item" wx:for="{{boardingList}}" wx:key="id">
         <view class="boarding-main" bindtap="onGoDetail" data-id="{{item.id}}">
           <cached-image wx:if="{{item.petPhoto}}" src="{{item.petPhoto}}" mode="aspectFill" custom-class="pet-avatar-small" />
@@ -109,10 +121,11 @@
           <view class="boarding-info">
             <view class="boarding-name-row">
               <text class="boarding-name">{{item.petName}}</text>
+              <text class="service-tag" wx:if="{{item.serviceLabel}}">{{item.serviceLabel}}</text>
               <text class="expiring-tag" wx:if="{{item.isExpiringToday}}">今日到期</text>
             </view>
             <text class="text-gray boarding-date">下单：{{item.createTimeText}}</text>
-            <text class="text-gray boarding-date">到期：{{item.endDate}}</text>
+            <text class="text-gray boarding-date">{{item.dateLabel}}：{{item.dateText}}</text>
           </view>
         </view>
         <view class="boarding-actions">

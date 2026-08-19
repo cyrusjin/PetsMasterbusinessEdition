@@ -5,9 +5,40 @@
       <text>待确认</text>
       <text class="tab-badge" wx:if="{{pendingBadge > 0}}">{{pendingBadge > 99 ? '99+' : pendingBadge}}</text>
     </view>
-    <view class="order-tab {{tab === 'awaiting_arrival' ? 'active' : ''}}" bindtap="onTab" data-tab="awaiting_arrival">待到店</view>
-    <view class="order-tab {{tab === 'boarding' ? 'active' : ''}}" bindtap="onTab" data-tab="boarding">寄养中</view>
+    <view class="order-tab {{tab === 'awaiting_arrival' ? 'active' : ''}}" bindtap="onTab" data-tab="awaiting_arrival">待开始</view>
+    <view class="order-tab {{tab === 'boarding' ? 'active' : ''}}" bindtap="onTab" data-tab="boarding">进行中</view>
     <view class="order-tab {{tab === 'completed' ? 'active' : ''}}" bindtap="onTab" data-tab="completed">已完成</view>
+  </view>
+
+  <view class="service-tabs" wx:if="{{showServiceTabs}}">
+    <view
+      class="service-tab {{serviceTab === item.key ? 'active' : ''}}"
+      wx:for="{{serviceTabs}}"
+      wx:key="key"
+      bindtap="onServiceTab"
+      data-tab="{{item.key}}"
+    >{{item.label}}</view>
+  </view>
+
+  <view class="date-filter">
+    <view class="date-preset-row">
+      <view class="date-preset {{datePreset === 'today' ? 'active' : ''}}" bindtap="onDatePreset" data-key="today">今天</view>
+      <view class="date-preset {{datePreset === 'week' ? 'active' : ''}}" bindtap="onDatePreset" data-key="week">本周</view>
+      <view class="date-preset {{datePreset === 'month' ? 'active' : ''}}" bindtap="onDatePreset" data-key="month">本月</view>
+      <view
+        class="date-preset-clear {{filterStartDate || filterEndDate ? '' : 'disabled'}}"
+        bindtap="onClearDateFilter"
+      >清除</view>
+    </view>
+    <view class="date-range-row">
+      <picker mode="date" value="{{filterStartDate || todayDate}}" bindchange="onFilterStartDate">
+        <view class="date-range-box {{filterStartDate ? '' : 'placeholder'}}">{{filterStartDate || '开始日期'}}</view>
+      </picker>
+      <text class="date-range-sep">至</text>
+      <picker mode="date" value="{{filterEndDate || todayDate}}" bindchange="onFilterEndDate">
+        <view class="date-range-box {{filterEndDate ? '' : 'placeholder'}}">{{filterEndDate || '结束日期'}}</view>
+      </picker>
+    </view>
   </view>
 
   <view wx:if="{{loading}}" class="loading-wrap">
@@ -21,11 +52,14 @@
           <cached-image wx:if="{{item.petPhoto}}" src="{{item.petPhoto}}" mode="aspectFill" custom-class="pet-avatar-small" />
           <view wx:else class="pet-avatar-small">{{item.petName ? item.petName[0] : '宠'}}</view>
           <view>
-            <text class="boarding-name">{{item.petName}}</text>
+            <view class="order-name-row">
+              <text class="boarding-name">{{item.petName}}</text>
+              <text class="service-tag" wx:if="{{item.serviceLabel}}">{{item.serviceLabel}}</text>
+            </view>
             <text class="text-gray order-subline">{{item.petType}} · {{item.serviceType}}</text>
             <text class="text-gray order-subline">品种：{{item.petBreed || '--'}} · {{item.petGender || '--'}} · {{item.petAgeText}}</text>
             <text class="text-gray order-subline">下单：{{item.createTimeText}}</text>
-            <text class="text-gray order-subline">寄养：{{item.boardingTime}}</text>
+            <text class="text-gray order-subline">{{item.serviceTimeLabel}}：{{item.serviceTimeText}}</text>
             <text class="text-gray order-subline" wx:if="{{item.userNickName}}">宠主：{{item.userNickName}}</text>
           </view>
         </view>
@@ -33,11 +67,10 @@
           <text wx:if="{{item.editPendingConfirm}}">改单待确认</text>
           <text wx:elif="{{item.pricePendingConfirm}}">待确认价格</text>
           <text wx:elif="{{item.status === 'pending'}}">待确认</text>
-          <text wx:elif="{{item.status === 'awaiting_arrival'}}">待到店</text>
-          <text wx:elif="{{item.status === 'confirmed'}}">待签协议</text>
-          <text wx:elif="{{item.status === 'boarding'}}">寄养中</text>
+          <text wx:elif="{{item.status === 'confirmed'}}">{{item.statusLabel || '待签协议'}}</text>
           <text wx:elif="{{item.status === 'completed'}}">已完成</text>
-          <text wx:else>已取消</text>
+          <text wx:elif="{{item.status === 'cancelled'}}">已取消</text>
+          <text wx:else>{{item.statusLabel || '已取消'}}</text>
         </view>
       </view>
       <view class="order-info">
@@ -60,9 +93,9 @@
         <button wx:if="{{item.editPendingConfirm}}" class="btn-sm btn-danger-outline" bindtap="onRejectUserEdit" data-id="{{item.id}}">拒绝改单</button>
         <button wx:if="{{item.status === 'pending' && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-green" bindtap="onAccept" data-id="{{item.id}}">确认接单</button>
         <button wx:if="{{item.status === 'pending' && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-danger-outline" bindtap="onReject" data-id="{{item.id}}">拒绝</button>
-        <button wx:if="{{item.status === 'awaiting_arrival' && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-green" bindtap="onConfirmArrival" data-id="{{item.id}}">确认到店</button>
-        <button wx:if="{{item.status === 'boarding' && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-blue" bindtap="onDetail" data-id="{{item.id}}">管理</button>
-        <button wx:if="{{item.status === 'boarding' && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-red" bindtap="onComplete" data-id="{{item.id}}">结束寄养</button>
+        <button wx:if="{{item.status === 'awaiting_arrival' && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-green" bindtap="onConfirmArrival" data-id="{{item.id}}">{{item.startActionLabel || '确认到店'}}</button>
+        <button wx:if="{{item.canDailyCheck && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-blue" bindtap="onDailyCheck" data-id="{{item.id}}">去打卡</button>
+        <button wx:if="{{(item.status === 'boarding' || (item.canDailyCheck && item.status === 'awaiting_arrival')) && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-red" bindtap="onComplete" data-id="{{item.id}}">{{item.completeActionLabel || '结束寄养'}}</button>
         <button wx:if="{{(item.status === 'pending' || item.status === 'awaiting_arrival' || item.status === 'boarding') && !item.pricePendingConfirm}}" class="btn-sm btn-orange" bindtap="onEditPrice" data-id="{{item.id}}">修改价格</button>
         <button class="btn-sm btn-gray" bindtap="onDetail" data-id="{{item.id}}">详情</button>
       </view>
@@ -71,6 +104,6 @@
 
   <view wx:else class="empty-state">
     <text class="empty-icon">📋</text>
-    <text class="empty-text">{{loadError || '暂无订单'}}</text>
+    <text class="empty-text">{{loadError || ((tab !== 'all' || serviceTab !== 'all' || filterStartDate || filterEndDate) ? '暂无符合筛选条件的订单' : '暂无订单')}}</text>
   </view>
 </view>

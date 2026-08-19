@@ -1,4 +1,5 @@
 const { ORDER_STATUS } = require('../../utils/orderStatus');
+const { getOrderServiceKind } = require('../../utils/dailyCheckable');
 
 const USER_CANCEL_STATUSES = [
   ORDER_STATUS.PENDING,
@@ -20,6 +21,8 @@ function canUserCancelOrder(status) {
 function canUserEditOrder(status, order) {
   if (!USER_EDIT_STATUSES.includes(status)) return false;
   if (order && order.pricePendingConfirm) return false;
+  const kind = getOrderServiceKind(order);
+  if (kind === 'wash' || kind === 'homeFeeding') return false;
   return true;
 }
 

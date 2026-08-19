@@ -110,7 +110,7 @@ Page({
   onLeave() {
     wx.showModal({
       title: '退出家庭宠物',
-      content: '退出后将无法再查看该宠物档案与相关寄养动态，确定退出吗？',
+      content: '退出后将无法再查看该宠物档案与相关服务动态，确定退出吗？',
       success: (r) => {
         if (!r.confirm) return;
         wx.showLoading({ title: '处理中' });

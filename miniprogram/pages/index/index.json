@@ -1,5 +1,8 @@
 {
+  "navigationStyle": "custom",
   "navigationBarTitleText": "宠物寄养",
+  "navigationBarBackgroundColor": "#FFF4E7",
+  "navigationBarTextStyle": "black",
   "enablePullDownRefresh": true,
   "enableShareAppMessage": true,
   "usingComponents": {}

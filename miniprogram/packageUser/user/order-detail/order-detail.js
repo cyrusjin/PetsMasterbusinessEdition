@@ -3,7 +3,7 @@ const badgeUtil = require('../../../utils/badge');
 const { normalizeOrderFees } = require('../../../utils/orderFees');
 const { loadOrderFeeDetail, buildOrderFeeDetail } = require('../../utils/orderFeeDetail');
 const { refreshSingleOrder } = require('../../../utils/orderRefresh');
-const { formatOrderStatus } = require('../../../utils/orderStatus');
+const { formatServiceStatus } = require('../../../utils/dailyCheckable');
 const {
   canUserCancelOrder,
   canUserEditOrder,
@@ -12,6 +12,7 @@ const {
 const { attachOrderDisplayNo } = require('../../../utils/displayNo');
 const { formatOrderCreateTime } = require('../../../utils/util');
 const { buildPendingEditLines, getPendingEditTotalFee } = require('../../utils/pendingEdit');
+const { attachVisitAddressFields } = require('../../../utils/homeVisitAddress');
 
 Page({
   data: {
@@ -62,10 +63,10 @@ Page({
   _loadOrder() {
     const found = attachOrderDisplayNo(app.getOrders().find((o) => o.id === this.orderId));
     if (!found) return;
-    const order = {
+    const order = attachVisitAddressFields({
       ...found,
       createTimeText: formatOrderCreateTime(found)
-    };
+    });
     const feeSummary = normalizeOrderFees(order);
     const feeDetail = buildOrderFeeDetail(order, app.getStoreBillingRules(), {
       store: app.getCurrentStore()
@@ -73,7 +74,7 @@ Page({
     const status = order.status;
     this.setData({
       order,
-      statusLabel: formatOrderStatus(status),
+      statusLabel: formatServiceStatus(order),
       canCancel: canUserCancelOrder(status),
       canEdit: canUserEditOrder(status, order),
       showActions: canShowUserOrderActions(status, order),

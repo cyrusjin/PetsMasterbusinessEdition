@@ -21,10 +21,16 @@ function isOccupyingStatus(status) {
 
 function orderMatchesPet(order, pet) {
   if (!order || !pet) return false;
-  const petId = String(pet.id || pet.petId || '').trim();
-  if (petId && String(order.petId || '').trim() === petId) return true;
-  const name = String(pet.name || pet.petName || '').trim();
-  if (name && String(order.petName || '').trim() === name) return true;
+  const petId = String(pet.id || pet.petId || pet.pet_id || '').trim();
+  const orderPetId = String(order.petId || order.pet_id || '').trim();
+  if (petId && orderPetId) return petId === orderPetId;
+  // 当前宠物已有 id：只按 id 判断，避免同名宠物（尤其是新建的「猫」）误撞老订单
+  if (petId) return false;
+  // 仅双方都没有宠物 id 时，才用姓名兼容线上老数据
+  if (!orderPetId) {
+    const name = String(pet.name || pet.petName || '').trim();
+    return !!(name && name === String(order.petName || '').trim());
+  }
   return false;
 }
 

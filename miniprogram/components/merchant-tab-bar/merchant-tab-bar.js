@@ -2,7 +2,7 @@ const {
   consumeForcePromoRequest,
   canShowOpenSuccessPromo
 } = require('../../utils/openSuccessPromo');
-const { enableStoreShareMenu } = require('../../utils/storeShare');
+const { enableStoreShareMenu, shouldOpenGuestSharePicker, openGuestSharePicker } = require('../../utils/storeShare');
 const { isOaBound } = require('../../utils/officialAccount');
 
 Component({
@@ -20,7 +20,8 @@ Component({
     showBizTabs: true,
     basicReady: false,
     openSuccessVisible: false,
-    oaFollowSheetVisible: false
+    oaFollowSheetVisible: false,
+    guestShareMulti: false
   },
   lifetimes: {
     attached() {
@@ -98,7 +99,21 @@ Component({
       if (this.data.openSuccessVisible || this._promoShownLock) return;
       this._promoShownLock = true;
       enableStoreShareMenu();
-      this.setData({ openSuccessVisible: true });
+      let guestShareMulti = false;
+      try {
+        const app = getApp();
+        guestShareMulti = shouldOpenGuestSharePicker(app.getShop && app.getShop());
+      } catch (err) {
+        guestShareMulti = false;
+      }
+      this.setData({ openSuccessVisible: true, guestShareMulti });
+    },
+
+    onShareOpenSuccess() {
+      if (!this.data.guestShareMulti) return;
+      this.setData({ openSuccessVisible: false });
+      this._promoShownLock = false;
+      openGuestSharePicker();
     },
 
     onCloseOpenSuccess() {
@@ -130,7 +145,7 @@ Component({
       const cur = pages[pages.length - 1];
       if (cur && cur.route === 'pages/merchant/tab-store/tab-store') {
         if (typeof cur.setData === 'function') {
-          cur.setData({ settingsTab: 'advanced' });
+          cur.setData({ settingsTab: 'boarding', moduleSubTab: 'advanced', activeServiceTab: 'boarding' });
         }
         wx.pageScrollTo({ scrollTop: 0, duration: 200 });
         return;

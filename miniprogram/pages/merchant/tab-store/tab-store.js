@@ -10,6 +10,7 @@ const {
   createEmptyApplyShop,
   pickApplyShopFields
 } = require('../../../utils/storeApply');
+const { preserveOutgoingShopFields, hydrateShopProfileFromCoop } = require('../../../utils/storeSync');
 const { resolveImageUrls } = require('../../../utils/imageCache');
 const {
   DEFAULT_DEPARTURE_CHARGE,
@@ -40,7 +41,8 @@ const {
   enableStoreShareMenu,
   buildMerchantShareConfig,
   buildMerchantTimelineShareConfig,
-  redirectGuestShareToReserve
+  redirectGuestShareToReserve,
+  prefetchStoreShareImage
 } = require('../../../utils/storeShare');
 const { normalizePhone, validateMobilePhone } = require('../../../utils/phone');
 
@@ -80,7 +82,38 @@ const {
   removeWeightRange,
   updateWeightRangeField
 } = require('../../../utils/weightPricing');
-const { normalizeDeposit, validateStoreForm, validateBasicStoreForm, validateAdvancedStoreForm } = require('../../../utils/storeForm');
+const { normalizeDeposit, validateStoreForm, validateBasicStoreForm, validateAdvancedStoreForm, validateBillingRules, isBoardingPricingComplete, isHomeFeedingPricingComplete, OPEN_NEED_SERVICE_LINE } = require('../../../utils/storeForm');
+const {
+  emptyHomeFeeding,
+  normalizeHomeFeeding,
+  validateHomeFeedingAdvanced
+} = require('../../../utils/homeFeeding');
+const {
+  normalizeDogPricingForUi,
+  updateDogField,
+  updateDogSurchargeField,
+  addDogSurchargeTier,
+  removeDogSurchargeTier,
+  toggleDogSurchargeEnabled,
+  toggleDogSurchargePerKm,
+  validateHomeVisitPricing,
+  deriveLegacyPricingFromItems,
+  compactVisitSurcharge,
+  isSurchargeEnabled
+} = require('../../../utils/homeVisitPricing');
+const {
+  normalizeVisitServicesForUi,
+  compactVisitServices,
+  addVisitService,
+  removeVisitService,
+  updateVisitServiceField,
+  toggleVisitServicePetType,
+  refreshVisitServicePetTypeOptions,
+  updateVisitServiceVasField,
+  addVisitServiceVas,
+  removeVisitServiceVas,
+  patchVisitServiceSurcharge
+} = require('../../../utils/homeVisitServices');
 const {
   normalizePickupPricing,
   PICKUP_PRICING_MODE,
@@ -103,6 +136,20 @@ const {
   removeWashRange,
   updateWashRangeField
 } = require('../../../utils/washPricing');
+const {
+  MAX_WASH_TITLE,
+  MAX_WASH_BODY,
+  normalizeWashProducts,
+  normalizeWashProductsForUi,
+  addWashProduct,
+  removeWashProduct,
+  updateWashProductField,
+  toggleWashProductPetType,
+  validateWashProducts,
+  isWashProductsComplete,
+  compactWashProducts,
+  uploadWashProductPhotos
+} = require('../../../utils/washProducts');
 const {
   MAX_ROOM_DESCRIPTION,
   normalizeRoomPricing,
@@ -151,8 +198,22 @@ const {
   normalizeLongTermTiersForEdit,
   addLongTermTier,
   removeLongTermTier,
-  updateLongTermTierField
+  updateLongTermTierField,
+  parseZhe,
+  formatZhe,
+  sanitizeZheInput
 } = require('../../../utils/longTermDiscount');
+const {
+  EMPTY_SERVICE_LINES,
+  normalizeServiceLines,
+  hasOtherEnabledServiceLine,
+  pickServiceLineView
+} = require('../../../utils/serviceLines');
+
+/** 本地 UI 预览：空店铺，不拉线上店、不写回云端。测完改回 false */
+const UI_EMPTY_SHOP_PREVIEW = false;
+/** 测试模式本地保存缓存，页面重进时还原，不写入真实店铺存储 */
+let previewShopCache = null;
 
 function pickReceptionRangeState(shop) {
   const receptionRange = normalizeReceptionRange(shop.receptionRange || shop.range);
@@ -189,7 +250,7 @@ function pickBillingState(rules) {
     (rules && rules.multiPetDiscount) || {}
   );
   const multiPetDiscountEnabled = multiPetDiscount.enabled === true;
-  const multiPetPercent = multiPetDiscount.percent;
+  const multiPetZheText = formatZhe(multiPetDiscount.zhe);
   const multiPetAmount = multiPetDiscount.amount;
   const longTermDiscount = (rules && rules.longTermDiscount) || {};
   const longTermDiscountEnabled = longTermDiscount.enabled === true;
@@ -211,9 +272,7 @@ function pickBillingState(rules) {
     })(),
     multiPetDiscountEnabled,
     multiPetDiscountMode: multiPetDiscount.mode,
-    multiPetDiscountPercent: multiPetDiscountEnabled && multiPetPercent != null && multiPetPercent !== ''
-      ? String(multiPetPercent)
-      : (multiPetPercent != null && multiPetPercent !== '' ? String(multiPetPercent) : ''),
+    multiPetDiscountPercent: multiPetZheText,
     multiPetDiscountAmount: multiPetDiscountEnabled && multiPetAmount != null && multiPetAmount !== ''
       ? String(multiPetAmount)
       : (multiPetAmount != null && multiPetAmount !== '' ? String(multiPetAmount) : ''),
@@ -225,14 +284,99 @@ function pickBillingState(rules) {
   };
 }
 
+function emptyVisitOfferForm() {
+  return {
+    multiPetDiscountEnabled: false,
+    multiPetDiscountMode: 'fromSecondPercent',
+    multiPetDiscountPercent: '',
+    multiPetDiscountAmount: '',
+    holidayPricingSummary: '默认不加价'
+  };
+}
+
+function pickVisitOfferForm(pricing) {
+  const mp = normalizeMultiPetDiscount((pricing && pricing.multiPetDiscount) || {});
+  const holiday = normalizeHolidayPricing(
+    (pricing && pricing.holidayPricing) || getDefaultHolidayPricing()
+  );
+  const amount = mp.amount;
+  return {
+    multiPetDiscountEnabled: mp.enabled === true,
+    multiPetDiscountMode: mp.mode === 'fromSecondFixedPerDay' ? 'fromSecondFixedPerDay' : 'fromSecondPercent',
+    multiPetDiscountPercent: formatZhe(mp.zhe),
+    multiPetDiscountAmount: amount != null && amount !== '' ? String(amount) : '',
+    holidayPricingSummary: formatHolidayPricingSummary(holiday)
+  };
+}
+
+function buildMultiPetDiscountFromForm(form, applyTo) {
+  const src = form || {};
+  const zheRaw = String(src.multiPetDiscountPercent || '').trim();
+  const zhe = parseZhe(zheRaw);
+  const amountRaw = String(src.multiPetDiscountAmount || '').trim();
+  const amount = /^\d+(\.\d{1,2})?$/.test(amountRaw) ? Number(amountRaw) : NaN;
+  const multiPetMode = src.multiPetDiscountMode === 'fromSecondFixedPerDay'
+    ? 'fromSecondFixedPerDay'
+    : 'fromSecondPercent';
+  if (multiPetMode === 'fromSecondFixedPerDay') {
+    const enabled = !!src.multiPetDiscountEnabled && Number.isFinite(amount);
+    return {
+      enabled,
+      mode: multiPetMode,
+      zhe: 0,
+      percent: 0,
+      amount: enabled ? amount : 0,
+      applyTo
+    };
+  }
+  if (!src.multiPetDiscountEnabled || !zheRaw) {
+    return {
+      enabled: false,
+      mode: multiPetMode,
+      zhe: 0,
+      percent: 0,
+      amount: 0,
+      applyTo
+    };
+  }
+  if (zhe == null) {
+    return {
+      enabled: true,
+      mode: multiPetMode,
+      zhe: zheRaw,
+      percent: 0,
+      amount: 0,
+      applyTo
+    };
+  }
+  return {
+    enabled: true,
+    mode: multiPetMode,
+    zhe,
+    percent: Math.round((10 - zhe) * 10 * 100) / 100,
+    amount: 0,
+    applyTo
+  };
+}
+
 Page({
   data: {
     isDemoMode: false,
     isAdminDisabled: false,
     adminDisableReason: '',
-    settingsTab: 'basic',
+    settingsTab: 'shop',
+    moduleSubTab: 'basic',
     basicSaveText: '开始营业',
     showBasicSaveButton: false,
+    activeServiceTab: 'boarding',
+    currentModuleCard: null,
+    serviceLines: { ...EMPTY_SERVICE_LINES },
+    serviceLineCards: pickServiceLineView({ serviceLines: EMPTY_SERVICE_LINES }, { boardingComplete: false }).serviceLineCards,
+    boardingEnabled: false,
+    washLineEnabled: false,
+    homeFeedingEnabled: false,
+    basicServiceLinesTip: '三个板块价格各自独立。资料完善后才能打开开关，至少开通一项后才能开始营业。',
+    advancedServiceLinesTip: '点选板块查看对应高级设置。收费规则、优惠、交通费、协议、押金按板块分别生效。',
     submitting: false,
     shop: {},
     billingMode: 'weight',
@@ -282,6 +426,10 @@ Page({
     pickupFreeMode: 'none',
     pickupFreeTiers: createDefaultPickupFreeTiersForEdit(),
     washPricing: [],
+    washProducts: [],
+    washValueAddedServices: [],
+    maxWashTitle: MAX_WASH_TITLE,
+    maxWashBody: MAX_WASH_BODY,
     washFreeMode: 'none',
     multiPetDiscountEnabled: false,
     multiPetDiscountMode: 'fromSecondPercent',
@@ -290,6 +438,39 @@ Page({
     longTermDiscountEnabled: false,
     longTermDiscountTiers: [{ minDays: '', zhe: '' }],
     holidayPricingSummary: '默认不加价',
+    hf: {
+      billingMode: 'weight',
+      weightPricing: [],
+      roomPricing: [],
+      customPricing: normalizeCustomPricingForUi(getDefaultCustomPricing()),
+      checkInDayCharge: 'full',
+      departureDayCharge: 'full',
+      departureCharge: { ...DEFAULT_DEPARTURE_CHARGE },
+      chargeSummary: '',
+      multiPetDiscountEnabled: false,
+      multiPetDiscountMode: 'fromSecondPercent',
+      multiPetDiscountPercent: '',
+      multiPetDiscountAmount: '',
+      longTermDiscountEnabled: false,
+      longTermDiscountTiers: [{ minDays: '', zhe: '' }],
+      holidayPricingSummary: '默认不加价',
+      pickupFreeMode: 'none',
+      pickupFreeTiers: createDefaultPickupFreeTiersForEdit(),
+      washPricing: [],
+      washFreeMode: 'none',
+      valueAddedServices: [],
+      noticePhotos: [],
+      washNoticePhotos: [],
+      contractClauseCustomized: false,
+      contractClauseSummary: '使用平台默认条款',
+      serviceItems: normalizeVisitServicesForUi(),
+      includedKm: '3',
+      surchargeEnabled: false,
+      surchargeTiers: normalizeDogPricingForUi().surchargeTiers,
+      offer: emptyVisitOfferForm()
+    },
+    contractEditLine: 'boarding',
+    contractModalTitle: '编辑到店寄养协议条款',
     showContractModal: false,
     showCoopContractModal: false,
     coopContractMode: 'preview',
@@ -311,6 +492,9 @@ Page({
 
   onLoad(options) {
     this._formDirty = false;
+    if (app.globalData) {
+      app.globalData.uiEmptyShopPreview = UI_EMPTY_SHOP_PREVIEW === true;
+    }
     this._keyboardHeightChangeHandler = (res) => {
       const keyboardVisible = Number(res && res.height) > 0;
       if (keyboardVisible === this.data.keyboardVisible) return;
@@ -320,12 +504,12 @@ Page({
       wx.onKeyboardHeightChange(this._keyboardHeightChangeHandler);
     }
     const storeId = String((options && options.store_id) || '').trim();
-    if (storeId && redirectGuestShareToReserve(storeId)) {
+    if (storeId && redirectGuestShareToReserve(storeId, options && options.serviceLine)) {
       return;
     }
     if (app.globalData && app.globalData.storeSettingsTab === 'advanced') {
       app.globalData.storeSettingsTab = '';
-      this.setData({ settingsTab: 'advanced' });
+      this.setData({ settingsTab: 'boarding', moduleSubTab: 'advanced', activeServiceTab: 'boarding' });
     }
   },
 
@@ -341,10 +525,11 @@ Page({
 
   onShareAppMessage(res) {
     const shareType = res && res.target && res.target.dataset && res.target.dataset.shareType;
+    const serviceLine = res && res.target && res.target.dataset && res.target.dataset.serviceLine;
     if (shareType === 'open-success' || shareType === 'customer' || !shareType) {
-      return buildMerchantShareConfig(this);
+      return buildMerchantShareConfig(this, { serviceLine });
     }
-    return buildMerchantShareConfig(this);
+    return buildMerchantShareConfig(this, { serviceLine });
   },
 
   onShareTimeline() {
@@ -358,12 +543,100 @@ Page({
     });
   },
 
+  _isEmptyShopPreview() {
+    return UI_EMPTY_SHOP_PREVIEW === true;
+  },
+
+  _isHomeFeedingForm() {
+    return this.data.settingsTab === 'homeFeeding';
+  },
+
+  _form() {
+    return this._isHomeFeedingForm() ? (this.data.hf || {}) : this.data;
+  },
+
+  _setForm(patch, cb) {
+    if (this._isHomeFeedingForm()) {
+      this.setData({ hf: { ...(this.data.hf || {}), ...patch } }, cb);
+      return;
+    }
+    this.setData(patch, cb);
+  },
+
+  _getServiceShop() {
+    if (this._isHomeFeedingForm()) {
+      return this.data.shop.homeFeeding || emptyHomeFeeding();
+    }
+    return this.data.shop;
+  },
+
+  _setServiceShop(patch) {
+    if (this._isHomeFeedingForm()) {
+      const homeFeeding = { ...(this.data.shop.homeFeeding || emptyHomeFeeding()), ...patch };
+      this.setData({ shop: { ...this.data.shop, homeFeeding } });
+      return;
+    }
+    this.setData({ shop: { ...this.data.shop, ...patch } });
+  },
+
+  _buildHomeFeedingForm(homeFeeding) {
+    const hf = normalizeHomeFeeding(homeFeeding);
+    return {
+      noticePhotos: normalizeNoticePhotos(hf.noticePhotos),
+      contractClauseCustomized: !!(hf.contractClauseText || '').trim(),
+      contractClauseSummary: (hf.contractClauseText || '').trim() ? '已自定义协议条款' : '使用平台默认条款',
+      serviceItems: this._decorateVisitSurchargeList(
+        normalizeVisitServicesForUi(hf.serviceItems, this.data.receptionRange)
+      ),
+      offer: pickVisitOfferForm(hf)
+    };
+  },
+
+  _applyEmptyShopPreview() {
+    this.setData({
+      isDemoMode: false,
+      isAdminDisabled: false,
+      merchantUiReady: true
+    });
+    if (!this._formDirty) {
+      if (app.globalData && app.globalData.previewShopCache) {
+        previewShopCache = app.globalData.previewShopCache;
+      }
+      this._applyShopToForm(previewShopCache || this._createEmptyShop());
+    }
+    this._syncApplyShellChrome();
+    this._syncBasicSaveText();
+    return Promise.resolve();
+  },
+
+  _cachePreviewShop(shop) {
+    previewShopCache = this._normalizeShop(shop || {});
+    if (app.globalData) app.globalData.previewShopCache = previewShopCache;
+    return previewShopCache;
+  },
+
+  _finishLocalPreviewSave(shop, toastTitle) {
+    const saved = this._cachePreviewShop(shop);
+    this._applyShopToForm(saved);
+    this._formDirty = false;
+    wx.hideLoading();
+    this._syncApplyShellChrome();
+    this._syncBasicSaveText();
+    if (toastTitle !== '') {
+      wx.showToast({
+        title: toastTitle || '已保存到本地',
+        icon: 'success'
+      });
+    }
+    return saved;
+  },
+
   _syncBasicSaveText() {
     const incomplete = normalizeStoreStatus(this.data.businessStatus || this.data.shop.status) === STATUS_INCOMPLETE;
     const signed = !!(this.data.shop && this.data.shop.coopContractSigned);
-    // 未营业：必须先签署协议才显示「开始营业」；已营业：始终可保存基础设置
+    // 未营业：必须先签署协议才显示「开始营业」；已营业：始终可保存店铺资料
     this.setData({
-      basicSaveText: incomplete ? '开始营业' : '保存基础设置',
+      basicSaveText: incomplete ? '开始营业' : '保存店铺资料',
       showBasicSaveButton: incomplete ? signed : true
     });
   },
@@ -403,6 +676,10 @@ Page({
   },
 
   _hydrateFromCache() {
+    if (this._isEmptyShopPreview()) {
+      this._applyEmptyShopPreview();
+      return;
+    }
     if (app.isMerchantDisabled()) {
       this.setData({ isDemoMode: false, isAdminDisabled: true, hideMerchantTabBar: true });
       const cachedShop = app.getShop();
@@ -445,6 +722,10 @@ Page({
       status: STATUS_INCOMPLETE,
       pickupService: 'no',
       washService: 'no',
+      washProducts: [],
+      washValueAddedServices: [],
+      homeFeeding: emptyHomeFeeding(),
+      serviceLines: { ...EMPTY_SERVICE_LINES },
       deposit: 0,
       coopContractSigned: false,
       coopContractSnapshot: null,
@@ -498,6 +779,9 @@ Page({
   },
 
   _reloadStorePage(options = {}) {
+    if (this._isEmptyShopPreview()) {
+      return this._applyEmptyShopPreview();
+    }
     const forceUser = !!(options && options.forceUser);
     return app.ensureCloudAndLogin(forceUser ? { force: true } : {}).then(() => {
       if (app.isMerchantDisabled()) {
@@ -553,7 +837,7 @@ Page({
           this._refreshHolidayPricingSummary();
           if (app.globalData && app.globalData.storeSettingsTab === 'advanced') {
             app.globalData.storeSettingsTab = '';
-            this.setData({ settingsTab: 'advanced' });
+            this.setData({ settingsTab: 'boarding', moduleSubTab: 'advanced', activeServiceTab: 'boarding' });
           }
           this._maybeForceOpenSuccessSheet();
         });
@@ -895,7 +1179,9 @@ Page({
     if (listKey === 'apply') return normalizeStorePhotos(this.data.applyStorePhotos);
     if (listKey === 'intro') return normalizeIntroPhotos(this.data.introPhotos);
     if (listKey === 'notice') return normalizeNoticePhotos(this.data.noticePhotos);
+    if (listKey === 'hfNotice') return normalizeNoticePhotos((this.data.hf || {}).noticePhotos);
     if (listKey === 'washNotice') return normalizeNoticePhotos(this.data.washNoticePhotos);
+    if (listKey === 'hfWashNotice') return normalizeNoticePhotos((this.data.hf || {}).washNoticePhotos);
     return normalizeStorePhotos(this.data.storePhotos);
   },
 
@@ -916,8 +1202,26 @@ Page({
       this._applyNoticePhotos(photos);
       return;
     }
+    if (listKey === 'hfNotice') {
+      const normalized = normalizeNoticePhotos(photos);
+      const homeFeeding = { ...(this.data.shop.homeFeeding || {}), noticePhotos: normalized };
+      this.setData({
+        shop: { ...this.data.shop, homeFeeding },
+        hf: { ...(this.data.hf || {}), noticePhotos: normalized }
+      });
+      return;
+    }
     if (listKey === 'washNotice') {
       this._applyWashNoticePhotos(photos);
+      return;
+    }
+    if (listKey === 'hfWashNotice') {
+      const normalized = normalizeNoticePhotos(photos);
+      const homeFeeding = { ...(this.data.shop.homeFeeding || {}), washNoticePhotos: normalized };
+      this.setData({
+        shop: { ...this.data.shop, homeFeeding },
+        hf: { ...(this.data.hf || {}), washNoticePhotos: normalized }
+      });
       return;
     }
     this._applyStorePhotos(photos);
@@ -1095,7 +1399,11 @@ Page({
         this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_INTRO_PHOTOS));
       } else if (listKey === 'notice') {
         this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_NOTICE_PHOTOS));
+      } else if (listKey === 'hfNotice') {
+        this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_NOTICE_PHOTOS));
       } else if (listKey === 'washNotice') {
+        this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_NOTICE_PHOTOS));
+      } else if (listKey === 'hfWashNotice') {
         this._setPhotoList(listKey, reorderPhotoList(photos, fromIndex, targetIndex, MAX_NOTICE_PHOTOS));
       } else {
         this._setPhotoList(listKey, reorderStorePhotos(photos, fromIndex, targetIndex));
@@ -1314,15 +1622,23 @@ Page({
 
   _applyShopToForm(storeShop) {
     const normalizedShop = this._normalizeShop(storeShop);
+    prefetchStoreShareImage(normalizedShop);
     const cloudRules = normalizedShop.billingRules || {};
     const hasCloudRules = !!(cloudRules && Object.keys(cloudRules).length);
     // 无云端计费时用默认，禁止把上一店本地 pet_billing_rules 带回新店
     const rules = hasCloudRules
       ? { ...app._defaultBillingRules(), ...cloudRules }
       : app._defaultBillingRules();
-    app.saveBillingRules(rules);
+    if (!this._isEmptyShopPreview()) {
+      app.saveBillingRules(rules);
+    }
     const receptionState = pickReceptionRangeState(normalizedShop);
     const billingState = pickBillingState(rules);
+    const serviceLineState = this._pickServiceLineState(normalizedShop, {
+      activeServiceTab: this.data.activeServiceTab || 'boarding',
+      settingsTab: this.data.settingsTab,
+      billingRules: rules
+    });
     this.setData({
       shop: normalizedShop,
       businessStatus: normalizeStoreStatus(normalizedShop.status),
@@ -1333,12 +1649,16 @@ Page({
       pickupFreeMode: hasPickupFreeOffer(normalizedShop) ? 'minDays' : 'none',
       pickupFreeTiers: normalizePickupFreeTiersForEdit(normalizedShop),
       washPricing: normalizeWashPricing(normalizedShop.washPricing || []),
+      washProducts: normalizeWashProductsForUi(normalizedShop.washProducts),
+      washValueAddedServices: normalizeWashProductsForUi(normalizedShop.washValueAddedServices),
       washFreeMode: parseWashFreeMinDays(normalizedShop.washFreeMinDays) > 0 ? 'minDays' : 'none',
       valueAddedServices: resolveStoreValueAddedServices(normalizedShop),
       membership: normalizedShop.membership || this.data.membership,
+      hf: this._buildHomeFeedingForm(normalizedShop.homeFeeding),
       ...billingState,
       ...pickBusinessHoursState(normalizedShop),
       ...receptionState,
+      ...serviceLineState,
       ...this._pickContractClauseState(normalizedShop)
     });
     this._syncBasicSaveText();
@@ -1348,18 +1668,38 @@ Page({
     wx.navigateTo({ url: '/packageExtra/membership/membership' });
   },
 
-  onGoHolidayPricing() {
-    wx.navigateTo({ url: '/packageBiz/holiday-pricing/holiday-pricing' });
+  onGoHolidayPricing(e) {
+    const line = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.line;
+    if (line === 'homeFeeding') {
+      wx.navigateTo({
+        url: '/packageBiz/holiday-pricing/holiday-pricing?serviceLine=homeFeeding'
+      });
+      return;
+    }
+    wx.navigateTo({ url: '/packageBiz/holiday-pricing/holiday-pricing?serviceLine=boarding' });
   },
 
   _refreshHolidayPricingSummary() {
-    const shop = app.getShop() || {};
-    const rules = {
+    const shop = this._isEmptyShopPreview()
+      ? (previewShopCache || this.data.shop || {})
+      : (app.getShop() || {});
+    const boardingRules = {
       ...app.getBillingRules(),
       ...(shop.billingRules || {})
     };
+    const hf = normalizeHomeFeeding(
+      (shop.homeFeeding || (this.data.shop && this.data.shop.homeFeeding) || {})
+    );
+    const hfForm = this.data.hf || {};
     this.setData({
-      holidayPricingSummary: formatHolidayPricingSummary(rules.holidayPricing)
+      holidayPricingSummary: formatHolidayPricingSummary(boardingRules.holidayPricing),
+      hf: {
+        ...hfForm,
+        offer: {
+          ...(hfForm.offer || emptyVisitOfferForm()),
+          holidayPricingSummary: formatHolidayPricingSummary(hf.holidayPricing)
+        }
+      }
     });
   },
 
@@ -1372,20 +1712,21 @@ Page({
   },
 
   _normalizeShop(shop) {
-    const businessHours = normalizeBusinessHours(shop.businessHours, shop.hours);
-    const status = normalizeStoreStatus(shop.status);
-    const receptionRange = normalizeReceptionRange(shop.receptionRange || shop.range);
-    const storePhotos = normalizeStorePhotos(shop.storePhotos);
-    const introPhotos = normalizeIntroPhotos(shop.introPhotos);
-    const noticePhotos = normalizeNoticePhotos(shop.noticePhotos);
-    const locationName = (shop.locationName || '').trim();
-    const addressRegion = (shop.addressRegion || '').trim();
+    const source = hydrateShopProfileFromCoop(shop || {});
+    const businessHours = normalizeBusinessHours(source.businessHours, source.hours);
+    const status = normalizeStoreStatus(source.status);
+    const receptionRange = normalizeReceptionRange(source.receptionRange || source.range);
+    const storePhotos = normalizeStorePhotos(source.storePhotos);
+    const introPhotos = normalizeIntroPhotos(source.introPhotos);
+    const noticePhotos = normalizeNoticePhotos(source.noticePhotos);
+    const locationName = (source.locationName || '').trim();
+    const addressRegion = (source.addressRegion || '').trim();
     const address = formatLocationAddress({
       name: locationName,
-      address: addressRegion || shop.address
-    }) || (shop.address || '').trim();
+      address: addressRegion || source.address
+    }) || (source.address || '').trim();
     return {
-      ...shop,
+      ...source,
       businessHours,
       hours: formatBusinessHoursText(businessHours),
       status,
@@ -1394,29 +1735,34 @@ Page({
       storePhotos,
       introPhotos,
       noticePhotos,
-      intro: shop.intro || '',
-      notice: shop.notice || '',
+      name: source.name || '',
+      intro: source.intro || '',
+      notice: source.notice || '',
       locationName,
       addressRegion,
       address,
-      pickupService: shop.pickupService === 'yes' ? 'yes' : 'no',
-      pickupNotice: shop.pickupNotice || '',
-      wechatId: (shop.wechatId || '').trim(),
-      contactPhone: normalizePhone(shop.contactPhone || ''),
-      legalName: (shop.legalName || '').trim(),
-      businessLicense: normalizeBusinessLicense(shop.businessLicense),
-      coopContractSigned: !!shop.coopContractSigned,
-      coopContractSignTime: shop.coopContractSignTime || '',
-      coopContractSnapshot: shop.coopContractSnapshot || null,
-      ...normalizePickupPricing(shop),
-      ...normalizeWashFields(shop),
-      valueAddedServices: resolveStoreValueAddedServices(shop),
-      washNoticePhotos: normalizeNoticePhotos(shop.washNoticePhotos),
-      deposit: normalizeDeposit(shop.deposit),
-      compensationLimit: shop.compensationLimit != null && shop.compensationLimit !== ''
-        ? String(shop.compensationLimit)
+      pickupService: source.pickupService === 'yes' ? 'yes' : 'no',
+      pickupNotice: source.pickupNotice || '',
+      serviceLines: normalizeServiceLines(source.serviceLines),
+      washProducts: normalizeWashProducts(source.washProducts),
+      washValueAddedServices: normalizeWashProducts(source.washValueAddedServices),
+      homeFeeding: normalizeHomeFeeding(source.homeFeeding),
+      wechatId: (source.wechatId || '').trim(),
+      contactPhone: normalizePhone(source.contactPhone || ''),
+      legalName: (source.legalName || '').trim(),
+      businessLicense: normalizeBusinessLicense(source.businessLicense),
+      coopContractSigned: !!source.coopContractSigned,
+      coopContractSignTime: source.coopContractSignTime || '',
+      coopContractSnapshot: source.coopContractSnapshot || null,
+      ...normalizePickupPricing(source),
+      ...normalizeWashFields(source),
+      valueAddedServices: resolveStoreValueAddedServices(source),
+      washNoticePhotos: normalizeNoticePhotos(source.washNoticePhotos),
+      deposit: normalizeDeposit(source.deposit),
+      compensationLimit: source.compensationLimit != null && source.compensationLimit !== ''
+        ? String(source.compensationLimit)
         : '',
-      boardingContractClauseText: shop.boardingContractClauseText || ''
+      boardingContractClauseText: source.boardingContractClauseText || ''
     };
   },
 
@@ -1455,14 +1801,124 @@ Page({
       shop,
       receptionRange: normalized,
       receptionRangeOptions: buildReceptionRangeOptions(normalized),
-      receptionRangeSummary: formatReceptionRangeText(normalized)
+      receptionRangeSummary: formatReceptionRangeText(normalized),
+      hf: {
+        ...(this.data.hf || {}),
+        serviceItems: refreshVisitServicePetTypeOptions(
+          (this.data.hf && this.data.hf.serviceItems) || [],
+          normalized
+        )
+      }
     });
   },
 
   onSettingsTab(e) {
     const tab = e.currentTarget.dataset.tab;
     if (!tab || tab === this.data.settingsTab) return;
-    this.setData({ settingsTab: tab });
+    const patch = { settingsTab: tab };
+    if (tab === 'boarding' || tab === 'wash' || tab === 'homeFeeding') {
+      this._syncServiceLineView({
+        settingsTab: tab,
+        moduleSubTab: 'basic',
+        activeServiceTab: tab
+      });
+      return;
+    }
+    this.setData(patch);
+  },
+
+  onModuleSubTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (!tab || tab === this.data.moduleSubTab) return;
+    this.setData({ moduleSubTab: tab });
+  },
+
+  _pickServiceLineState(shop, extra) {
+    const opts = extra || {};
+    const src = shop || {};
+    const billingRules = opts.billingRules
+      || src.billingRules
+      || this._getBillingRulesPayload();
+    const homeFeeding = src.homeFeeding || emptyHomeFeeding();
+    return pickServiceLineView(src, {
+      boardingComplete: isBoardingPricingComplete(src, billingRules),
+      washComplete: isWashProductsComplete(src.washProducts),
+      homeFeedingComplete: isHomeFeedingPricingComplete(
+        { ...src, homeFeeding },
+        homeFeeding.billingRules || {}
+      ),
+      activeServiceTab: opts.activeServiceTab != null ? opts.activeServiceTab : this.data.activeServiceTab,
+      settingsTab: opts.settingsTab != null ? opts.settingsTab : this.data.settingsTab
+    });
+  },
+
+  _syncServiceLineView(patch) {
+    const extra = patch || {};
+    const shop = extra.shop || this.data.shop;
+    this.setData({
+      ...extra,
+      ...this._pickServiceLineState(shop, extra)
+    });
+  },
+
+  onSelectServiceLine(e) {
+    const key = e.currentTarget.dataset.key;
+    if (!key) return;
+    this.setData({
+      settingsTab: key,
+      moduleSubTab: 'basic',
+      activeServiceTab: key,
+      currentModuleCard: (this.data.serviceLineCards || []).find((item) => item.key === key) || null
+    });
+  },
+
+  _isServiceLineDataComplete(key) {
+    const shop = this.data.shop || {};
+    if (key === 'boarding') {
+      return isBoardingPricingComplete(shop, this._getBillingRulesPayload());
+    }
+    if (key === 'wash') {
+      return isWashProductsComplete(shop.washProducts);
+    }
+    if (key === 'homeFeeding') {
+      const homeFeeding = shop.homeFeeding || emptyHomeFeeding();
+      return isHomeFeedingPricingComplete(
+        { ...shop, homeFeeding },
+        homeFeeding.billingRules || {}
+      );
+    }
+    return false;
+  },
+
+  _serviceLineIncompleteTip(key) {
+    if (key === 'boarding') return '请先完善并保存到店寄养设置后再开通';
+    if (key === 'wash') return '请先完善并保存美容洗护设置后再开通';
+    if (key === 'homeFeeding') return '请先完善并保存上门服务项目后再开通';
+    return '请先完善并保存服务设置后再开通';
+  },
+
+  onToggleServiceLine(e) {
+    const key = e.currentTarget.dataset.key;
+    const enabled = !!(e.detail && e.detail.value);
+    const current = normalizeServiceLines(this.data.shop.serviceLines);
+    const isNewShop = normalizeStoreStatus(this.data.businessStatus || this.data.shop.status) === STATUS_INCOMPLETE;
+    if (!enabled && current[key] && !isNewShop && !hasOtherEnabledServiceLine(current, key)) {
+      wx.showToast({ title: '至少保留一个已开通的服务', icon: 'none' });
+      this._syncServiceLineView();
+      return;
+    }
+    if (enabled && !this._isServiceLineDataComplete(key)) {
+      wx.showToast({ title: this._serviceLineIncompleteTip(key), icon: 'none' });
+      this._syncServiceLineView();
+      return;
+    }
+    this._markDirty();
+    const serviceLines = { ...current, [key]: enabled };
+    const shop = { ...this.data.shop, serviceLines };
+    this._syncServiceLineView({
+      shop,
+      activeServiceTab: enabled ? key : this.data.activeServiceTab
+    });
   },
 
   onContactPhoneInput(e) {
@@ -1520,10 +1976,10 @@ Page({
     const billingMode = e.detail.value;
     const patch = { billingMode };
     if (billingMode === 'custom') {
-      const list = normalizeCustomPricingForUi(this.data.customPricing);
+      const list = normalizeCustomPricingForUi(this._form().customPricing);
       if (!list.length) patch.customPricing = normalizeCustomPricingForUi(getDefaultCustomPricing());
     }
-    this.setData(patch);
+    this._setForm(patch);
   },
 
   _applyBusinessHours(businessHours) {
@@ -1542,11 +1998,12 @@ Page({
   },
 
   _updateChargeSummary() {
-    this.setData({
+    const form = this._form();
+    this._setForm({
       chargeSummary: buildChargeSummary({
-        checkInDayCharge: this.data.checkInDayCharge,
-        departureDayCharge: this.data.departureDayCharge,
-        departureCharge: this.data.departureCharge
+        checkInDayCharge: form.checkInDayCharge,
+        departureDayCharge: form.departureDayCharge,
+        departureCharge: form.departureCharge
       })
     });
   },
@@ -1579,6 +2036,7 @@ Page({
       shop: {
         ...this.data.shop,
         ...pickupFree,
+        serviceLines: normalizeServiceLines(this.data.shop.serviceLines),
         washService,
         washPricing: washService === 'yes'
           ? normalizeWashPricing(this.data.washPricing)
@@ -1593,6 +2051,9 @@ Page({
         washNoticePhotos: washService === 'yes'
           ? normalizeNoticePhotos(this.data.washNoticePhotos)
           : [],
+        washProducts: compactWashProducts(this.data.washProducts),
+        washValueAddedServices: compactWashProducts(this.data.washValueAddedServices),
+        homeFeeding: this._getHomeFeedingPayload(),
         valueAddedServices: normalizeValueAddedServices(this.data.valueAddedServices)
       },
       businessHours: this.data.businessHours,
@@ -1601,12 +2062,25 @@ Page({
       introPhotos: this.data.introPhotos,
       noticePhotos: this.data.noticePhotos,
       washNoticePhotos: this.data.washNoticePhotos,
+      washProducts: this.data.washProducts,
+      washValueAddedServices: this.data.washValueAddedServices,
+      homeFeeding: this.data.shop.homeFeeding,
       valueAddedServices: this.data.valueAddedServices,
       billingRules,
       checkInDayCharge: this.data.checkInDayCharge,
       departureDayCharge: this.data.departureDayCharge,
       departureCharge: this.data.departureCharge
     };
+  },
+
+  _validateWashForm() {
+    return validateWashProducts(this.data.washProducts, { required: true })
+      || validateWashProducts(this.data.washValueAddedServices, { required: false, noun: '洗护增值服务' });
+  },
+
+  _validateHomeFeedingBasicForm() {
+    return validateHomeFeedingAdvanced(this._getHomeFeedingPayload())
+      || validateHomeVisitPricing(this._getHomeFeedingPayload(), { required: true });
   },
 
   _validateStoreForm() {
@@ -1624,11 +2098,37 @@ Page({
     return '';
   },
 
-  _validateBasicForm() {
-    return validateBasicStoreForm(this._getStoreFormPayload());
+  _validateBasicForm(options) {
+    return validateBasicStoreForm(this._getStoreFormPayload(), options);
+  },
+
+  _validateBoardingBasicForm() {
+    return validateBillingRules(this._getBillingRulesPayload()) || '';
+  },
+
+  _serviceLineKeyForSave(mode) {
+    if (mode === 'wash') return 'wash';
+    if (mode === 'homeFeeding') return 'homeFeeding';
+    if (mode === 'advanced') return 'boarding';
+    if (mode === 'basic' && this.data.settingsTab === 'boarding') return 'boarding';
+    return '';
+  },
+
+  _guideToBoardingService() {
+    this._syncServiceLineView({
+      settingsTab: 'boarding',
+      moduleSubTab: 'basic',
+      activeServiceTab: 'boarding'
+    });
+    setTimeout(() => {
+      wx.pageScrollTo({ scrollTop: 0, duration: 280 });
+    }, 80);
   },
 
   _validateAdvancedForm() {
+    if (this._isHomeFeedingForm()) {
+      return this._validateHomeFeedingBasicForm();
+    }
     const error = validateAdvancedStoreForm(this._getStoreFormPayload());
     if (error) return error;
     if (this.data.shop.pickupService === 'yes' && this.data.pickupFreeMode === 'minDays') {
@@ -1640,89 +2140,205 @@ Page({
         return '请填写住几天及以上免费洗护';
       }
     }
+    if (this.data.homeFeedingEnabled) {
+      const hfErr = validateHomeFeedingAdvanced(this._getHomeFeedingPayload());
+      if (hfErr) return hfErr;
+    }
     return '';
   },
 
-  _getBillingRulesPayload() {
-    const percentRaw = String(this.data.multiPetDiscountPercent || '').trim();
-    const percent = /^\d+$/.test(percentRaw) ? Number(percentRaw) : NaN;
-    const amountRaw = String(this.data.multiPetDiscountAmount || '').trim();
+  _buildBillingRulesFromForm(form, existing, shopRules, applyTo) {
+    const zheRaw = String(form.multiPetDiscountPercent || '').trim();
+    const zhe = parseZhe(zheRaw);
+    const amountRaw = String(form.multiPetDiscountAmount || '').trim();
     const amount = /^\d+(\.\d{1,2})?$/.test(amountRaw) ? Number(amountRaw) : NaN;
-    const multiPetMode = this.data.multiPetDiscountMode === 'fromSecondFixedPerDay'
+    const multiPetMode = form.multiPetDiscountMode === 'fromSecondFixedPerDay'
       ? 'fromSecondFixedPerDay'
       : 'fromSecondPercent';
-    const existing = app.getBillingRules() || {};
-    const shopRules = (this.data.shop && this.data.shop.billingRules) || {};
     const holidayPricing = normalizeHolidayPricing(
-      shopRules.holidayPricing || existing.holidayPricing || getDefaultHolidayPricing()
+      (shopRules && shopRules.holidayPricing)
+        || (existing && existing.holidayPricing)
+        || getDefaultHolidayPricing()
     );
-    const valueAddedServices = normalizeValueAddedServices(this.data.valueAddedServices);
+    const valueAddedServices = normalizeValueAddedServices(form.valueAddedServices);
     return {
       ...existing,
-      billingMode: this.data.billingMode,
-      weightPricing: normalizeWeightPricing(this.data.weightPricing),
-      roomPricing: normalizeRoomPricing(this.data.roomPricing),
+      billingMode: form.billingMode,
+      weightPricing: normalizeWeightPricing(form.weightPricing),
+      roomPricing: normalizeRoomPricing(form.roomPricing),
       customPricing: (() => {
-        const list = normalizeCustomPricing(this.data.customPricing).map((item) => ({
+        const list = normalizeCustomPricing(form.customPricing).map((item) => ({
           ...item,
           children: (item.children || []).filter((child) => !!(child.name || '').trim())
         }));
         return list.length ? list : getDefaultCustomPricing();
       })(),
       valueAddedServices,
-      checkInDayCharge: this.data.checkInDayCharge,
-      departureDayCharge: this.data.departureDayCharge,
-      departureCharge: normalizeDepartureCharge(this.data.departureCharge),
+      checkInDayCharge: form.checkInDayCharge,
+      departureDayCharge: form.departureDayCharge,
+      departureCharge: normalizeDepartureCharge(form.departureCharge),
       holidayPricing,
       multiPetDiscount: (() => {
-        const valueIsValid = multiPetMode === 'fromSecondFixedPerDay'
-          ? Number.isFinite(amount)
-          : Number.isInteger(percent);
-        const enabled = !!this.data.multiPetDiscountEnabled && valueIsValid;
+        if (multiPetMode === 'fromSecondFixedPerDay') {
+          const enabled = !!form.multiPetDiscountEnabled && Number.isFinite(amount);
+          return {
+            enabled,
+            mode: multiPetMode,
+            zhe: 0,
+            percent: 0,
+            amount: enabled ? amount : 0,
+            applyTo
+          };
+        }
+        if (!form.multiPetDiscountEnabled || !zheRaw) {
+          return {
+            enabled: false,
+            mode: multiPetMode,
+            zhe: 0,
+            percent: 0,
+            amount: 0,
+            applyTo
+          };
+        }
+        if (zhe == null) {
+          return {
+            enabled: true,
+            mode: multiPetMode,
+            zhe: zheRaw,
+            percent: 0,
+            amount: 0,
+            applyTo
+          };
+        }
         return {
-          enabled,
+          enabled: true,
           mode: multiPetMode,
-          percent: enabled && multiPetMode === 'fromSecondPercent' ? percent : 0,
-          amount: enabled && multiPetMode === 'fromSecondFixedPerDay' ? amount : 0,
-          applyTo: 'boarding'
+          zhe,
+          percent: Math.round((10 - zhe) * 10 * 100) / 100,
+          amount: 0,
+          applyTo
         };
       })(),
       longTermDiscount: (() => {
         const draft = {
-          enabled: !!this.data.longTermDiscountEnabled,
-          tiers: this.data.longTermDiscountTiers || [],
-          applyTo: 'boarding'
+          enabled: !!form.longTermDiscountEnabled,
+          tiers: form.longTermDiscountTiers || [],
+          applyTo
         };
-        if (!draft.enabled) return { enabled: false, tiers: [], applyTo: 'boarding' };
+        if (!draft.enabled) return { enabled: false, tiers: [], applyTo };
+        const hasInvalid = (draft.tiers || []).some((tier) => {
+          const item = tier || {};
+          const daysEmpty = item.minDays === '' || item.minDays == null;
+          const zheEmpty = item.zhe === '' || item.zhe == null;
+          if (daysEmpty && zheEmpty) return false;
+          if (daysEmpty || zheEmpty) return true;
+          return parseZhe(item.zhe) == null;
+        });
+        if (hasInvalid) return draft;
         const normalized = normalizeLongTermDiscount(draft);
-        // 开启但未填有效档位：按未启用保存
         if (!normalized.tiers.length) {
-          return { enabled: false, tiers: [], applyTo: 'boarding' };
+          return { enabled: false, tiers: [], applyTo };
         }
-        return normalized;
+        return { ...normalized, applyTo };
       })()
     };
+  },
+
+  _getBillingRulesPayload() {
+    return this._buildBillingRulesFromForm(
+      this.data,
+      app.getBillingRules() || {},
+      (this.data.shop && this.data.shop.billingRules) || {},
+      'boarding'
+    );
+  },
+
+  _getHomeFeedingPayload() {
+    const hfForm = this.data.hf || {};
+    const src = this.data.shop.homeFeeding || emptyHomeFeeding();
+    const liveShop = this._isEmptyShopPreview()
+      ? (previewShopCache || this.data.shop || {})
+      : (app.getShop() || this.data.shop || {});
+    const liveHf = normalizeHomeFeeding(liveShop.homeFeeding || src);
+    const srcNorm = normalizeHomeFeeding(src);
+    const holidayPricing = liveHf.holidayPricing
+      || (liveHf.dogPricing && liveHf.dogPricing.holidayPricing)
+      || (liveHf.catPricing && liveHf.catPricing.holidayPricing)
+      || (srcNorm.holidayPricing)
+      || getDefaultHolidayPricing();
+    const multiPetDiscount = buildMultiPetDiscountFromForm(hfForm.offer, 'homeFeeding');
+    const serviceItems = compactVisitServices(hfForm.serviceItems).map((item) => ({
+      ...item,
+      ...compactVisitSurcharge(item)
+    }));
+    const primarySurcharge = serviceItems.find((item) => isSurchargeEnabled(item)) || serviceItems[0] || {};
+    const draft = {
+      serviceItems,
+      includedKm: primarySurcharge.includedKm,
+      surchargeEnabled: !!primarySurcharge.surchargeEnabled,
+      surchargeTiers: primarySurcharge.surchargeTiers,
+      multiPetDiscount,
+      holidayPricing
+    };
+    const legacy = deriveLegacyPricingFromItems(draft);
+    const catPricing = {
+      ...legacy.catPricing,
+      multiPetDiscount,
+      holidayPricing,
+      enabled: !!(legacy.catPricing && (legacy.catPricing.packages || []).length)
+    };
+    const dogPricing = {
+      ...legacy.dogPricing,
+      multiPetDiscount,
+      holidayPricing,
+      enabled: !!(legacy.dogPricing && (legacy.dogPricing.packages || []).length)
+    };
+    return normalizeHomeFeeding({
+      ...srcNorm,
+      pickupService: 'no',
+      pickupNotice: '',
+      pickupFreeTiers: [],
+      pickupFreeMinDays: '',
+      pickupFreeMaxKm: '',
+      washService: 'no',
+      washPricing: [],
+      washFreeMinDays: '',
+      washNotice: '',
+      washNoticePhotos: [],
+      valueAddedServices: [],
+      serviceItems,
+      includedKm: primarySurcharge.includedKm || 0,
+      surchargeEnabled: !!primarySurcharge.surchargeEnabled,
+      surchargeTiers: primarySurcharge.surchargeTiers || [],
+      multiPetDiscount,
+      holidayPricing,
+      deposit: 0,
+      noticePhotos: hfForm.noticePhotos,
+      catPricing,
+      dogPricing
+    });
   },
 
   onMultiPetDiscountSwitch(e) {
     this._markDirty();
     const enabled = !!(e.detail && e.detail.value);
-    this.setData({
+    const form = this._form();
+    this._setForm({
       multiPetDiscountEnabled: enabled,
-      multiPetDiscountPercent: enabled ? (this.data.multiPetDiscountPercent || '') : this.data.multiPetDiscountPercent
+      multiPetDiscountPercent: enabled ? (form.multiPetDiscountPercent || '') : form.multiPetDiscountPercent
     });
   },
 
   onMultiPetDiscountPercentInput(e) {
     this._markDirty();
-    const value = String((e.detail && e.detail.value) || '').replace(/[^\d]/g, '');
-    this.setData({ multiPetDiscountPercent: value });
+    const value = sanitizeZheInput((e.detail && e.detail.value) || '');
+    this._setForm({ multiPetDiscountPercent: value });
   },
 
   onMultiPetDiscountModeChange(e) {
     this._markDirty();
     const value = e.detail && e.detail.value;
-    this.setData({
+    this._setForm({
       multiPetDiscountMode: value === 'fromSecondFixedPerDay'
         ? 'fromSecondFixedPerDay'
         : 'fromSecondPercent'
@@ -1736,16 +2352,65 @@ Page({
     if (dot >= 0) {
       value = `${value.slice(0, dot + 1)}${value.slice(dot + 1).replace(/\./g, '').slice(0, 2)}`;
     }
-    this.setData({ multiPetDiscountAmount: value });
+    this._setForm({ multiPetDiscountAmount: value });
+  },
+
+  _visitOfferKey() {
+    return 'offer';
+  },
+
+  _patchVisitOffer(pet, patch) {
+    this._markDirty();
+    const hf = this.data.hf || {};
+    this.setData({
+      hf: {
+        ...hf,
+        offer: { ...(hf.offer || emptyVisitOfferForm()), ...patch }
+      }
+    });
+  },
+
+  onVisitOfferSwitch(e) {
+    const enabled = !!(e.detail && e.detail.value);
+    const offer = ((this.data.hf || {}).offer) || emptyVisitOfferForm();
+    this._patchVisitOffer('', {
+      multiPetDiscountEnabled: enabled,
+      multiPetDiscountPercent: enabled ? (offer.multiPetDiscountPercent || '') : offer.multiPetDiscountPercent
+    });
+  },
+
+  onVisitOfferPercentInput(e) {
+    this._patchVisitOffer('', {
+      multiPetDiscountPercent: sanitizeZheInput((e.detail && e.detail.value) || '')
+    });
+  },
+
+  onVisitOfferModeChange(e) {
+    const value = e.detail && e.detail.value;
+    this._patchVisitOffer('', {
+      multiPetDiscountMode: value === 'fromSecondFixedPerDay'
+        ? 'fromSecondFixedPerDay'
+        : 'fromSecondPercent'
+    });
+  },
+
+  onVisitOfferAmountInput(e) {
+    let value = String((e.detail && e.detail.value) || '').replace(/[^\d.]/g, '');
+    const dot = value.indexOf('.');
+    if (dot >= 0) {
+      value = `${value.slice(0, dot + 1)}${value.slice(dot + 1).replace(/\./g, '').slice(0, 2)}`;
+    }
+    this._patchVisitOffer('', { multiPetDiscountAmount: value });
   },
 
   onLongTermDiscountSwitch(e) {
     this._markDirty();
+    const form = this._form();
     const enabled = !!(e.detail && e.detail.value);
-    const tiers = (this.data.longTermDiscountTiers && this.data.longTermDiscountTiers.length)
-      ? this.data.longTermDiscountTiers
+    const tiers = (form.longTermDiscountTiers && form.longTermDiscountTiers.length)
+      ? form.longTermDiscountTiers
       : [{ minDays: '', zhe: '' }];
-    this.setData({
+    this._setForm({
       longTermDiscountEnabled: enabled,
       longTermDiscountTiers: tiers
     });
@@ -1756,9 +2421,9 @@ Page({
     const index = Number(e.currentTarget.dataset.index);
     const field = e.currentTarget.dataset.field;
     if (!Number.isInteger(index) || (field !== 'minDays' && field !== 'zhe')) return;
-    this.setData({
+    this._setForm({
       longTermDiscountTiers: updateLongTermTierField(
-        this.data.longTermDiscountTiers,
+        this._form().longTermDiscountTiers,
         index,
         field,
         e.detail.value
@@ -1768,8 +2433,8 @@ Page({
 
   onAddLongTermTier() {
     this._markDirty();
-    this.setData({
-      longTermDiscountTiers: addLongTermTier(this.data.longTermDiscountTiers)
+    this._setForm({
+      longTermDiscountTiers: addLongTermTier(this._form().longTermDiscountTiers)
     });
   },
 
@@ -1777,8 +2442,8 @@ Page({
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
     if (!Number.isInteger(index)) return;
-    this.setData({
-      longTermDiscountTiers: removeLongTermTier(this.data.longTermDiscountTiers, index)
+    this._setForm({
+      longTermDiscountTiers: removeLongTermTier(this._form().longTermDiscountTiers, index)
     });
   },
 
@@ -1786,7 +2451,22 @@ Page({
     this._markDirty();
     const field = e.currentTarget.dataset.field;
     if (!field) return;
-    this.setData({ [`shop.${field}`]: e.detail.value });
+    const value = e.detail && e.detail.value;
+    // 店铺信息用 wx:if 切走时，微信可能给销毁的 input 回写空值。
+    // 这时 settingsTab 已不是 shop，绝不能把名称/介绍冲掉，也不能写到上门对象上。
+    const profileFields = {
+      name: true,
+      intro: true,
+      legalName: true,
+      contactPhone: true,
+      wechatId: true
+    };
+    if (this.data.settingsTab !== 'shop' && profileFields[field]) return;
+    if (this._isHomeFeedingForm()) {
+      this.setData({ [`shop.homeFeeding.${field}`]: value });
+      return;
+    }
+    this.setData({ [`shop.${field}`]: value });
   },
 
   onChooseLogo() {
@@ -1843,35 +2523,34 @@ Page({
 
   onCheckInDayCharge(e) {
     this._markDirty();
-    this.setData({ checkInDayCharge: e.detail.value }, () => this._updateChargeSummary());
+    this._setForm({ checkInDayCharge: e.detail.value }, () => this._updateChargeSummary());
   },
 
   onDepartureDayCharge(e) {
     this._markDirty();
-    this.setData({ departureDayCharge: e.detail.value }, () => this._updateChargeSummary());
+    this._setForm({ departureDayCharge: e.detail.value }, () => this._updateChargeSummary());
   },
 
   onDepartureTimeChange(e) {
     this._markDirty();
     const field = e.currentTarget.dataset.field;
     const departureCharge = normalizeDepartureCharge({
-      ...this.data.departureCharge,
+      ...this._form().departureCharge,
       [field]: e.detail.value
     });
-    this.setData({ departureCharge }, () => this._updateChargeSummary());
+    this._setForm({ departureCharge }, () => this._updateChargeSummary());
   },
 
   onPickupServiceChange(e) {
     this._markDirty();
     const pickupService = e.detail.value;
-    const shop = {
-      ...this.data.shop,
+    const current = this._getServiceShop();
+    this._setServiceShop({
       pickupService,
       pickupPricingMode: pickupService === 'yes'
-        ? (this.data.shop.pickupPricingMode || PICKUP_PRICING_MODE.FLAT)
-        : this.data.shop.pickupPricingMode
-    };
-    this.setData({ shop });
+        ? (current.pickupPricingMode || PICKUP_PRICING_MODE.FLAT)
+        : current.pickupPricingMode
+    });
   },
 
   onPickupPricingModeChange(e) {
@@ -1879,21 +2558,21 @@ Page({
     const mode = e.detail.value === PICKUP_PRICING_MODE.DISTANCE
       ? PICKUP_PRICING_MODE.DISTANCE
       : PICKUP_PRICING_MODE.FLAT;
-    const shop = { ...this.data.shop, pickupPricingMode: mode };
-    this.setData({ shop });
+    this._setServiceShop({ pickupPricingMode: mode });
   },
 
   onPickupFreeModeChange(e) {
     this._markDirty();
     const pickupFreeMode = e.detail.value === 'minDays' ? 'minDays' : 'none';
+    const form = this._form();
     const patch = { pickupFreeMode };
     if (pickupFreeMode === 'minDays') {
-      const tiers = (this.data.pickupFreeTiers && this.data.pickupFreeTiers.length)
-        ? this.data.pickupFreeTiers
+      const tiers = (form.pickupFreeTiers && form.pickupFreeTiers.length)
+        ? form.pickupFreeTiers
         : createDefaultPickupFreeTiersForEdit();
       patch.pickupFreeTiers = tiers;
     }
-    this.setData(patch);
+    this._setForm(patch);
   },
 
   onPickupFreeTierField(e) {
@@ -1901,9 +2580,9 @@ Page({
     const index = Number(e.currentTarget.dataset.index);
     const field = e.currentTarget.dataset.field;
     if (!Number.isInteger(index) || (field !== 'minDays' && field !== 'maxKm')) return;
-    this.setData({
+    this._setForm({
       pickupFreeTiers: updatePickupFreeTierField(
-        this.data.pickupFreeTiers,
+        this._form().pickupFreeTiers,
         index,
         field,
         e.detail.value
@@ -1913,8 +2592,8 @@ Page({
 
   onAddPickupFreeTier() {
     this._markDirty();
-    this.setData({
-      pickupFreeTiers: addPickupFreeTier(this.data.pickupFreeTiers)
+    this._setForm({
+      pickupFreeTiers: addPickupFreeTier(this._form().pickupFreeTiers)
     });
   },
 
@@ -1922,8 +2601,8 @@ Page({
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
     if (!Number.isInteger(index)) return;
-    this.setData({
-      pickupFreeTiers: removePickupFreeTier(this.data.pickupFreeTiers, index)
+    this._setForm({
+      pickupFreeTiers: removePickupFreeTier(this._form().pickupFreeTiers, index)
     });
   },
 
@@ -1932,51 +2611,49 @@ Page({
     const index = Number(e.currentTarget.dataset.index);
     const tripType = e.currentTarget.dataset.trip;
     if (!Number.isInteger(index) || (tripType !== 'oneWay' && tripType !== 'roundTrip')) return;
-    this.setData({
-      pickupFreeTiers: setPickupFreeTierTripType(this.data.pickupFreeTiers, index, tripType)
+    this._setForm({
+      pickupFreeTiers: setPickupFreeTierTripType(this._form().pickupFreeTiers, index, tripType)
     });
   },
 
   onWashServiceChange(e) {
     this._markDirty();
     const washService = e.detail.value;
-    const shop = { ...this.data.shop, washService };
-    const patch = { shop };
-    if (washService === 'yes' && !(this.data.washPricing && this.data.washPricing.length)) {
-      patch.washPricing = getDefaultWashPricing();
+    this._setServiceShop({ washService });
+    if (washService === 'yes' && !(this._form().washPricing && this._form().washPricing.length)) {
+      this._setForm({ washPricing: getDefaultWashPricing() });
     }
-    this.setData(patch);
   },
 
   onWashFreeModeChange(e) {
     this._markDirty();
     const washFreeMode = e.detail.value === 'minDays' ? 'minDays' : 'none';
-    const shop = { ...this.data.shop };
-    if (washFreeMode === 'none') {
-      shop.washFreeMinDays = '';
-    } else if (!parseWashFreeMinDays(shop.washFreeMinDays)) {
-      shop.washFreeMinDays = '7';
-    }
-    this.setData({ washFreeMode, shop });
+    const current = this._getServiceShop();
+    const patch = {};
+    if (washFreeMode === 'none') patch.washFreeMinDays = '';
+    else if (!parseWashFreeMinDays(current.washFreeMinDays)) patch.washFreeMinDays = '7';
+    if (Object.keys(patch).length) this._setServiceShop(patch);
+    this._setForm({ washFreeMode });
   },
 
   onWashRangeField(e) {
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
     const field = e.currentTarget.dataset.field;
-    const washPricing = updateWashRangeField(this.data.washPricing, index, field, e.detail.value);
-    this.setData({ washPricing });
+    this._setForm({
+      washPricing: updateWashRangeField(this._form().washPricing, index, field, e.detail.value)
+    });
   },
 
   onAddWashRange() {
     this._markDirty();
-    this.setData({ washPricing: addWashRange(this.data.washPricing) });
+    this._setForm({ washPricing: addWashRange(this._form().washPricing) });
   },
 
   onRemoveWashRange(e) {
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
-    this.setData({ washPricing: removeWashRange(this.data.washPricing, index) });
+    this._setForm({ washPricing: removeWashRange(this._form().washPricing, index) });
   },
 
   onBusinessStatusChange(e) {
@@ -2097,7 +2774,9 @@ Page({
 
   onChooseNoticePhotos() {
     if (this._choosingNoticePhotos) return;
-    const current = normalizeNoticePhotos(this.data.noticePhotos);
+    const current = this._isHomeFeedingForm()
+      ? normalizeNoticePhotos((this.data.hf || {}).noticePhotos)
+      : normalizeNoticePhotos(this.data.noticePhotos);
     const remain = MAX_NOTICE_PHOTOS - current.length;
     if (remain <= 0) {
       wx.showToast({ title: `最多上传${MAX_NOTICE_PHOTOS}张`, icon: 'none' });
@@ -2111,7 +2790,10 @@ Page({
       success: (res) => {
         this._markDirty();
         const picked = (res.tempFiles || []).map((file) => file.tempFilePath);
-        this._applyNoticePhotos(current.concat(picked).slice(0, MAX_NOTICE_PHOTOS));
+        this._setPhotoList(
+          this._isHomeFeedingForm() ? 'hfNotice' : 'notice',
+          current.concat(picked).slice(0, MAX_NOTICE_PHOTOS)
+        );
       },
       complete: () => {
         this._choosingNoticePhotos = false;
@@ -2121,23 +2803,25 @@ Page({
 
   onDeleteNoticePhoto(e) {
     const index = e.currentTarget.dataset.index;
-    const noticePhotos = [...normalizeNoticePhotos(this.data.noticePhotos)];
+    const listKey = this._isHomeFeedingForm() ? 'hfNotice' : 'notice';
+    const noticePhotos = [...this._getPhotoList(listKey)];
     noticePhotos.splice(index, 1);
     this._markDirty();
-    this._applyNoticePhotos(noticePhotos);
+    this._setPhotoList(listKey, noticePhotos);
   },
 
   onPreviewNoticePhoto(e) {
     if (this.data.photoDrag && this.data.photoDrag.active) return;
     const url = e.currentTarget.dataset.url;
-    const urls = normalizeNoticePhotos(this.data.noticePhotos);
+    const urls = this._getPhotoList(this._isHomeFeedingForm() ? 'hfNotice' : 'notice');
     if (!url || !urls.length) return;
     wx.previewImage({ current: url, urls });
   },
 
   onChooseWashNoticePhotos() {
     if (this._choosingWashNoticePhotos) return;
-    const current = normalizeNoticePhotos(this.data.washNoticePhotos);
+    const listKey = this._isHomeFeedingForm() ? 'hfWashNotice' : 'washNotice';
+    const current = this._getPhotoList(listKey);
     const remain = MAX_NOTICE_PHOTOS - current.length;
     if (remain <= 0) {
       wx.showToast({ title: `最多上传${MAX_NOTICE_PHOTOS}张`, icon: 'none' });
@@ -2151,7 +2835,7 @@ Page({
       success: (res) => {
         this._markDirty();
         const picked = (res.tempFiles || []).map((file) => file.tempFilePath);
-        this._applyWashNoticePhotos(current.concat(picked).slice(0, MAX_NOTICE_PHOTOS));
+        this._setPhotoList(listKey, current.concat(picked).slice(0, MAX_NOTICE_PHOTOS));
       },
       complete: () => {
         this._choosingWashNoticePhotos = false;
@@ -2161,16 +2845,17 @@ Page({
 
   onDeleteWashNoticePhoto(e) {
     const index = e.currentTarget.dataset.index;
-    const washNoticePhotos = [...normalizeNoticePhotos(this.data.washNoticePhotos)];
+    const listKey = this._isHomeFeedingForm() ? 'hfWashNotice' : 'washNotice';
+    const washNoticePhotos = [...this._getPhotoList(listKey)];
     washNoticePhotos.splice(index, 1);
     this._markDirty();
-    this._applyWashNoticePhotos(washNoticePhotos);
+    this._setPhotoList(listKey, washNoticePhotos);
   },
 
   onPreviewWashNoticePhoto(e) {
     if (this.data.photoDrag && this.data.photoDrag.active) return;
     const url = e.currentTarget.dataset.url;
-    const urls = normalizeNoticePhotos(this.data.washNoticePhotos);
+    const urls = this._getPhotoList(this._isHomeFeedingForm() ? 'hfWashNotice' : 'washNotice');
     if (!url || !urls.length) return;
     wx.previewImage({ current: url, urls });
   },
@@ -2194,35 +2879,189 @@ Page({
   onWeightPrice(e) {
     this._markDirty();
     const idx = e.currentTarget.dataset.index;
-    const weightPricing = updateWeightRangeField(this.data.weightPricing, idx, 'price', e.detail.value);
-    this.setData({ weightPricing });
+    this._setForm({
+      weightPricing: updateWeightRangeField(this._form().weightPricing, idx, 'price', e.detail.value)
+    });
   },
 
   onWeightRangeField(e) {
     this._markDirty();
     const idx = e.currentTarget.dataset.index;
     const field = e.currentTarget.dataset.field;
-    const weightPricing = updateWeightRangeField(this.data.weightPricing, idx, field, e.detail.value);
-    this.setData({ weightPricing });
+    this._setForm({
+      weightPricing: updateWeightRangeField(this._form().weightPricing, idx, field, e.detail.value)
+    });
   },
 
   onAddWeightRange() {
     this._markDirty();
-    this.setData({ weightPricing: addWeightRange(this.data.weightPricing) });
+    this._setForm({ weightPricing: addWeightRange(this._form().weightPricing) });
   },
 
   onRemoveWeightRange(e) {
     this._markDirty();
     const index = e.currentTarget.dataset.index;
-    this.setData({ weightPricing: removeWeightRange(this.data.weightPricing, index) });
+    this._setForm({ weightPricing: removeWeightRange(this._form().weightPricing, index) });
+  },
+
+  _decorateVisitSurchargeList(list) {
+    return (Array.isArray(list) ? list : []).map((item) => {
+      const dog = normalizeDogPricingForUi({
+        includedKm: item.includedKm,
+        surchargeEnabled: item.surchargeEnabled,
+        surchargeTiers: item.surchargeTiers,
+        packages: [{ name: 'x', durationMin: '1', basePrice: '1' }]
+      });
+      return {
+        ...item,
+        includedKm: dog.includedKm,
+        surchargeEnabled: dog.surchargeEnabled,
+        surchargeTiers: dog.surchargeTiers
+      };
+    });
+  },
+
+  _surchargeDogForm(index) {
+    const item = ((this.data.hf || {}).serviceItems || [])[index] || {};
+    return {
+      includedKm: item.includedKm,
+      surchargeEnabled: item.surchargeEnabled,
+      surchargeTiers: item.surchargeTiers,
+      packages: [{ name: 'x', durationMin: '1', basePrice: '1' }]
+    };
+  },
+
+  _setSurchargeFromDog(index, dog) {
+    this._setVisitServices(patchVisitServiceSurcharge(
+      (this.data.hf || {}).serviceItems,
+      index,
+      dog
+    ));
+  },
+
+  _setVisitServices(serviceItems) {
+    this._markDirty();
+    this.setData({
+      hf: {
+        ...(this.data.hf || {}),
+        serviceItems
+      }
+    });
+  },
+
+  onVisitServiceField(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    this._setVisitServices(updateVisitServiceField(
+      (this.data.hf || {}).serviceItems,
+      index,
+      field,
+      e.detail && e.detail.value
+    ));
+  },
+
+  onAddVisitService() {
+    this._setVisitServices(addVisitService(
+      (this.data.hf || {}).serviceItems,
+      this.data.receptionRange
+    ));
+  },
+
+  onRemoveVisitService(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this._setVisitServices(removeVisitService((this.data.hf || {}).serviceItems, index));
+  },
+
+  onToggleVisitServicePetType(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const value = e.currentTarget.dataset.value;
+    this._setVisitServices(toggleVisitServicePetType(
+      (this.data.hf || {}).serviceItems,
+      index,
+      value,
+      this.data.receptionRange
+    ));
+  },
+
+  onVisitServiceVasField(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const vasIndex = Number(e.currentTarget.dataset.vasIndex);
+    const field = e.currentTarget.dataset.field;
+    this._setVisitServices(updateVisitServiceVasField(
+      (this.data.hf || {}).serviceItems,
+      index,
+      vasIndex,
+      field,
+      e.detail && e.detail.value
+    ));
+  },
+
+  onAddVisitServiceVas(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this._setVisitServices(addVisitServiceVas((this.data.hf || {}).serviceItems, index));
+  },
+
+  onRemoveVisitServiceVas(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const vasIndex = Number(e.currentTarget.dataset.vasIndex);
+    this._setVisitServices(removeVisitServiceVas(
+      (this.data.hf || {}).serviceItems,
+      index,
+      vasIndex
+    ));
+  },
+
+  onDogField(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    this._setSurchargeFromDog(index, updateDogField(
+      this._surchargeDogForm(index),
+      field,
+      e.detail && e.detail.value
+    ));
+  },
+
+  onDogSurchargeField(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const tierIndex = Number(e.currentTarget.dataset.tierIndex);
+    const field = e.currentTarget.dataset.field;
+    this._setSurchargeFromDog(index, updateDogSurchargeField(
+      this._surchargeDogForm(index),
+      tierIndex,
+      field,
+      e.detail && e.detail.value
+    ));
+  },
+
+  onAddDogSurchargeTier(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    this._setSurchargeFromDog(index, addDogSurchargeTier(this._surchargeDogForm(index)));
+  },
+
+  onRemoveDogSurchargeTier(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const tierIndex = Number(e.currentTarget.dataset.tierIndex);
+    this._setSurchargeFromDog(index, removeDogSurchargeTier(this._surchargeDogForm(index), tierIndex));
+  },
+
+  onToggleDogSurcharge(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const enabled = !!(e.detail && e.detail.value);
+    this._setSurchargeFromDog(index, toggleDogSurchargeEnabled(this._surchargeDogForm(index), enabled));
+  },
+
+  onToggleDogSurchargePerKm(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const tierIndex = Number(e.currentTarget.dataset.tierIndex);
+    this._setSurchargeFromDog(index, toggleDogSurchargePerKm(this._surchargeDogForm(index), tierIndex));
   },
 
   onRoomField(e) {
     this._markDirty();
     const index = e.currentTarget.dataset.index;
     const field = e.currentTarget.dataset.field;
-    const roomPricing = updateRoomField(this.data.roomPricing, index, field, e.detail.value);
-    this.setData({ roomPricing });
+    const roomPricing = updateRoomField(this._form().roomPricing, index, field, e.detail.value);
+    this._setForm({ roomPricing });
   },
 
   onChooseRoomPhoto(e) {
@@ -2242,8 +3081,8 @@ Page({
           return;
         }
         this._markDirty();
-        const roomPricing = updateRoomField(this.data.roomPricing, index, 'photo', path);
-        this.setData({ roomPricing });
+        const roomPricing = updateRoomField(this._form().roomPricing, index, 'photo', path);
+        this._setForm({ roomPricing });
       },
       fail: (err) => {
         const msg = (err && err.errMsg) || '';
@@ -2259,13 +3098,13 @@ Page({
   onDeleteRoomPhoto(e) {
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
-    const roomPricing = updateRoomField(this.data.roomPricing, index, 'photo', '');
-    this.setData({ roomPricing });
+    const roomPricing = updateRoomField(this._form().roomPricing, index, 'photo', '');
+    this._setForm({ roomPricing });
   },
 
   onPreviewRoomPhoto(e) {
     const index = Number(e.currentTarget.dataset.index);
-    const room = (this.data.roomPricing || [])[index];
+    const room = (this._form().roomPricing || [])[index];
     const url = room && room.photo;
     if (!url) return;
     resolveImageUrls([url]).then((urls) => {
@@ -2276,13 +3115,13 @@ Page({
 
   onAddRoom() {
     this._markDirty();
-    this.setData({ roomPricing: addRoom(this.data.roomPricing) });
+    this._setForm({ roomPricing: addRoom(this._form().roomPricing) });
   },
 
   onRemoveRoom(e) {
     this._markDirty();
     const index = e.currentTarget.dataset.index;
-    this.setData({ roomPricing: removeRoom(this.data.roomPricing, index) });
+    this._setForm({ roomPricing: removeRoom(this._form().roomPricing, index) });
   },
 
   onCustomField(e) {
@@ -2290,9 +3129,9 @@ Page({
     const index = Number(e.currentTarget.dataset.index);
     const field = e.currentTarget.dataset.field;
     const customPricing = updateCustomOptionField(
-      this.data.customPricing, index, field, e.detail.value
+      this._form().customPricing, index, field, e.detail.value
     );
-    this.setData({ customPricing });
+    this._setForm({ customPricing });
   },
 
   onCustomChildField(e) {
@@ -2301,16 +3140,16 @@ Page({
     const childIndex = Number(e.currentTarget.dataset.childIndex);
     const field = e.currentTarget.dataset.field;
     const customPricing = updateCustomChildField(
-      this.data.customPricing, index, childIndex, field, e.detail.value
+      this._form().customPricing, index, childIndex, field, e.detail.value
     );
-    this.setData({ customPricing });
+    this._setForm({ customPricing });
   },
 
   onAddCustomChild(e) {
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
-    this.setData({
-      customPricing: addCustomChild(this.data.customPricing, index)
+    this._setForm({
+      customPricing: addCustomChild(this._form().customPricing, index)
     });
   },
 
@@ -2318,8 +3157,8 @@ Page({
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
     const childIndex = Number(e.currentTarget.dataset.childIndex);
-    this.setData({
-      customPricing: removeCustomChild(this.data.customPricing, index, childIndex)
+    this._setForm({
+      customPricing: removeCustomChild(this._form().customPricing, index, childIndex)
     });
   },
 
@@ -2343,9 +3182,9 @@ Page({
         }
         this._markDirty();
         const customPricing = updateCustomChildField(
-          this.data.customPricing, index, childIndex, 'photo', path
+          this._form().customPricing, index, childIndex, 'photo', path
         );
-        this.setData({ customPricing });
+        this._setForm({ customPricing });
       },
       fail: (err) => {
         const msg = (err && err.errMsg) || '';
@@ -2363,15 +3202,15 @@ Page({
     const index = Number(e.currentTarget.dataset.index);
     const childIndex = Number(e.currentTarget.dataset.childIndex);
     const customPricing = updateCustomChildField(
-      this.data.customPricing, index, childIndex, 'photo', ''
+      this._form().customPricing, index, childIndex, 'photo', ''
     );
-    this.setData({ customPricing });
+    this._setForm({ customPricing });
   },
 
   onPreviewCustomChildPhoto(e) {
     const index = Number(e.currentTarget.dataset.index);
     const childIndex = Number(e.currentTarget.dataset.childIndex);
-    const item = (this.data.customPricing || [])[index];
+    const item = (this._form().customPricing || [])[index];
     const child = item && item.children && item.children[childIndex];
     const url = child && child.photo;
     if (!url) return;
@@ -2399,9 +3238,9 @@ Page({
         }
         this._markDirty();
         const customPricing = updateCustomOptionField(
-          this.data.customPricing, index, 'photo', path
+          this._form().customPricing, index, 'photo', path
         );
-        this.setData({ customPricing });
+        this._setForm({ customPricing });
       },
       fail: (err) => {
         const msg = (err && err.errMsg) || '';
@@ -2418,14 +3257,14 @@ Page({
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
     const customPricing = updateCustomOptionField(
-      this.data.customPricing, index, 'photo', ''
+      this._form().customPricing, index, 'photo', ''
     );
-    this.setData({ customPricing });
+    this._setForm({ customPricing });
   },
 
   onPreviewCustomPhoto(e) {
     const index = Number(e.currentTarget.dataset.index);
-    const item = (this.data.customPricing || [])[index];
+    const item = (this._form().customPricing || [])[index];
     const url = item && item.photo;
     if (!url) return;
     resolveImageUrls([url]).then((urls) => {
@@ -2436,14 +3275,14 @@ Page({
 
   onAddCustomOption() {
     this._markDirty();
-    this.setData({ customPricing: addCustomOption(this.data.customPricing) });
+    this._setForm({ customPricing: addCustomOption(this._form().customPricing) });
   },
 
   onRemoveCustomOption(e) {
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
-    this.setData({
-      customPricing: removeCustomOption(this.data.customPricing, index)
+    this._setForm({
+      customPricing: removeCustomOption(this._form().customPricing, index)
     });
   },
 
@@ -2452,9 +3291,9 @@ Page({
     const index = Number(e.currentTarget.dataset.index);
     const field = e.currentTarget.dataset.field;
     const valueAddedServices = updateValueAddedServiceField(
-      this.data.valueAddedServices, index, field, e.detail.value
+      this._form().valueAddedServices, index, field, e.detail.value
     );
-    this.setData({ valueAddedServices });
+    this._setForm({ valueAddedServices });
   },
 
   onChooseValueAddedPhoto(e) {
@@ -2475,9 +3314,9 @@ Page({
         }
         this._markDirty();
         const valueAddedServices = updateValueAddedServiceField(
-          this.data.valueAddedServices, index, 'photo', path
+          this._form().valueAddedServices, index, 'photo', path
         );
-        this.setData({ valueAddedServices });
+        this._setForm({ valueAddedServices });
       },
       fail: (err) => {
         const msg = (err && err.errMsg) || '';
@@ -2494,14 +3333,14 @@ Page({
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
     const valueAddedServices = updateValueAddedServiceField(
-      this.data.valueAddedServices, index, 'photo', ''
+      this._form().valueAddedServices, index, 'photo', ''
     );
-    this.setData({ valueAddedServices });
+    this._setForm({ valueAddedServices });
   },
 
   onPreviewValueAddedPhoto(e) {
     const index = Number(e.currentTarget.dataset.index);
-    const item = (this.data.valueAddedServices || [])[index];
+    const item = (this._form().valueAddedServices || [])[index];
     const url = item && item.photo;
     if (!url) return;
     resolveImageUrls([url]).then((urls) => {
@@ -2512,15 +3351,195 @@ Page({
 
   onAddValueAddedService() {
     this._markDirty();
-    this.setData({ valueAddedServices: addValueAddedService(this.data.valueAddedServices) });
+    this._setForm({ valueAddedServices: addValueAddedService(this._form().valueAddedServices) });
   },
 
   onRemoveValueAddedService(e) {
     this._markDirty();
     const index = Number(e.currentTarget.dataset.index);
-    this.setData({
-      valueAddedServices: removeValueAddedService(this.data.valueAddedServices, index)
+    this._setForm({
+      valueAddedServices: removeValueAddedService(this._form().valueAddedServices, index)
     });
+  },
+
+  onWashProductField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    const washProducts = updateWashProductField(
+      this.data.washProducts, index, field, e.detail.value
+    );
+    this.setData({ washProducts });
+  },
+
+  onToggleWashProductCondition(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const washProducts = updateWashProductField(
+      this.data.washProducts, index, 'hasCondition', !!(e.detail && e.detail.value)
+    );
+    this.setData({ washProducts });
+  },
+
+  onToggleWashProductPetType(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const type = e.currentTarget.dataset.value;
+    const washProducts = toggleWashProductPetType(this.data.washProducts, index, type);
+    this.setData({ washProducts });
+  },
+
+  onChooseWashProductPhoto(e) {
+    if (this._choosingWashProductPhoto) return;
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || index < 0) return;
+    this._choosingWashProductPhoto = true;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res && res.tempFiles && res.tempFiles[0];
+        const path = file && file.tempFilePath;
+        if (!path) {
+          wx.showToast({ title: '未选择到图片', icon: 'none' });
+          return;
+        }
+        this._markDirty();
+        const washProducts = updateWashProductField(
+          this.data.washProducts, index, 'photo', path
+        );
+        this.setData({ washProducts });
+      },
+      fail: (err) => {
+        const msg = (err && err.errMsg) || '';
+        if (/cancel/i.test(msg)) return;
+        wx.showToast({ title: '选择图片失败', icon: 'none' });
+      },
+      complete: () => {
+        this._choosingWashProductPhoto = false;
+      }
+    });
+  },
+
+  onDeleteWashProductPhoto(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const washProducts = updateWashProductField(
+      this.data.washProducts, index, 'photo', ''
+    );
+    this.setData({ washProducts });
+  },
+
+  onPreviewWashProductPhoto(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = (this.data.washProducts || [])[index];
+    const url = item && item.photo;
+    if (!url) return;
+    resolveImageUrls([url]).then((urls) => {
+      const current = (urls && urls[0]) || url;
+      wx.previewImage({ current, urls: [current] });
+    });
+  },
+
+  onAddWashProduct() {
+    this._markDirty();
+    const washProducts = addWashProduct(this.data.washProducts);
+    this.setData({ washProducts });
+  },
+
+  onRemoveWashProduct(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const washProducts = removeWashProduct(this.data.washProducts, index);
+    this.setData({ washProducts });
+  },
+
+  onWashVasField(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const field = e.currentTarget.dataset.field;
+    const washValueAddedServices = updateWashProductField(
+      this.data.washValueAddedServices, index, field, e.detail.value
+    );
+    this.setData({ washValueAddedServices });
+  },
+
+  onToggleWashVasCondition(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const washValueAddedServices = updateWashProductField(
+      this.data.washValueAddedServices, index, 'hasCondition', !!(e.detail && e.detail.value)
+    );
+    this.setData({ washValueAddedServices });
+  },
+
+  onToggleWashVasPetType(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const type = e.currentTarget.dataset.value;
+    const washValueAddedServices = toggleWashProductPetType(
+      this.data.washValueAddedServices, index, type
+    );
+    this.setData({ washValueAddedServices });
+  },
+
+  onChooseWashVasPhoto(e) {
+    if (this._choosingWashVasPhoto) return;
+    const index = Number(e.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || index < 0) return;
+    this._choosingWashVasPhoto = true;
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res && res.tempFiles && res.tempFiles[0];
+        const path = file && file.tempFilePath;
+        if (!path) return;
+        this._markDirty();
+        const washValueAddedServices = updateWashProductField(
+          this.data.washValueAddedServices, index, 'photo', path
+        );
+        this.setData({ washValueAddedServices });
+      },
+      complete: () => {
+        this._choosingWashVasPhoto = false;
+      }
+    });
+  },
+
+  onDeleteWashVasPhoto(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const washValueAddedServices = updateWashProductField(
+      this.data.washValueAddedServices, index, 'photo', ''
+    );
+    this.setData({ washValueAddedServices });
+  },
+
+  onPreviewWashVasPhoto(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const item = (this.data.washValueAddedServices || [])[index];
+    const url = item && item.photo;
+    if (!url) return;
+    resolveImageUrls([url]).then((urls) => {
+      const current = (urls && urls[0]) || url;
+      wx.previewImage({ current, urls: [current] });
+    });
+  },
+
+  onAddWashVas() {
+    this._markDirty();
+    const washValueAddedServices = addWashProduct(this.data.washValueAddedServices);
+    this.setData({ washValueAddedServices });
+  },
+
+  onRemoveWashVas(e) {
+    this._markDirty();
+    const index = Number(e.currentTarget.dataset.index);
+    const washValueAddedServices = removeWashProduct(this.data.washValueAddedServices, index);
+    this.setData({ washValueAddedServices });
   },
 
   _setTabBarVisible(_visible) {
@@ -2528,11 +3547,16 @@ Page({
   },
 
   onOpenContractModal() {
+    const isHf = this._isHomeFeedingForm();
     const shop = this._normalizeShop(this.data.shop);
-    const storedText = getStoredClauseEditText(shop);
+    const storedText = isHf
+      ? ((shop.homeFeeding && shop.homeFeeding.contractClauseText) || '')
+      : getStoredClauseEditText(shop);
     this._setTabBarVisible(false);
     this.setData({
       showContractModal: true,
+      contractEditLine: isHf ? 'homeFeeding' : 'boarding',
+      contractModalTitle: isHf ? '编辑上门喂养协议条款' : '编辑到店寄养协议条款',
       contractClauseDraft: storedText || getDefaultClauseEditText(shop)
     });
   },
@@ -2549,9 +3573,10 @@ Page({
 
   onResetContractClause() {
     const shop = this._normalizeShop(this.data.shop);
+    const isHf = this.data.contractEditLine === 'homeFeeding';
     wx.showModal({
       title: '恢复默认',
-      content: '将恢复为平台默认寄养协议条款。确定继续？',
+      content: isHf ? '将恢复为平台默认上门喂养协议条款。确定继续？' : '将恢复为平台默认到店寄养协议条款。确定继续？',
       success: (res) => {
         if (!res.confirm) return;
         this.setData({
@@ -2571,6 +3596,77 @@ Page({
       compensationLimit: ''
     }).trim();
     const isDefaultClause = !clauseText || clauseText === defaultText || clauseText === platformDefault;
+    if (this.data.contractEditLine === 'homeFeeding') {
+      const contractClauseText = isDefaultClause ? '' : clauseText;
+      const homeFeeding = {
+        ...(this.data.shop.homeFeeding || emptyHomeFeeding()),
+        contractClauseText
+      };
+      const hfForm = {
+        ...(this.data.hf || {}),
+        contractClauseCustomized: !!contractClauseText,
+        contractClauseSummary: contractClauseText ? '已自定义协议条款' : '使用平台默认条款'
+      };
+      const applyLocal = (nextShop) => {
+        this.setData({
+          shop: nextShop,
+          hf: hfForm,
+          showContractModal: false,
+          savingContractClause: false
+        });
+        this._setTabBarVisible(true);
+        wx.showToast({
+          title: isDefaultClause ? '已恢复默认条款' : '协议条款已保存',
+          icon: 'success'
+        });
+      };
+      if (this._isEmptyShopPreview()) {
+        const nextShop = this._normalizeShop({
+          ...(previewShopCache || this.data.shop),
+          homeFeeding
+        });
+        this._cachePreviewShop(nextShop);
+        applyLocal(nextShop);
+        return;
+      }
+      const cachedShop = app.getShop() || {};
+      const shopToSync = preserveOutgoingShopFields(this._normalizeShop({
+        ...cachedShop,
+        store_id: (this.data.shop && this.data.shop.store_id) || cachedShop.store_id,
+        homeFeeding
+      }), cachedShop);
+      if (!shopToSync.store_id) {
+        wx.showToast({ title: '店铺信息未就绪，请稍后重试', icon: 'none' });
+        return;
+      }
+      this.setData({ savingContractClause: true });
+      wx.showLoading({ title: '保存中', mask: true });
+      app.syncShopToCloud(shopToSync)
+        .then((saved) => {
+          const patchedShop = {
+            ...(app.getShop() || saved || {}),
+            homeFeeding
+          };
+          app.saveShop(patchedShop);
+          const nextShop = this._normalizeShop({
+            ...this.data.shop,
+            homeFeeding
+          });
+          wx.hideLoading();
+          applyLocal(nextShop);
+        })
+        .catch((err) => {
+          this.setData({ savingContractClause: false });
+          wx.hideLoading();
+          wx.showToast({
+            title: (err && err.message) || '保存失败',
+            icon: 'none',
+            duration: 3000
+          });
+        });
+      return;
+    }
+
     const clauseUpdates = {
       boardingContractClauseText: isDefaultClause ? '' : clauseText,
       ...(isDefaultClause && (!clauseText || clauseText === platformDefault)
@@ -2578,12 +3674,31 @@ Page({
         : {})
     };
 
+    if (this._isEmptyShopPreview()) {
+      const nextShop = this._normalizeShop({
+        ...(previewShopCache || this.data.shop),
+        ...clauseUpdates
+      });
+      this._cachePreviewShop(nextShop);
+      this.setData({
+        shop: nextShop,
+        showContractModal: false,
+        ...this._pickContractClauseState(nextShop)
+      });
+      this._setTabBarVisible(true);
+      wx.showToast({
+        title: isDefaultClause ? '已恢复默认条款' : '协议条款已保存',
+        icon: 'success'
+      });
+      return;
+    }
+
     const cachedShop = app.getShop() || {};
-    const shopToSync = this._normalizeShop({
+    const shopToSync = preserveOutgoingShopFields(this._normalizeShop({
       ...cachedShop,
       store_id: (this.data.shop && this.data.shop.store_id) || cachedShop.store_id,
       ...clauseUpdates
-    });
+    }), cachedShop);
 
     if (!shopToSync.store_id) {
       wx.showToast({ title: '店铺信息未就绪，请稍后重试', icon: 'none' });
@@ -2634,6 +3749,14 @@ Page({
 
   preventMove() {},
 
+  onSaveWash() {
+    this._persistStore({ mode: 'wash' });
+  },
+
+  onSaveHomeFeeding() {
+    this._persistStore({ mode: 'homeFeeding' });
+  },
+
   onSaveBasic() {
     this._persistStore({ mode: 'basic' });
   },
@@ -2643,26 +3766,74 @@ Page({
   },
 
   onSave() {
-    this._persistStore({ mode: this.data.settingsTab === 'advanced' ? 'advanced' : 'basic' });
+    if (this.data.settingsTab === 'wash') {
+      this._persistStore({ mode: 'wash' });
+      return;
+    }
+    if (this.data.settingsTab === 'homeFeeding') {
+      this._persistStore({ mode: 'homeFeeding' });
+      return;
+    }
+    const advanced = this.data.settingsTab !== 'shop' && this.data.moduleSubTab === 'advanced';
+    this._persistStore({ mode: advanced ? 'advanced' : 'basic' });
   },
 
   _persistStore({ mode }) {
     if (this.data.submitting) return;
-    const formError = mode === 'advanced' ? this._validateAdvancedForm() : this._validateBasicForm();
-    if (formError) {
-      showValidationAlert(formError);
-      return;
+    const enableKey = this._serviceLineKeyForSave(mode);
+    const isShopOpenAction = mode === 'basic' && !enableKey;
+    let openServiceGuide = '';
+    if (mode === 'wash') {
+      const formError = this._validateWashForm();
+      if (formError) {
+        showValidationAlert(formError);
+        return;
+      }
+    } else if (mode === 'homeFeeding') {
+      const formError = this._validateHomeFeedingBasicForm();
+      if (formError) {
+        showValidationAlert(formError);
+        return;
+      }
+    } else if (mode === 'advanced') {
+      const formError = this._validateAdvancedForm();
+      if (formError) {
+        showValidationAlert(formError);
+        return;
+      }
+    } else if (enableKey === 'boarding') {
+      const formError = this._validateBoardingBasicForm();
+      if (formError) {
+        showValidationAlert(formError);
+        return;
+      }
+    } else {
+      const profileError = this._validateBasicForm({ requireServiceLines: false });
+      if (profileError) {
+        showValidationAlert(profileError);
+        return;
+      }
+      const openError = this._validateBasicForm();
+      if (openError === OPEN_NEED_SERVICE_LINE) {
+        openServiceGuide = openError;
+      } else if (openError) {
+        showValidationAlert(openError);
+        return;
+      }
     }
 
     const billingRules = this._getBillingRulesPayload();
+    const currentLines = normalizeServiceLines(this.data.shop.serviceLines);
+    const serviceLines = enableKey
+      ? { ...currentLines, [enableKey]: true }
+      : currentLines;
     const currentStatus = normalizeStoreStatus(this.data.shop.status);
-    const nextStatus = mode === 'basic' && currentStatus === STATUS_INCOMPLETE
+    const nextStatus = isShopOpenAction && currentStatus === STATUS_INCOMPLETE && !openServiceGuide
       ? STATUS_OPEN
       : currentStatus;
 
     this.setData({ submitting: true });
     wx.showLoading({ title: '保存中' });
-    const cachedShop = app.getShop() || {};
     const shop = this._normalizeShop({
       ...this.data.shop,
       ...this._getPickupFreePayload(),
@@ -2677,6 +3848,9 @@ Page({
       washNoticePhotos: this.data.shop.washService === 'yes'
         ? normalizeNoticePhotos(this.data.washNoticePhotos)
         : [],
+      washProducts: compactWashProducts(this.data.washProducts),
+      washValueAddedServices: compactWashProducts(this.data.washValueAddedServices),
+      homeFeeding: this._getHomeFeedingPayload(),
       valueAddedServices: normalizeValueAddedServices(this.data.valueAddedServices),
       status: nextStatus,
       businessHours: this.data.businessHours || DEFAULT_BUSINESS_HOURS,
@@ -2684,8 +3858,22 @@ Page({
       storePhotos: this.data.storePhotos,
       introPhotos: this.data.introPhotos,
       noticePhotos: this.data.noticePhotos,
+      serviceLines,
       billingRules
     });
+    const cachedShop = app.getShop() || {};
+    Object.assign(shop, preserveOutgoingShopFields(shop, cachedShop));
+
+    if (this._isEmptyShopPreview()) {
+      this._finishLocalPreviewSave(shop, openServiceGuide ? '' : '已保存到本地');
+      this.setData({ submitting: false });
+      if (openServiceGuide) {
+        showValidationAlert(openServiceGuide, '请完善信息', {
+          onConfirm: () => this._guideToBoardingService()
+        });
+      }
+      return;
+    }
 
     const uploadChain = uploadStoreLogo(shop.logo, cachedShop.logo)
       .then((logo) => {
@@ -2729,7 +3917,53 @@ Page({
         shop.valueAddedServices = valueAddedServices;
         billingRules.valueAddedServices = valueAddedServices;
         shop.billingRules = { ...shop.billingRules, valueAddedServices };
-        return app.syncShopToCloud(shop);
+        const fallbackWashProducts = cachedShop.washProducts || [];
+        return uploadWashProductPhotos(shop.washProducts, fallbackWashProducts);
+      })
+      .then((washProducts) => {
+        shop.washProducts = washProducts;
+        const fallbackWashVas = cachedShop.washValueAddedServices || [];
+        return uploadWashProductPhotos(shop.washValueAddedServices, fallbackWashVas);
+      })
+      .then((washValueAddedServices) => {
+        shop.washValueAddedServices = washValueAddedServices;
+        const hf = shop.homeFeeding || emptyHomeFeeding();
+        const fallbackHf = cachedShop.homeFeeding || {};
+        return uploadNoticePhotos(hf.noticePhotos, fallbackHf.noticePhotos)
+          .then((noticePhotos) => {
+            hf.noticePhotos = noticePhotos;
+            return uploadWashNoticePhotos(hf.washNoticePhotos, fallbackHf.washNoticePhotos);
+          })
+          .then((washNoticePhotos) => {
+            hf.washNoticePhotos = washNoticePhotos;
+            const fallbackRooms = ((fallbackHf.billingRules || {}).roomPricing) || [];
+            return uploadRoomPricingPhotos((hf.billingRules || {}).roomPricing, fallbackRooms);
+          })
+          .then((roomPricing) => {
+            hf.billingRules = { ...(hf.billingRules || {}), roomPricing };
+            const fallbackCustom = ((fallbackHf.billingRules || {}).customPricing) || [];
+            return uploadCustomPricingPhotos((hf.billingRules || {}).customPricing, fallbackCustom);
+          })
+          .then((customPricing) => {
+            hf.billingRules = { ...(hf.billingRules || {}), customPricing };
+            hf.valueAddedServices = [];
+            if (hf.billingRules) hf.billingRules.valueAddedServices = [];
+            const fallbackItems = Array.isArray(fallbackHf.serviceItems) ? fallbackHf.serviceItems : [];
+            return Promise.all((hf.serviceItems || []).map((item, index) => {
+              const fallback = fallbackItems.find((row) => row && row.id === item.id)
+                || fallbackItems[index]
+                || {};
+              return uploadValueAddedServicePhotos(
+                item.valueAddedServices,
+                fallback.valueAddedServices || []
+              ).then((valueAddedServices) => ({ ...item, valueAddedServices }));
+            }));
+          })
+          .then((serviceItems) => {
+            hf.serviceItems = serviceItems;
+            shop.homeFeeding = hf;
+            return app.syncShopToCloud(shop);
+          });
       });
 
     uploadChain
@@ -2739,7 +3973,13 @@ Page({
         this._formDirty = false;
         wx.hideLoading();
         const openedNow = currentStatus === STATUS_INCOMPLETE && normalizeStoreStatus(saved.status) === STATUS_OPEN;
-        if (openedNow) {
+        if (openServiceGuide) {
+          this._syncApplyShellChrome();
+          this._syncBasicSaveText();
+          showValidationAlert(openServiceGuide, '请完善信息', {
+            onConfirm: () => this._guideToBoardingService()
+          });
+        } else if (openedNow) {
           enableStoreShareMenu();
           this._syncApplyShellChrome();
           this._syncBasicSaveText();

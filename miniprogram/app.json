@@ -29,6 +29,7 @@
         "user/pet-butler/walk/walk",
         "user/pet-butler/milestones/milestones",
         "user/reserve/reserve",
+        "user/proxy-claim/proxy-claim",
         "user/boarding-contract/boarding-contract",
         "user/order-detail/order-detail",
         "user/order-edit/order-edit",
@@ -47,7 +48,8 @@
         "daily-check/daily-check",
         "daily-logs/daily-logs",
         "pickup-manage/pickup-manage",
-        "holiday-pricing/holiday-pricing"
+        "holiday-pricing/holiday-pricing",
+        "share-guest/share-guest"
       ]
     },
     {

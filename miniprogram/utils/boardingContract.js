@@ -3,6 +3,7 @@
  */
 
 const { buildContractPetInfoLines } = require('./petSnapshot');
+const { formatHomeVisitTimeText } = require('./homeVisitAddress');
 
 function formatCompensationLimit(store) {
   const raw = store && (store.compensationLimit ?? store.contractCompensationLimit);
@@ -106,7 +107,11 @@ function getDefaultClauseEditText(store) {
   return sectionsToEditText(buildClauseSections(compensationLimit));
 }
 
-function getStoredClauseEditText(store) {
+function getStoredClauseEditText(store, serviceKind) {
+  if (serviceKind === 'homeFeeding') {
+    const custom = store && store.homeFeeding && store.homeFeeding.contractClauseText;
+    return custom && String(custom).trim() ? String(custom).trim() : '';
+  }
   const custom = store && (store.boardingContractClauseText || store.boardingContractClauses);
   return custom && String(custom).trim() ? String(custom).trim() : '';
 }
@@ -120,8 +125,8 @@ function applyCompensationToSections(sections, limitText) {
   }));
 }
 
-function resolveClauseSections(store, compensationLimit) {
-  const customText = getStoredClauseEditText(store);
+function resolveClauseSections(store, compensationLimit, serviceKind) {
+  const customText = getStoredClauseEditText(store, serviceKind);
   const limitText = compensationLimit || '0';
   if (customText) {
     const parsed = parseSectionsFromEditText(customText);
@@ -157,10 +162,45 @@ function buildPartyA(contact) {
   };
 }
 
-function buildPartyB(store) {
-  const s = store || {};
+function getServiceContractCopy(serviceKind) {
+  if (serviceKind === 'wash') {
+    return {
+      title: '宠物美容洗护服务电子协议',
+      serviceLabel: '【洗护服务信息】',
+      timeLabel: '预约时间',
+      daysLabel: '服务天数',
+      serviceType: '宠物美容洗护',
+      partyBLabel: '乙方（服务方）',
+      petLabel: '【洗护宠物信息】'
+    };
+  }
+  if (serviceKind === 'homeFeeding') {
+    return {
+      title: '上门喂养服务电子协议',
+      serviceLabel: '【上门服务信息】',
+      timeLabel: '上门时间',
+      daysLabel: '服务次数',
+      serviceType: '上门喂养',
+      partyBLabel: '乙方（服务方）',
+      petLabel: '【服务宠物信息】'
+    };
+  }
   return {
-    label: '乙方（寄养服务方）',
+    title: '宠物寄养服务电子协议',
+    serviceLabel: '【寄养服务信息】',
+    timeLabel: '寄养时间',
+    daysLabel: '寄养天数',
+    serviceType: '宠物寄养服务',
+    partyBLabel: '乙方（寄养服务方）',
+    petLabel: '【寄养宠物信息】'
+  };
+}
+
+function buildPartyB(store, serviceKind) {
+  const s = store || {};
+  const copy = getServiceContractCopy(serviceKind);
+  return {
+    label: copy.partyBLabel,
     name: (s.name || '').trim() || '——',
     address: (s.address || '').trim() || '——',
     phone: (s.contactPhone || '').trim() || '——',
@@ -202,9 +242,12 @@ function buildContractDraft(input) {
     contactName,
     contactPhone,
     contactIdCard,
-    orderFallback
+    orderFallback,
+    serviceKind
   } = input || {};
 
+  const kind = serviceKind || 'boarding';
+  const copy = getServiceContractCopy(kind);
   const compensationLimit = formatCompensationLimit(store);
   const hasContact = !!(contactName || contactPhone || contactIdCard);
   const partyA = buildPartyA(
@@ -216,8 +259,8 @@ function buildContractDraft(input) {
         idCard: user && user.idCard
       }
   );
-  const partyB = buildPartyB(store);
-  const sections = resolveClauseSections(store, compensationLimit);
+  const partyB = buildPartyB(store, kind);
+  const sections = resolveClauseSections(store, compensationLimit, kind);
 
   const petList = Array.isArray(pets) && pets.length
     ? pets.filter(Boolean)
@@ -231,12 +274,14 @@ function buildContractDraft(input) {
   const petName = (petNameLine && petNameLine.value) || '——';
   const petType = (petTypeLine && petTypeLine.value) || '——';
   const petWeight = (petWeightLine && petWeightLine.value) || '——';
-  const timeRange = `${startDate || '——'} ${startTime || ''} 至 ${endDate || '——'} ${endTime || ''}`.trim();
+  const timeRange = kind === 'homeFeeding'
+    ? (formatHomeVisitTimeText({ startDate, startTime, endTime }) || '——')
+    : `${startDate || '——'} ${startTime || ''} 至 ${endDate || '——'} ${endTime || ''}`.trim();
   const feeText = totalFee != null ? `¥${totalFee}` : '——';
   const depositText = deposit != null ? `¥${deposit}` : '¥0';
 
   const bodyLines = [
-    '宠物寄养服务电子协议',
+    copy.title,
     '',
     `${partyA.label}`,
     `联系人：${partyA.name}`,
@@ -248,7 +293,7 @@ function buildContractDraft(input) {
     `联系电话：${partyB.phone}`,
     `负责人：${partyB.legalName}`,
     '',
-    '【寄养宠物信息】',
+    copy.petLabel,
     ...(petList.length > 1
       ? petList.flatMap((p, idx) => {
         const block = [`—— 宠物 ${idx + 1} ——`];
@@ -259,16 +304,19 @@ function buildContractDraft(input) {
       })
       : petInfoLines.map((line) => `${line.label}：${line.value}`)),
     '',
-    '【寄养服务信息】',
-    `寄养时间：${timeRange}`,
-    `寄养天数：${days != null ? days : '——'}天`,
+    copy.serviceLabel,
+    `${copy.timeLabel}：${timeRange}`,
+    `${copy.daysLabel}：${days != null ? days : '——'}${kind === 'homeFeeding' ? '次' : '天'}`,
     billingMode === 'room' && roomName ? `房间类型：${roomName}` : '',
     billingMode === 'custom' && roomName ? `收费项目：${roomName}` : '',
     `费用合计：${feeText}`,
     `押金：${depositText}`,
     needPickup ? '接送服务：需要' : '',
     specialNeeds ? `特殊需求：${specialNeeds}` : '',
-    store && store.notice ? `寄养须知：${store.notice}` : '',
+    store && store.notice && kind === 'boarding' ? `寄养须知：${store.notice}` : '',
+    kind === 'homeFeeding' && store && store.homeFeeding && store.homeFeeding.notice
+      ? `上门须知：${store.homeFeeding.notice}`
+      : '',
     '',
     ...sections.flatMap((sec) => [
       sec.title,
@@ -282,7 +330,7 @@ function buildContractDraft(input) {
   const bodyText = bodyLines.join('\n');
 
   return {
-    title: '宠物寄养服务电子协议',
+    title: copy.title,
     partyA,
     partyB,
     petName,
@@ -303,7 +351,8 @@ function buildContractDraft(input) {
     roomName: roomName || '',
     roomLabel: billingMode === 'custom' ? '收费项目' : '房间类型',
     billingMode: billingMode || '',
-    serviceType: '宠物寄养服务',
+    serviceType: copy.serviceType,
+    serviceKind: kind,
     store_id: (store && store.store_id) || '',
     storeName: partyB.name,
     sections,
@@ -345,7 +394,8 @@ function buildContractFromOrder(order, user, store) {
     billingMode: order.billingMode,
     contactName: order.contactName,
     contactPhone: order.contactPhone,
-    contactIdCard: order.contactIdCard
+    contactIdCard: order.contactIdCard,
+    serviceKind: order.serviceLine || 'boarding'
   });
 }
 

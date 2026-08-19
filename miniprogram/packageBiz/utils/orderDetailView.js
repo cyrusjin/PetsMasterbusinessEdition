@@ -2,6 +2,7 @@ const { formatOrderStatus } = require('../../utils/orderStatus');
 const { formatPickupLegs } = require('./pickupInfo');
 const { resolveOrderDisplayNo } = require('../../utils/displayNo');
 const { formatOrderCreateTime } = require('../../utils/util');
+const { attachVisitAddressFields, formatHomeVisitTimeText } = require('../../utils/homeVisitAddress');
 
 function displayText(value) {
   if (value === null || value === undefined || value === '') return '--';
@@ -11,6 +12,8 @@ function displayText(value) {
 function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
   const boardingTime = `${displayText(order.startDate)} ${displayText(order.startTime)} ~ ${displayText(order.endDate)} ${displayText(order.endTime)}`;
   const pickupText = order.needPickup ? '需要' : '不需要';
+  const isHome = order.serviceLine === 'homeFeeding';
+  const isWash = order.serviceLine === 'wash';
   const orderRows = [
     ['订单状态', formatOrderStatus(order.status)],
     ['订单编号', displayText(resolveOrderDisplayNo(order))],
@@ -21,6 +24,19 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
   ];
   if (order.emergencyPhone) {
     orderRows.push(['紧急联系电话', displayText(order.emergencyPhone)]);
+  }
+  if (isHome) {
+    const visit = attachVisitAddressFields(order);
+    orderRows.push(['上门时间', formatHomeVisitTimeText(order) || '--']);
+    if (order.roomName) orderRows.push(['服务项目', displayText(order.roomName)]);
+    if (visit.visitAddress) orderRows.push(['小区地址', displayText(visit.visitAddress)]);
+    if (visit.visitRoomNo) orderRows.push(['门牌号', displayText(visit.visitRoomNo)]);
+    if (visit.visitEntryMethod) orderRows.push(['开门方式', displayText(visit.visitEntryMethod)]);
+  } else if (isWash) {
+    orderRows.push(
+      ['到店时间', `${displayText(order.startDate)} ${displayText(order.startTime)}`],
+      ['洗护项目', displayText(order.roomName)]
+    );
   }
   if (order.needPickup) {
     orderRows.push(
@@ -33,13 +49,15 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
     );
   }
   const optionLabel = order.billingMode === 'custom' ? '收费项目' : '房间';
-  orderRows.push(
-    ['寄养时间', boardingTime],
-    [optionLabel, displayText(order.roomName)],
-    ['接送服务', pickupText],
-    ['洗护服务', order.needWash ? '需要' : '不需要'],
-    ['天数', order.days != null && order.days !== '' ? `${order.days}天` : '--']
-  );
+  if (!isHome && !isWash) {
+    orderRows.push(
+      ['寄养时间', boardingTime],
+      [optionLabel, displayText(order.roomName)],
+      ['接送服务', pickupText],
+      ['洗护服务', order.needWash ? '需要' : '不需要'],
+      ['天数', order.days != null && order.days !== '' ? `${order.days}天` : '--']
+    );
+  }
 
   if (Array.isArray(order.valueAddedServices) && order.valueAddedServices.length) {
     orderRows.push([
@@ -59,11 +77,17 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
     orderRows.push(['计费天数', `${feeDetail.daysText}天`]);
   }
 
-  orderRows.push(
-    ['寄养费用', `¥${feeSummary.boardingFee}`],
-    ['接送运费', order.needPickup ? `¥${feeSummary.shippingFee}` : '--'],
-    ['洗护服务费', order.needWash ? `¥${feeSummary.washFee != null ? feeSummary.washFee : 0}` : '--']
-  );
+  if (isHome) {
+    orderRows.push(['上门费用', `¥${feeSummary.visitFee != null ? feeSummary.visitFee : 0}`]);
+  } else if (isWash) {
+    orderRows.push(['洗护服务费', `¥${feeSummary.washFee != null ? feeSummary.washFee : 0}`]);
+  } else {
+    orderRows.push(
+      ['寄养费用', `¥${feeSummary.boardingFee}`],
+      ['接送运费', order.needPickup ? `¥${feeSummary.shippingFee}` : '--'],
+      ['洗护服务费', order.needWash ? `¥${feeSummary.washFee != null ? feeSummary.washFee : 0}` : '--']
+    );
+  }
 
   if (feeSummary.hasValueAdded) {
     orderRows.push(['增值服务费', `¥${feeSummary.valueAddedFee != null ? feeSummary.valueAddedFee : 0}`]);

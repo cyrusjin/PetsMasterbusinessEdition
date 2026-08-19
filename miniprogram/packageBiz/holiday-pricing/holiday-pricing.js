@@ -12,6 +12,7 @@ const {
   collectRemovedDaysFromGroups,
   formatDateLabel
 } = require('../../utils/legalHolidays');
+const { emptyHomeFeeding, normalizeHomeFeeding } = require('../../utils/homeFeeding');
 
 function withGroupFlags(group) {
   const days = group.days || [];
@@ -84,16 +85,68 @@ Page({
     batchSetVisible: false,
     batchSetGroupIndex: -1,
     batchSetGroupName: '',
-    batchSetAmount: ''
+    batchSetAmount: '',
+    serviceLine: 'boarding',
+    petType: '',
+    amountUnit: '元/天',
+    tipDesc: '按国务院放假安排展示休息日（含调休假期，不含补班日）。可在各节日下全选、一键设置，也可添加或删除任意日期；勾选并填写固定加价金额（元/天）后生效。'
+  },
+
+  onLoad(options) {
+    const serviceLine = (options && options.serviceLine) === 'homeFeeding' ? 'homeFeeding' : 'boarding';
+    const petType = '';
+    const isHome = serviceLine === 'homeFeeding';
+    this.setData({
+      serviceLine,
+      petType: petType || '',
+      amountUnit: isHome ? '元/次' : '元/天',
+      tipDesc: isHome
+        ? '按国务院放假安排展示休息日（含调休假期，不含补班日）。上门喂养基础价为平日每次价格；勾选并填写固定加价金额（元/次）后，该日上门按「平日价 + 加价」计。'
+        : '按国务院放假安排展示休息日（含调休假期，不含补班日）。可在各节日下全选、一键设置，也可添加或删除任意日期；勾选并填写固定加价金额（元/天）后生效。'
+    });
+    if (isHome) {
+      wx.setNavigationBarTitle({ title: '上门喂养节假日' });
+    }
   },
 
   onShow() {
-    if (redirectToStoreAuthIfNeeded()) return;
+    const app = getApp();
+    if (!(app.globalData && app.globalData.uiEmptyShopPreview) && redirectToStoreAuthIfNeeded()) return;
     this._load();
   },
 
+  _isPreview() {
+    const app = getApp();
+    return !!(app.globalData && app.globalData.uiEmptyShopPreview);
+  },
+
+  _currentShop() {
+    const app = getApp();
+    if (this._isPreview() && app.globalData.previewShopCache) {
+      return app.globalData.previewShopCache;
+    }
+    return (app.getShop && app.getShop()) || {};
+  },
+
+  _applyHomeHoliday(homeFeeding, holidayPricing) {
+    const hf = normalizeHomeFeeding(homeFeeding || emptyHomeFeeding());
+    hf.holidayPricing = holidayPricing;
+    if (hf.catPricing) hf.catPricing = { ...hf.catPricing, holidayPricing };
+    if (hf.dogPricing) hf.dogPricing = { ...hf.dogPricing, holidayPricing };
+    return hf;
+  },
+
   _readHolidayPricing() {
-    const shop = (app.getShop && app.getShop()) || {};
+    const shop = this._currentShop();
+    if (this.data.serviceLine === 'homeFeeding') {
+      const hf = normalizeHomeFeeding(shop.homeFeeding);
+      return normalizeHolidayPricing(
+        hf.holidayPricing
+        || (hf.dogPricing && hf.dogPricing.holidayPricing)
+        || (hf.catPricing && hf.catPricing.holidayPricing)
+        || getDefaultHolidayPricing()
+      );
+    }
     const rules = {
       ...(app.getBillingRules ? app.getBillingRules() : {}),
       ...(shop.billingRules || {})
@@ -395,6 +448,31 @@ Page({
     this.setData({ saving: true });
     wx.showLoading({ title: '保存中', mask: true });
 
+    if (this._isPreview()) {
+      const current = this._currentShop() || {};
+      let nextShop;
+      if (this.data.serviceLine === 'homeFeeding') {
+        const hf = this._applyHomeHoliday(current.homeFeeding, holidayPricing);
+        nextShop = { ...current, homeFeeding: hf };
+      } else {
+        nextShop = {
+          ...current,
+          billingRules: {
+            ...(current.billingRules || {}),
+            holidayPricing
+          }
+        };
+      }
+      if (app.globalData) app.globalData.previewShopCache = nextShop;
+      wx.hideLoading();
+      this.setData({
+        saving: false,
+        groups: buildGroups(this.data.baseGroups, this.data.year, holidayPricing)
+      });
+      wx.showToast({ title: '已保存到本地', icon: 'success' });
+      return;
+    }
+
     const ensureStore = app.ensureMerchantStore
       ? app.ensureMerchantStore()
       : Promise.resolve((app.getShop && app.getShop()) || {});
@@ -402,6 +480,11 @@ Page({
     ensureStore
       .then((shop) => {
         const current = shop || (app.getShop && app.getShop()) || {};
+        if (this.data.serviceLine === 'homeFeeding') {
+          const hf = this._applyHomeHoliday(current.homeFeeding, holidayPricing);
+          const nextShop = { ...current, homeFeeding: hf };
+          return app.syncShopToCloud(nextShop);
+        }
         const billingRules = {
           ...(app.getBillingRules ? app.getBillingRules() : {}),
           ...(current.billingRules || {}),

@@ -58,6 +58,7 @@ App({
     pendingEntryStoreId: '',
     pendingSharedDailyLogId: '',
     pendingStaffInviteStoreId: '',
+    pendingProxyClaimToken: '',
     merchantAccessRole: '',
     apiReady: false,
     lastApiError: ''
@@ -194,13 +195,18 @@ App({
   _rememberShareEntryStore(options) {
     const entry = this._normalizeEntryOptions(options);
     if (this._isStaffInviteEntry(entry)) return '';
+    const query = (entry && (entry.query || entry)) || {};
+    const token = String((query.token || query.proxy_token) || '').trim();
+    if (token && this._isUserEntryPath(entry)) {
+      this.globalData.pendingProxyClaimToken = token;
+    }
     const storeId = this._extractStoreId(entry);
     if (!storeId) return '';
     if (!this._isUserEntryPath(entry) && (entry.path || '').includes('pages/merchant/')) {
       return '';
     }
     this.globalData.pendingEntryStoreId = storeId;
-    storeDebug.log('记住分享入口 store_id', { storeId });
+    storeDebug.log('记住分享入口 store_id', { storeId, hasProxyToken: !!token });
     return storeId;
   },
 
@@ -2951,6 +2957,7 @@ App({
       multiPetDiscount: {
         enabled: false,
         mode: 'fromSecondPercent',
+        zhe: 0,
         percent: 0,
         amount: 0,
         applyTo: 'boarding'

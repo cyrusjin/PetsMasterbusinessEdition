@@ -1,4 +1,10 @@
 <view class="home-page has-tab-bar">
+  <view class="home-custom-nav" style="padding-top: {{statusBarHeight}}px; height: {{navTotalHeight}}px;">
+    <view class="home-custom-nav-inner" style="height: {{navBarHeight}}px; padding-left: {{navTitlePad}}px; padding-right: {{navTitlePad}}px;">
+      <text class="home-nav-title">{{navTitle}}</text>
+    </view>
+  </view>
+  <view class="home-nav-spacer" style="height: {{navTotalHeight}}px;"></view>
   <oa-follow-banner />
   <view class="home-header">
     <view class="greeting">
@@ -71,17 +77,17 @@
   <view class="invite-family-bar" bindtap="onOpenInviteFamily">
     <view class="invite-family-copy">
       <text class="invite-family-title">邀请家人</text>
-      <text class="invite-family-sub">分享宠物档案，一起接收寄养动态</text>
+      <text class="invite-family-sub">分享宠物档案，一起接收服务动态</text>
     </view>
     <text class="invite-family-arrow">›</text>
   </view>
 
   <view class="reserve-card" bindtap="onGoReserve">
     <view class="reserve-copy">
-      <text class="reserve-title">预约专属服务</text>
-      <text class="reserve-sub">{{currentStore ? '专业照护，到店安心寄养' : '通过商家分享链接进入后预约'}}</text>
+      <text class="reserve-title">{{reserveCardTitle}}</text>
+      <text class="reserve-sub">{{reserveCardSub}}</text>
       <view class="reserve-button {{currentStore ? '' : 'reserve-button-disabled'}}">
-        <view class="reserve-button-text">{{currentStore ? '立即预约' : '请先绑定店铺'}}</view>
+        <view class="reserve-button-text">{{reserveButtonText}}</view>
         <view class="reserve-button-icon">
           <view class="reserve-button-chevron"></view>
         </view>
@@ -107,7 +113,7 @@
       </view>
       <text class="points-num" wx:if="{{boardingPets.length > 0}}">{{boardingPets.length}}</text>
       <text class="points-empty" wx:else>暂无</text>
-      <text class="info-sub">{{boardingPets.length > 0 ? '近期寄养事项' : '暂无寄养订单'}}</text>
+      <text class="info-sub">{{boardingPets.length > 0 ? '近期服务事项' : '暂无进行中订单'}}</text>
       <image class="info-art points" src="/images/home/points-art.png" mode="aspectFit" />
       <view class="mini-link">查看订单 ›</view>
     </view>
@@ -128,7 +134,7 @@
           <text class="boarding-date">{{item.startDate}} ~ {{item.endDate}}</text>
         </view>
       </view>
-      <text class="tag tag-green">{{item.status === 'boarding' ? '寄养中' : '待到店'}}</text>
+      <text class="tag tag-green">{{item.statusLabel || (item.status === 'boarding' ? '寄养中' : '待到店')}}</text>
     </view>
   </view>
 
@@ -227,6 +233,33 @@
     <scroll-view scroll-y class="intro-full-body" show-scrollbar="{{false}}">
       <view class="intro-full-text">{{introPreviewContent}}</view>
     </scroll-view>
+  </view>
+</view>
+
+<view class="reserve-picker-root" wx:if="{{reservePickerVisible}}">
+  <view class="reserve-picker-mask" catchtouchmove="onReservePickerTouchMove" bindtap="onCloseReservePicker"></view>
+  <view class="reserve-picker-sheet" catchtap="onReservePickerTouchMove">
+    <view class="reserve-picker-head">
+      <view>
+        <text class="reserve-picker-title">选择预约服务</text>
+        <text class="reserve-picker-sub">请选择要预约的服务类型</text>
+      </view>
+      <text class="reserve-picker-close" bindtap="onCloseReservePicker">关闭</text>
+    </view>
+    <view
+      class="reserve-picker-item"
+      wx:for="{{homeServiceCards}}"
+      wx:key="key"
+      catchtap="onPickReserveService"
+      data-line="{{item.key}}"
+    >
+      <text class="reserve-picker-emoji">{{item.emoji}}</text>
+      <view class="reserve-picker-copy">
+        <text class="reserve-picker-name">{{item.pickerTitle || item.name}}</text>
+        <text class="reserve-picker-desc">{{item.homeSub || item.pickerDesc}}</text>
+      </view>
+      <text class="reserve-picker-arrow">›</text>
+    </view>
   </view>
 </view>
 

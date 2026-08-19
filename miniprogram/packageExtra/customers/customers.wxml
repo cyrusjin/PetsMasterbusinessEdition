@@ -1,15 +1,15 @@
-<view class="container">
-  <view class="card tip-card">
+<view class="container {{isProxy ? 'proxy-guests-page' : ''}}">
+  <view class="card tip-card" wx:if="{{!isProxy}}">
     <text class="tip-text">根据本店历史订单汇总的客户档案，点击可查看客户信息、总单数与宠物。</text>
   </view>
 
-  <view class="card search-card" wx:if="{{!loading || allCustomers.length}}">
+  <view class="card search-card" wx:if="{{isProxy || !loading || allCustomers.length}}">
     <view class="search-row">
       <input
         class="form-input search-input"
         type="text"
         confirm-type="search"
-        placeholder="搜索姓名、电话或宠物名"
+        placeholder="{{isProxy ? '搜索客人姓名、电话或宠物名' : '搜索姓名、电话或宠物名'}}"
         value="{{keyword}}"
         bindinput="onSearchInput"
         bindconfirm="onSearchConfirm"
@@ -22,31 +22,120 @@
     <text class="text-gray">加载中...</text>
   </view>
 
-  <view class="card empty-card" wx:elif="{{!allCustomers.length}}">
-    <text class="empty-title">暂无客户</text>
-    <text class="empty-desc">有用户在本店下单后，会自动出现在这里</text>
-  </view>
+  <block wx:elif="{{isProxy}}">
+    <view class="card empty-card" wx:if="{{!unassignedGuest && !allGuests.length}}">
+      <text class="empty-title">还没有下过单的客人</text>
+      <text class="empty-desc">新客人请点底部「新增宠物」，会放到未分配客人里</text>
+    </view>
 
-  <view class="card empty-card" wx:elif="{{!customers.length}}">
-    <text class="empty-title">未找到相关客户</text>
-    <text class="empty-desc">试试姓名、手机号或宠物名</text>
-  </view>
+    <view class="card empty-card" wx:elif="{{!unassignedGuest && !guests.length}}">
+      <text class="empty-title">未找到相关客人</text>
+      <text class="empty-desc">试试姓名、手机号或宠物名；新客人请新增宠物</text>
+    </view>
 
-  <view class="card" wx:else>
-    <view class="card-title">{{keyword ? '搜索结果' : '全部客户'}} ({{customers.length}})</view>
-    <view
-      class="customer-item"
-      wx:for="{{customers}}"
-      wx:key="id"
-      bindtap="onOpenDetail"
-      data-id="{{item.id}}"
-    >
-      <view class="customer-avatar">{{item.avatarText}}</view>
-      <view class="customer-info">
-        <text class="customer-name">{{item.name}}</text>
-        <text class="customer-meta">{{item.metaText}}</text>
+    <view class="card" wx:if="{{unassignedGuest}}">
+      <view class="card-title">未分配客人</view>
+      <view class="guest-item guest-item-unassigned">
+        <view class="guest-avatar guest-avatar-unassigned">{{unassignedGuest.avatarText}}</view>
+        <view class="guest-info">
+          <text class="guest-name">{{unassignedGuest.name}}</text>
+          <text class="guest-meta">尚未绑定客人 · {{unassignedGuest.petCount}}只宠物</text>
+          <text class="guest-pets">{{unassignedGuest.petNamesText}}</text>
+        </view>
+        <view
+          class="guest-order-btn"
+          hover-class="guest-order-btn-hover"
+          catchtap="onOrder"
+          data-id="{{unassignedGuest.id}}"
+        >下单</view>
       </view>
-      <text class="customer-arrow">›</text>
+    </view>
+
+    <view class="card" wx:if="{{guests.length}}">
+      <view class="card-title">{{keyword ? '搜索结果' : '选择客人'}} ({{guests.length}})</view>
+      <view
+        class="guest-item"
+        wx:for="{{guests}}"
+        wx:key="id"
+      >
+        <view class="guest-avatar">{{item.avatarText}}</view>
+        <view class="guest-info">
+          <text class="guest-name">{{item.name}}</text>
+          <text class="guest-meta" wx:if="{{item.phone}}">{{item.phone}} · 共{{item.orderCount}}单</text>
+          <text class="guest-meta" wx:else>共{{item.orderCount}}单</text>
+          <text class="guest-pets">{{item.petNamesText}}</text>
+        </view>
+        <view
+          class="guest-order-btn"
+          hover-class="guest-order-btn-hover"
+          catchtap="onOrder"
+          data-id="{{item.id}}"
+        >下单</view>
+      </view>
+    </view>
+
+    <view class="proxy-guests-spacer"></view>
+    <view class="proxy-guests-footer">
+      <view class="proxy-add-btn" hover-class="proxy-add-btn-hover" bindtap="onAddPet">新增宠物</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="card empty-card" wx:if="{{!allCustomers.length}}">
+      <text class="empty-title">暂无客户</text>
+      <text class="empty-desc">有用户在本店下单后，会自动出现在这里</text>
+    </view>
+
+    <view class="card empty-card" wx:elif="{{!customers.length}}">
+      <text class="empty-title">未找到相关客户</text>
+      <text class="empty-desc">试试姓名、手机号或宠物名</text>
+    </view>
+
+    <view class="card" wx:else>
+      <view class="card-title">{{keyword ? '搜索结果' : '全部客户'}} ({{customers.length}})</view>
+      <view
+        class="customer-item"
+        wx:for="{{customers}}"
+        wx:key="id"
+        bindtap="onOpenDetail"
+        data-id="{{item.id}}"
+      >
+        <view class="customer-avatar">{{item.avatarText}}</view>
+        <view class="customer-info">
+          <text class="customer-name">{{item.name}}</text>
+          <text class="customer-meta">{{item.metaText}}</text>
+        </view>
+        <text class="customer-arrow">›</text>
+      </view>
+    </view>
+  </block>
+
+  <view class="reserve-picker-root" wx:if="{{servicePickerVisible}}">
+    <view class="reserve-picker-mask" catchtouchmove="onServicePickerTouchMove" bindtap="onCloseServicePicker"></view>
+    <view class="reserve-picker-sheet" catchtap="onServicePickerTouchMove">
+      <view class="reserve-picker-head">
+        <view>
+          <text class="reserve-picker-title">选择服务</text>
+          <text class="reserve-picker-sub">选好服务后继续为当前客人下单</text>
+        </view>
+        <text class="reserve-picker-close" bindtap="onCloseServicePicker">关闭</text>
+      </view>
+      <view wx:if="{{!serviceCards.length}}" class="reserve-picker-empty">请先在门店设置中开通并完善至少一项服务</view>
+      <view
+        wx:for="{{serviceCards}}"
+        wx:key="key"
+        class="reserve-picker-item"
+        hover-class="reserve-picker-item-hover"
+        bindtap="onPickService"
+        data-service-line="{{item.key}}"
+      >
+        <text class="reserve-picker-emoji">{{item.emoji}}</text>
+        <view class="reserve-picker-copy">
+          <text class="reserve-picker-name">{{item.pickerTitle || item.name}}</text>
+          <text class="reserve-picker-desc">{{item.pickerDesc}}</text>
+        </view>
+        <text class="reserve-picker-arrow">›</text>
+      </view>
     </view>
   </view>
 </view>
