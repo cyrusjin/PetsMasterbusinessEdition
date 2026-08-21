@@ -6,9 +6,10 @@
   display: flex;
   height: calc(100rpx + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: #fff;
-  border-top: 1rpx solid #F2DEC9;
-  box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.04);
+  background: rgba(255, 253, 249, .94);
+  border-top: 1rpx solid rgba(242, 222, 201, .78);
+  box-shadow: 0 -10rpx 30rpx rgba(111, 75, 48, .1);
+  backdrop-filter: blur(18px);
   z-index: 10000;
   box-sizing: border-box;
 }
@@ -20,7 +21,7 @@
   justify-content: center;
   color: #999999;
 }
-.tab-item.active { color: #E98657; }
+.tab-item.active { color: #E77952; }
 .tab-icon-img {
   width: 44rpx;
   height: 44rpx;
@@ -30,6 +31,7 @@
 .merchant-page {
   min-height: 100vh;
   box-sizing: border-box;
+  background: radial-gradient(circle at 92% 8%, rgba(255, 199, 191, .28), transparent 300rpx), linear-gradient(180deg, #FFF7F1 0%, #FFFDFB 52%, #FFF8F4 100%);
 }
 
 /* 商家 Tab 页内容底部留白（与 .has-tab-bar 叠加时以页面 class 为准） */

@@ -129,12 +129,16 @@
         bindtap="onPickService"
         data-service-line="{{item.key}}"
       >
-        <text class="reserve-picker-emoji">{{item.emoji}}</text>
+        <view class="reserve-picker-icon">
+          <image wx:if="{{item.key === 'boarding'}}" src="/images/card/card-reserve.png" mode="aspectFit" />
+          <image wx:elif="{{item.key === 'wash'}}" src="/images/card/card-check.png" mode="aspectFit" />
+          <image wx:else src="/images/card/card-camera.png" mode="aspectFit" />
+        </view>
         <view class="reserve-picker-copy">
           <text class="reserve-picker-name">{{item.pickerTitle || item.name}}</text>
           <text class="reserve-picker-desc">{{item.pickerDesc}}</text>
         </view>
-        <text class="reserve-picker-arrow">›</text>
+        <view class="reserve-picker-arrow"><text>›</text></view>
       </view>
     </view>
   </view>

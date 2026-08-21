@@ -43,38 +43,45 @@ Component({
   lifetimes: {
     attached() {
       this._updateDisplaySrc();
+    },
+    detached() {
+      // 使未完成的异步解析失效，避免组件销毁后继续 setData。
+      this._resolveTaskSeq = (this._resolveTaskSeq || 0) + 1;
     }
   },
 
   methods: {
+    _setDisplaySrc(next) {
+      if (next === this.data.displaySrc) return;
+      this.setData({ displaySrc: next });
+    },
+
     _updateDisplaySrc() {
       const { src, defaultSrc } = this.properties;
       const source = (src || '').trim() || (defaultSrc || '').trim();
 
       if (!source) {
-        this.setData({ displaySrc: '' });
+        this._setDisplaySrc('');
         return;
       }
 
       if (isLocalImagePath(source) || source.startsWith('/')) {
-        this.setData({ displaySrc: source });
+        this._setDisplaySrc(source);
         return;
       }
 
       // 已下载过的图片同步落到本地路径，避免异步闪空白
       const cached = peekCachedPath(source, { skipTouch: true });
       if (cached) {
-        this.setData({ displaySrc: cached });
+        this._setDisplaySrc(cached);
       }
 
-      const taskId = Date.now();
-      this._resolveTaskId = taskId;
+      const taskId = (this._resolveTaskSeq || 0) + 1;
+      this._resolveTaskSeq = taskId;
       resolveImageUrl(source).then((path) => {
-        if (this._resolveTaskId !== taskId) return;
+        if (this._resolveTaskSeq !== taskId) return;
         const next = path || source;
-        if (next !== this.data.displaySrc) {
-          this.setData({ displaySrc: next });
-        }
+        this._setDisplaySrc(next);
       });
     },
 

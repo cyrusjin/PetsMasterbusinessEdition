@@ -4,6 +4,7 @@ const CACHE_DIR = `${(typeof wx !== 'undefined' && wx.env && wx.env.USER_DATA_PA
 const MAX_CACHE_ENTRIES = 300;
 const INDEX_PERSIST_MS = 2000;
 const pendingMap = new Map();
+const verifiedPaths = new Set();
 
 let memoryIndex = null;
 let indexDirty = false;
@@ -114,10 +115,13 @@ function flushCacheIndex() {
 
 function fileExists(filePath) {
   if (!filePath) return false;
+  if (verifiedPaths.has(filePath)) return true;
   try {
     getFs().accessSync(filePath);
+    verifiedPaths.add(filePath);
     return true;
   } catch (err) {
+    verifiedPaths.delete(filePath);
     return false;
   }
 }
@@ -139,6 +143,7 @@ function touchCacheEntry(source, filePath) {
         if (item && item.path && fileExists(item.path)) {
           try {
             getFs().unlinkSync(item.path);
+            verifiedPaths.delete(item.path);
           } catch (err) {
             // ignore
           }
@@ -199,6 +204,7 @@ function removeCacheEntry(source) {
   if (item && item.path && fileExists(item.path)) {
     try {
       getFs().unlinkSync(item.path);
+      verifiedPaths.delete(item.path);
     } catch (err) {
       // ignore
     }
@@ -253,6 +259,7 @@ function saveTempFile(tempFilePath, source) {
 
   try {
     const savedPath = writeCacheFile(tempFilePath, targetPath);
+    verifiedPaths.add(savedPath);
     touchCacheEntry(source, savedPath);
     return savedPath;
   } catch (err) {
@@ -261,6 +268,7 @@ function saveTempFile(tempFilePath, source) {
     evictOldestCacheEntries(40);
     try {
       const savedPath = writeCacheFile(tempFilePath, targetPath);
+      verifiedPaths.add(savedPath);
       touchCacheEntry(source, savedPath);
       return savedPath;
     } catch (retryErr) {
@@ -383,6 +391,7 @@ function clearImageFileCache() {
     // ignore
   }
   pendingMap.clear();
+  verifiedPaths.clear();
 }
 
 module.exports = {

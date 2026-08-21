@@ -324,7 +324,12 @@ function openUrl(url, options = {}) {
     wx.redirectTo({ url, fail: failToast });
     return;
   }
-  wx.navigateTo({ url, fail: failToast });
+  wx.navigateTo({
+    url,
+    animationType: options.animationType || 'none',
+    animationDuration: 0,
+    fail: failToast
+  });
 }
 
 function openProxyGuestPicker(serviceLine, options = {}) {
@@ -336,6 +341,15 @@ function openProxyGuestPicker(serviceLine, options = {}) {
     ? `${PROXY_GUEST_PICKER_PATH}&${extra.join('&')}`
     : PROXY_GUEST_PICKER_PATH;
   openUrl(url, { ...options, failTitle: '无法打开客人列表' });
+}
+
+function preloadProxyGuestPicker() {
+  if (!wx.preloadPage) return;
+  try {
+    wx.preloadPage({ url: PROXY_GUEST_PICKER_PATH });
+  } catch (err) {
+    // 预热失败不影响正常打开
+  }
 }
 
 function openProxyReserve(serviceLine, options = {}) {
@@ -589,6 +603,7 @@ module.exports = {
   buildProxyReserveUrl,
   buildProxyPetFormUrl,
   openProxyGuestPicker,
+  preloadProxyGuestPicker,
   openProxyReserve,
   openProxyPetForm,
   claimProxyOrdersForGuest

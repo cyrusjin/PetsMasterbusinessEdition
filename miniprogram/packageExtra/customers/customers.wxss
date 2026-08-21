@@ -21,9 +21,12 @@
   flex: 1;
   width: 0;
   min-width: 0;
-  height: 72rpx;
-  min-height: 72rpx;
-  line-height: 72rpx;
+  height: 82rpx;
+  min-height: 82rpx;
+  line-height: 82rpx;
+  padding: 0 22rpx;
+  border-radius: 18rpx;
+  box-sizing: border-box;
   background: #F7F8FA;
 }
 .search-clear {
@@ -225,9 +228,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #FFFFFF;
-  border-radius: 28rpx 28rpx 0 0;
-  padding: 28rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, #fffaf5 0%, #fff 30%);
+  border-radius: 36rpx 36rpx 0 0;
+  padding: 36rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -16rpx 50rpx rgba(92, 64, 45, .16);
   box-sizing: border-box;
   z-index: 1;
 }
@@ -266,36 +270,41 @@
   display: flex;
   align-items: center;
   width: 100%;
-  margin: 0;
-  padding: 24rpx 8rpx;
-  border-bottom: 1rpx solid #F2DEC9;
+  min-height: 128rpx;
+  margin: 0 0 14rpx;
+  padding: 20rpx 18rpx;
+  border: 1rpx solid #f4dfce;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 8rpx 22rpx rgba(140, 93, 62, .06);
   box-sizing: border-box;
 }
 .reserve-picker-item:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 .reserve-picker-item-hover {
   opacity: 0.86;
 }
-.reserve-picker-emoji {
+.reserve-picker-icon {
   flex-shrink: 0;
-  width: 72rpx;
-  height: 72rpx;
-  margin-right: 20rpx;
-  border-radius: 20rpx;
-  background: #FFF1E7;
-  font-size: 36rpx;
-  line-height: 72rpx;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78rpx;
+  height: 78rpx;
+  margin-right: 22rpx;
+  border-radius: 22rpx;
+  background: linear-gradient(145deg, #fff1e7, #ffe4d2);
 }
+.reserve-picker-icon image { width: 54rpx; height: 54rpx; }
 .reserve-picker-copy {
   flex: 1;
   min-width: 0;
 }
 .reserve-picker-name {
   display: block;
-  font-size: 30rpx;
-  font-weight: 700;
+  font-size: 32rpx;
+  font-weight: 800;
   color: #3D2B1F;
 }
 .reserve-picker-desc {
@@ -306,9 +315,15 @@
   line-height: 1.45;
 }
 .reserve-picker-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  margin-left: 12rpx;
-  color: #E98657;
-  font-size: 40rpx;
-  font-weight: 300;
+  width: 48rpx;
+  height: 48rpx;
+  margin-left: 14rpx;
+  border-radius: 50%;
+  background: #fff1e7;
+  color: #e98657;
 }
+.reserve-picker-arrow text { margin-top: -4rpx; font-size: 34rpx; font-weight: 500; }

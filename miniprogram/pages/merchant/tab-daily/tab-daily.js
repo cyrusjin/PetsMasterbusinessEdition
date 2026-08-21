@@ -1,7 +1,7 @@
 const app = getApp();
 const storeApi = require('../../../utils/store');
-const { enableStoreShareMenu, buildMerchantTimelineShareConfig, buildStaffShareConfig, buildMerchantShareConfig, listGuestShareCards, shouldOpenGuestSharePicker, openGuestSharePicker, prefetchStoreShareImage } = require('../../../utils/storeShare');
-const { openProxyGuestPicker } = require('../../../utils/proxyOrder');
+const { enableStoreShareMenu, buildMerchantTimelineShareConfig, buildStaffShareConfig, buildMerchantShareConfig, listGuestShareCards, shouldOpenGuestSharePicker, openGuestSharePicker, prefetchStoreShareImage, preloadGuestSharePicker } = require('../../../utils/storeShare');
+const { openProxyGuestPicker, preloadProxyGuestPicker } = require('../../../utils/proxyOrder');
 const {
   buildBoardingListWithDailyStats,
   countUncheckedBoardingPets
@@ -58,6 +58,9 @@ Page({
     hideHomeButton();
     this._initCustomNav();
     enableStoreShareMenu();
+    // 后台页稳定后预热两个轻量选择页，首次点击直接展示内容。
+    preloadGuestSharePicker();
+    preloadProxyGuestPicker();
     this._pendingOpenOrders = options.openOrders === '1';
     this._pendingOrdersTab = (options.tab || 'pending').trim() || 'pending';
     const inviteFromOptions = parseStaffInviteStoreId(options);

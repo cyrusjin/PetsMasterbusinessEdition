@@ -72,7 +72,8 @@ Page({
 
     // 未确认前按审核态展示，避免首屏闪出 AI 文案
     apply(false);
-    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
+    // 开关读取遵循统一缓存策略，避免每次进入管家都阻塞首屏。
+    fetchMerchantSwitchEnabled({ force: false }).then((enabled) => {
       apply(enabled);
       this._applyPets(this.data.pets || app.getPets() || []);
     });

@@ -63,7 +63,7 @@ Page({
   _renderOrders() {
     const pets = app.getPets();
     const orders = badgeUtil.enrichOrdersWithUnread(
-      app.getUserScopedOrders().sort((a, b) => (b.createTime || 0) - (a.createTime || 0))
+      app.getUserScopedOrders().slice().sort((a, b) => (b.createTime || 0) - (a.createTime || 0))
     ).map((o) => {
       const pet = pets.find((p) => p.id === o.petId);
       const kind = getOrderServiceKind(o);
@@ -88,7 +88,10 @@ Page({
       o.pricePendingConfirm ? 1 : 0,
       o.hasUnread ? 1 : 0,
       o.totalFee || 0,
-      o.createTime || 0
+      o.createTime || 0,
+      o.petPhoto || '',
+      o.serviceTimeText || '',
+      o.statusLabel || ''
     ].join(':')).join('|');
     if (sig !== this._ordersSig) {
       this._ordersSig = sig;
@@ -110,6 +113,9 @@ Page({
     else if (activeTab === 'awaiting_arrival') filtered = orders.filter((o) => o.status === 'awaiting_arrival');
     else if (activeTab === 'boarding') filtered = orders.filter((o) => o.status === 'boarding');
     else if (activeTab === 'completed') filtered = orders.filter((o) => o.status === 'completed' || o.status === 'cancelled');
+    const sig = `${activeTab}|${this._ordersSig || ''}`;
+    if (sig === this._filteredOrdersSig) return;
+    this._filteredOrdersSig = sig;
     this.setData({ filteredOrders: filtered });
   },
 

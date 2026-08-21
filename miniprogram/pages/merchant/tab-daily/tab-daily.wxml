@@ -65,10 +65,6 @@
 
     <view class="guest-invite-card">
       <view class="guest-invite-frame" aria-hidden="true"></view>
-      <view class="guest-invite-corner guest-invite-corner-tl" aria-hidden="true">✨</view>
-      <view class="guest-invite-corner guest-invite-corner-tr" aria-hidden="true">💰</view>
-      <view class="guest-invite-corner guest-invite-corner-bl" aria-hidden="true">🧧</view>
-      <view class="guest-invite-corner guest-invite-corner-br" aria-hidden="true">🎉</view>
       <text class="guest-invite-title">发给客人</text>
       <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
       <text class="guest-invite-desc">{{guestShareDesc}}</text>

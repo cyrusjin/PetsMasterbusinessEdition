@@ -26,30 +26,43 @@ page {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #FFFFFF;
-  border-radius: 28rpx 28rpx 0 0;
-  padding: 28rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, #fffaf5 0%, #fff 30%);
+  border-radius: 36rpx 36rpx 0 0;
+  padding: 36rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -16rpx 50rpx rgba(92, 64, 45, .16);
   box-sizing: border-box;
   z-index: 1;
+}
+
+.reserve-picker-art {
+  position: absolute;
+  top: -12rpx;
+  right: 16rpx;
+  width: 190rpx;
+  height: 126rpx;
+  opacity: .16;
+  pointer-events: none;
 }
 
 .reserve-picker-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 12rpx;
+  margin-bottom: 20rpx;
+  padding: 0 4rpx 18rpx;
+  border-bottom: 1rpx solid #f5e4d6;
 }
 
 .reserve-picker-title {
   display: block;
-  font-size: 34rpx;
-  font-weight: 700;
+  font-size: 38rpx;
+  font-weight: 800;
   color: #3d2b1f;
 }
 
 .reserve-picker-sub {
   display: block;
-  margin-top: 8rpx;
+  margin-top: 10rpx;
   font-size: 24rpx;
   color: #9a8575;
   line-height: 1.45;
@@ -73,39 +86,57 @@ page {
   display: flex;
   align-items: center;
   width: 100%;
-  margin: 0;
-  padding: 24rpx 8rpx;
-  border-bottom: 1rpx solid #F2DEC9;
-  border-radius: 0;
-  background: transparent;
+  min-height: 128rpx;
+  margin: 0 0 14rpx;
+  padding: 20rpx 18rpx;
+  border: 1rpx solid #f4dfce;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 8rpx 22rpx rgba(140, 93, 62, .06);
   text-align: left;
   line-height: normal;
   font-weight: normal;
   box-sizing: border-box;
 }
 
+/* 微信 button 有 450rpx 默认宽度，必须显式覆盖，否则会出现卡片只铺到中间 */
+button.reserve-picker-item {
+  display: flex;
+  width: 100% !important;
+  flex: 1 1 auto;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+.reserve-picker-sheet > .reserve-picker-item { width: 100%; }
+
 .reserve-picker-item::after {
   border: none;
 }
 
 .reserve-picker-item:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .reserve-picker-item-hover {
   opacity: 0.86;
 }
 
-.reserve-picker-emoji {
+.reserve-picker-icon {
   flex-shrink: 0;
-  width: 72rpx;
-  height: 72rpx;
-  margin-right: 20rpx;
-  border-radius: 20rpx;
-  background: #FFF1E7;
-  font-size: 36rpx;
-  line-height: 72rpx;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78rpx;
+  height: 78rpx;
+  margin-right: 22rpx;
+  border-radius: 22rpx;
+  background: linear-gradient(145deg, #fff1e7, #ffe4d2);
+}
+
+.reserve-picker-icon image {
+  width: 54rpx;
+  height: 54rpx;
 }
 
 .reserve-picker-copy {
@@ -115,8 +146,8 @@ page {
 
 .reserve-picker-name {
   display: block;
-  font-size: 30rpx;
-  font-weight: 700;
+  font-size: 32rpx;
+  font-weight: 800;
   color: #3D2B1F;
 }
 
@@ -129,9 +160,20 @@ page {
 }
 
 .reserve-picker-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  margin-left: 12rpx;
-  color: #E98657;
-  font-size: 40rpx;
-  font-weight: 300;
+  width: 48rpx;
+  height: 48rpx;
+  margin-left: 14rpx;
+  border-radius: 50%;
+  background: #fff1e7;
+  color: #e98657;
+}
+
+.reserve-picker-arrow text {
+  margin-top: -4rpx;
+  font-size: 34rpx;
+  font-weight: 500;
 }

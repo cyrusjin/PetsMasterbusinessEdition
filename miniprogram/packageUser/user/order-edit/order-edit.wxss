@@ -30,11 +30,11 @@
 .form-label { display: block; font-size: 26rpx; color: #333333; margin-bottom: 12rpx; }
 .form-input {
   width: 100%;
-  height: 80rpx;
-  min-height: 80rpx;
+  height: 88rpx;
+  min-height: 88rpx;
   box-sizing: border-box;
   padding: 0 20rpx;
-  line-height: 80rpx;
+  line-height: 88rpx;
   background: #F7F8FA;
   border: 2rpx solid #F2DEC9;
   border-radius: 12rpx;
@@ -48,7 +48,8 @@
   border: 2rpx solid #F2DEC9;
   border-radius: 12rpx;
   font-size: 28rpx;
-  min-height: 120rpx;
+  min-height: 160rpx;
+  line-height: 1.55;
 }
 .required-star { color: #E53935; }
 .pickup-row { display: flex; justify-content: space-between; align-items: center; margin-top: 16rpx; }

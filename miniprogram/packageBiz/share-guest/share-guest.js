@@ -3,8 +3,7 @@ const {
   enableStoreShareMenu,
   buildMerchantShareConfig,
   listGuestShareCards,
-  promptShareUnavailable,
-  prefetchStoreShareImage
+  promptShareUnavailable
 } = require('../../utils/storeShare');
 const { openProxyGuestPicker } = require('../../utils/proxyOrder');
 const { hideHomeButton } = require('../../utils/navBar');
@@ -44,6 +43,10 @@ Page({
   },
 
   _refreshCards() {
+    // onLoad 后紧接着会触发一次 onShow，短时间内无需重复计算和预取资源。
+    const now = Date.now();
+    if (this._lastRefreshAt && now - this._lastRefreshAt < 800) return;
+    this._lastRefreshAt = now;
     const shop = (app.getShop && app.getShop()) || {};
     const cards = listGuestShareCards(shop);
     this.setData({
@@ -51,7 +54,6 @@ Page({
       shopName: (shop && shop.name) || '',
       cards
     });
-    prefetchStoreShareImage(shop);
     if (!shop.store_id) {
       promptShareUnavailable();
     }

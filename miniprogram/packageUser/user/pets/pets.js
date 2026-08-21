@@ -8,15 +8,30 @@ Page({
   },
 
   onShow() {
-    this.setData({ loading: true });
-    app.loadPets({ force: true })
-      .then((pets) => this.setData({
-        pets: (pets || []).map((pet) => ({
-          ...pet,
-          ageText: formatAgeText(pet) || `${pet.age || '?'}岁`
-        }))
-      }))
-      .finally(() => this.setData({ loading: false }));
+    const gen = (this._showGen || 0) + 1;
+    this._showGen = gen;
+    // 先展示内存/本地缓存，页面无白屏；网络数据按 App TTL 在后台更新。
+    this._renderPets(app.getPets());
+    if (!this.data.pets.length) this.setData({ loading: true });
+    app.loadPets({ force: false })
+      .then((pets) => {
+        if (gen !== this._showGen) return;
+        this._renderPets(pets);
+      })
+      .finally(() => {
+        if (gen === this._showGen && this.data.loading) this.setData({ loading: false });
+      });
+  },
+
+  _renderPets(pets) {
+    const next = (pets || []).map((pet) => ({
+      ...pet,
+      ageText: formatAgeText(pet) || `${pet.age || '?'}岁`
+    }));
+    const sig = next.map((pet) => [pet.id, pet.updateTime || 0, pet.name, pet.photo, pet.ageText].join(':')).join('|');
+    if (sig === this._petsSig) return;
+    this._petsSig = sig;
+    this.setData({ pets: next });
   },
 
   onAdd() {
@@ -43,7 +58,7 @@ Page({
         app.deletePet(id)
           .then(() => {
             wx.hideLoading();
-            this.setData({ pets: app.getPets() });
+            this._renderPets(app.getPets());
             wx.showToast({ title: '已删除', icon: 'success' });
           })
           .catch((err) => {

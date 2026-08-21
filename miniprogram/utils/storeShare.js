@@ -229,7 +229,17 @@ function shouldOpenGuestSharePicker(shop) {
 }
 
 function openGuestSharePicker() {
-  wx.navigateTo({ url: GUEST_SHARE_PICKER_PATH });
+  wx.navigateTo({ url: GUEST_SHARE_PICKER_PATH, animationType: 'none', animationDuration: 0 });
+}
+
+// 商家日常页进入后提前预热轻量服务选择页，避免首次点击等待分包解析。
+function preloadGuestSharePicker() {
+  if (!wx.preloadPage) return;
+  try {
+    wx.preloadPage({ url: GUEST_SHARE_PICKER_PATH });
+  } catch (err) {
+    // 预热失败不影响正常 navigateTo
+  }
 }
 
 function openProxyOrderPicker() {
@@ -294,6 +304,7 @@ module.exports = {
   pickShopLogo,
   resolveShareImageUrl,
   prefetchStoreShareImage,
+  preloadGuestSharePicker,
   buildSharePath,
   buildStaffSharePath,
   resolveShareStoreId,

@@ -6,7 +6,7 @@ const { getDefaultHolidayPricing } = require('./utils/legalHolidays');
 const auth = require('./utils/auth');
 const storeApi = require('./utils/store');
 const { API_BASE_URL } = require('./config/api');
-const { ensureLogin } = require('./utils/api');
+const { ensureLogin, clearToken } = require('./utils/api');
 const { normalizeIsMerchant, resolveRole, isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled, isMerchantStaff, isStaffOfStore, isStoreOwner, getMerchantStoreId, getVisitStoreId, hasMerchantCapability } = require('./utils/role');
 const { applyRoleShell: applyTabShell, getMerchantLandingUrl, getUserLandingUrl, isUserTabRoute } = require('./utils/shell');
 const { mergeBillingRules, buildUserStoreView, prepareUserStoreView } = require('./utils/storeContext');
@@ -43,6 +43,12 @@ const ASYNC_STORAGE_KEYS = {
   [STORAGE_KEYS.DEMO_ORDERS]: true,
   [STORAGE_KEYS.DEMO_DAILY_LOGS]: true,
   [STORAGE_KEYS.DEMO_PETS]: true
+};
+// 体积较大且非首屏必需的数据由各自模块按需读取，减少冷启动同步 I/O。
+const LAZY_STARTUP_STORAGE_KEYS = {
+  [STORAGE_KEYS.IMAGE_CACHE]: true,
+  [STORAGE_KEYS.AI_CONSULT]: true,
+  [STORAGE_KEYS.ANNOUNCEMENT_CACHE]: true
 };
 
 App({
@@ -108,6 +114,11 @@ App({
     }
     // 前后台切换走 TTL，避免每次强制登录打穿缓存
     this._bootstrapSession(options, { force: false });
+  },
+
+  onHide() {
+    // 小程序切后台时尽快刷盘，避免用户刚编辑的数据只停留在内存队列中。
+    this._flushPendingStorage();
   },
 
   /** 合并 App / 进入参数，兼容 tabBar 分享时 query 只在一侧出现 */
@@ -1358,7 +1369,14 @@ App({
 
   _loadAllData() {
     Object.values(STORAGE_KEYS).forEach((key) => {
-      this.globalData[key] = wx.getStorageSync(key) || null;
+      if (LAZY_STARTUP_STORAGE_KEYS[key]) return;
+      try {
+        const cached = wx.getStorageSync(key);
+        // 保留 false、0、空字符串等合法状态，不能用 || 回退。
+        this.globalData[key] = cached === undefined ? null : cached;
+      } catch (err) {
+        this.globalData[key] = null;
+      }
     });
   },
 
@@ -1836,7 +1854,15 @@ App({
   },
 
   getData(key) {
-    return this.globalData[key] || wx.getStorageSync(key) || null;
+    if (Object.prototype.hasOwnProperty.call(this.globalData, key) && this.globalData[key] !== undefined && this.globalData[key] !== null) {
+      return this.globalData[key];
+    }
+    try {
+      const cached = wx.getStorageSync(key);
+      return cached === undefined ? null : cached;
+    } catch (err) {
+      return null;
+    }
   },
 
   setData(key, value) {
@@ -1846,7 +1872,16 @@ App({
       this._schedulePersist(key, value);
       return;
     }
-    wx.setStorageSync(key, value);
+    try {
+      wx.setStorageSync(key, value);
+    } catch (err) {
+      // 同步缓存失败时降级到异步写入，避免缓存空间/瞬时 I/O 问题阻塞业务流程。
+      try {
+        wx.setStorage({ key, data: value });
+      } catch (e) {
+        // 缓存属于增强能力，失败不应影响页面继续使用。
+      }
+    }
   },
 
   _schedulePersist(key, value) {
@@ -1857,9 +1892,34 @@ App({
       this._persistTimer = null;
       const pending = this._pendingStorage || {};
       this._pendingStorage = {};
+      const writeEpoch = this._storageWriteEpoch || 0;
       Object.keys(pending).forEach((k) => {
         try {
-          wx.setStorage({ key: k, data: pending[k] });
+          wx.setStorage({
+            key: k,
+            data: pending[k],
+            success: () => {
+              // 清缓存期间完成的旧写入必须撤销，避免已删除数据“复活”。
+              if (
+                (this._storageWriteEpoch || 0) !== writeEpoch
+                && (this.globalData[k] === null || this.globalData[k] === undefined)
+              ) {
+                try {
+                  wx.removeStorage({ key: k });
+                } catch (err) {
+                  // ignore
+                }
+              }
+            },
+            fail: () => {
+              if ((this._storageWriteEpoch || 0) !== writeEpoch) return;
+              try {
+                wx.setStorageSync(k, pending[k]);
+              } catch (err) {
+                // ignore
+              }
+            }
+          });
         } catch (err) {
           try {
             wx.setStorageSync(k, pending[k]);
@@ -2098,6 +2158,7 @@ App({
       : Promise.resolve(null);
 
     return unbindPromise.then(() => {
+      this._storageWriteEpoch = (this._storageWriteEpoch || 0) + 1;
       this._flushPendingStorage();
       Object.values(STORAGE_KEYS).forEach((key) => {
         try {
@@ -2107,6 +2168,7 @@ App({
         }
         this.globalData[key] = null;
       });
+      clearToken();
       clearImageFileCache();
 
       this.globalData.userInfo = null;

@@ -151,24 +151,27 @@
 
 .input {
   flex: 1;
-  height: 76rpx;
+  height: 84rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
   border-radius: 999rpx;
   background: #FFF8F0;
   border: 2rpx solid #F2DEC9;
   font-size: 28rpx;
+  box-sizing: border-box;
 }
 
 .send-btn {
   flex-shrink: 0;
-  height: 76rpx;
-  line-height: 76rpx;
+  height: 84rpx;
+  line-height: 84rpx;
   padding: 0 28rpx;
   border-radius: 999rpx;
   background: #E98657;
   color: #fff;
   font-size: 28rpx;
   font-weight: 650;
+  box-sizing: border-box;
 }
 
 .send-btn.disabled {

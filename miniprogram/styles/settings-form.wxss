@@ -36,14 +36,15 @@
 .weight-range-row:last-of-type { border-bottom: none; }
 .weight-input {
   width: 96rpx;
-  height: 72rpx;
-  min-height: 72rpx;
+  height: 80rpx;
+  min-height: 80rpx;
   text-align: center;
   font-size: 28rpx;
-  line-height: 72rpx;
+  line-height: 80rpx;
   color: #333333;
   padding: 0 12rpx;
   background: #fff;
+  border: 1rpx solid #F0DDD8;
   border-radius: 10rpx;
   box-sizing: border-box;
   flex-shrink: 0;
@@ -136,15 +137,16 @@
 .price-input {
   flex: 1;
   min-width: 0;
-  height: 72rpx;
-  min-height: 72rpx;
+  height: 80rpx;
+  min-height: 80rpx;
   text-align: right;
   font-size: 28rpx;
-  line-height: 72rpx;
+  line-height: 80rpx;
   color: #E98657;
   font-weight: 600;
   padding: 0 16rpx;
   background: #fff;
+  border: 1rpx solid #F0DDD8;
   border-radius: 10rpx;
   box-sizing: border-box;
 }
@@ -223,6 +225,7 @@
   color: #333333;
   padding: 16rpx;
   background: #fff;
+  border: 1rpx solid #F0DDD8;
   border-radius: 10rpx;
   box-sizing: border-box;
 }
@@ -245,13 +248,14 @@
 }
 .room-name-input {
   width: 160rpx;
-  height: 72rpx;
-  min-height: 72rpx;
+  height: 80rpx;
+  min-height: 80rpx;
   font-size: 28rpx;
-  line-height: 72rpx;
+  line-height: 80rpx;
   color: #333333;
   padding: 0 12rpx;
   background: #fff;
+  border: 1rpx solid #F0DDD8;
   border-radius: 10rpx;
   box-sizing: border-box;
   flex-shrink: 0;

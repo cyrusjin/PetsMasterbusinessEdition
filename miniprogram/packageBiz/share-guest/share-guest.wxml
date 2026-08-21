@@ -1,6 +1,7 @@
 <view class="reserve-picker-root">
   <view class="reserve-picker-mask" catchtouchmove="onTouchMove" bindtap="onClose"></view>
   <view class="reserve-picker-sheet" catchtap="onTouchMove">
+    <image class="reserve-picker-art" src="/images/booking/service-picker-art.png" mode="aspectFit" aria-hidden="true" />
     <view class="reserve-picker-head">
       <view>
         <text class="reserve-picker-title">{{pickerTitle}}</text>
@@ -18,12 +19,16 @@
         bindtap="onPickProxy"
         data-service-line="{{item.key}}"
       >
-        <text class="reserve-picker-emoji">{{item.emoji}}</text>
+        <view class="reserve-picker-icon">
+          <image wx:if="{{item.key === 'boarding'}}" src="/images/card/card-reserve.png" mode="aspectFit" />
+          <image wx:elif="{{item.key === 'wash'}}" src="/images/card/card-check.png" mode="aspectFit" />
+          <image wx:else src="/images/card/card-camera.png" mode="aspectFit" />
+        </view>
         <view class="reserve-picker-copy">
           <text class="reserve-picker-name">{{item.pickerTitle || item.name}}</text>
           <text class="reserve-picker-desc">{{item.pickerDesc}}</text>
         </view>
-        <text class="reserve-picker-arrow">›</text>
+        <view class="reserve-picker-arrow"><text>›</text></view>
       </view>
     </block>
     <block wx:else>
@@ -36,12 +41,16 @@
         data-service-line="{{item.key}}"
         hover-class="reserve-picker-item-hover"
       >
-        <text class="reserve-picker-emoji">{{item.emoji}}</text>
+        <view class="reserve-picker-icon">
+          <image wx:if="{{item.key === 'boarding'}}" src="/images/card/card-reserve.png" mode="aspectFit" />
+          <image wx:elif="{{item.key === 'wash'}}" src="/images/card/card-check.png" mode="aspectFit" />
+          <image wx:else src="/images/card/card-camera.png" mode="aspectFit" />
+        </view>
         <view class="reserve-picker-copy">
           <text class="reserve-picker-name">{{item.pickerTitle || item.name}}</text>
           <text class="reserve-picker-desc">{{item.pickerDesc}}</text>
         </view>
-        <text class="reserve-picker-arrow">›</text>
+        <view class="reserve-picker-arrow"><text>›</text></view>
       </button>
     </block>
   </view>

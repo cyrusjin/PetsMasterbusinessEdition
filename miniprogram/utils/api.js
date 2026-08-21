@@ -46,17 +46,36 @@ function normalizeApiError(err, label) {
   return raw;
 }
 
+// 只合并完全相同的 GET 请求，避免首页/Tab onShow 同时触发重复网络请求。
+// POST/PUT 等写操作永远不合并，保持原有语义和时序。
+const pendingGetRequests = new Map();
+
+function buildRequestKey(url, method, data, token) {
+  let payload = '';
+  try {
+    payload = JSON.stringify(data || {});
+  } catch (err) {
+    payload = String(data || '');
+  }
+  return `${method}|${url}|${token || ''}|${payload}`;
+}
+
 function request(path, data = {}, options = {}) {
   const method = options.method || 'POST';
   const needAuth = options.auth !== false;
   const url = `${API_BASE_URL.replace(/\/$/, '')}${path}`;
+  const token = needAuth ? getToken() : '';
+  const canDedupe = method === 'GET' && options.dedupe !== false;
+  const requestKey = canDedupe ? buildRequestKey(url, method, data, token) : '';
+  if (canDedupe && pendingGetRequests.has(requestKey)) {
+    return pendingGetRequests.get(requestKey);
+  }
 
-  return new Promise((resolve) => {
+  const requestPromise = new Promise((resolve) => {
     const header = {
       'Content-Type': 'application/json'
     };
     if (needAuth) {
-      const token = getToken();
       if (token) {
         header.Authorization = `Bearer ${token}`;
       }
@@ -95,6 +114,16 @@ function request(path, data = {}, options = {}) {
       }
     });
   });
+
+  if (canDedupe) {
+    pendingGetRequests.set(requestKey, requestPromise);
+    requestPromise.then(() => {
+      if (pendingGetRequests.get(requestKey) === requestPromise) {
+        pendingGetRequests.delete(requestKey);
+      }
+    });
+  }
+  return requestPromise;
 }
 
 let loginPromise = null;
@@ -115,7 +144,8 @@ function ensureLogin(force = false) {
   if (!force && getToken()) {
     return Promise.resolve(getToken());
   }
-  if (loginPromise && !force) return loginPromise;
+  // 强制刷新也复用正在进行的登录，避免多个 401 同时触发多次 wx.login。
+  if (loginPromise) return loginPromise;
 
   loginPromise = wxLoginCode()
     .then((code) => request('/api/auth/login', { code, client: CLIENT }, { auth: false }))

@@ -9,12 +9,14 @@
 .search-bar { display: flex; gap: 12rpx; align-items: center; }
 .search-input {
   flex: 1;
-  height: 72rpx;
+  height: 82rpx;
+  min-height: 82rpx;
   padding: 0 20rpx;
   background: #FFF7EF;
   border-radius: 16rpx;
   border: 2rpx solid #F2DEC9;
   font-size: 26rpx;
+  box-sizing: border-box;
 }
 .type-chip {
   padding: 14rpx 18rpx;

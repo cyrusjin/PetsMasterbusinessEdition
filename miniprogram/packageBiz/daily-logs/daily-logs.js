@@ -440,15 +440,18 @@ Page({
     const storeId = (shop && shop.store_id) || app.globalData.merchantStoreId || '';
     const scopedIds = getScopedOrderIds(app.getOrders());
 
-    return refreshMerchantOrders(app, { force })
-      .then(() => {
+    // 订单刷新与打卡记录请求彼此独立，使用缓存店铺/订单范围并行发起，减少首屏等待。
+    const refreshPromise = refreshMerchantOrders(app, { force });
+    const logsPromise = storeId
+      ? dailyApi.fetchMerchantBoardingLogs(storeId, scopedIds)
+      : refreshPromise.then(() => {
         const freshShop = app.getShop();
-        const sid = (freshShop && freshShop.store_id) || storeId;
-        const orderIds = getScopedOrderIds(app.getOrders());
-        // 店铺全量打卡（含已完成订单）+ 相关订单补拉，合并去重
-        return dailyApi.fetchMerchantBoardingLogs(sid, orderIds);
-      })
-      .then((logs) => {
+        const sid = (freshShop && freshShop.store_id) || '';
+        return dailyApi.fetchMerchantBoardingLogs(sid, getScopedOrderIds(app.getOrders()));
+      });
+    return Promise.all([refreshPromise, logsPromise])
+      .then((results) => {
+        const logs = results[1];
         const list = logs || [];
         const merged = dedupeDailyLogs([].concat(app.getDailyLogs() || [], list));
         app.patchDailyLogs(merged);

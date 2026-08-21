@@ -3,29 +3,29 @@
  * Cream background + soft cards + peach actions.
  */
 page {
-  --color-primary: #E98657;
-  --color-primary-dark: #C86E42;
-  --color-primary-light: #F7AA78;
-  --color-accent-bg: #FFF1E7;
-  --color-bg-page: #FFF8F0;
+  --color-primary: #E87863;
+  --color-primary-dark: #C95D55;
+  --color-primary-light: #F5A18C;
+  --color-accent-bg: #FFF0EE;
+  --color-bg-page: #FFF8F2;
   --color-bg-card: #FFFDF8;
   --color-bg-subtle: #FFF4E9;
   --color-bg-input: #FFF7EF;
   --color-text-primary: #5B4535;
-  --color-text-heading: #4E3729;
+  --color-text-heading: #523A38;
   --color-text-secondary: #8C6A52;
   --color-text-tertiary: #A98972;
   --color-text-muted: #C8AA92;
-  --color-border: #F2DEC9;
+  --color-border: #F2D8D2;
   --color-border-light: #F8EADC;
   --color-danger: #D96F55;
   --color-success: #6FA462;
   --color-warning-bg: #FFF1E7;
   --color-warning-border: #F2C39E;
-  --shadow-card: 0 10rpx 28rpx rgba(132, 90, 58, 0.10);
-  --shadow-btn: 0 10rpx 22rpx rgba(233, 134, 87, 0.24);
+  --shadow-card: 0 16rpx 38rpx rgba(135, 88, 55, 0.11);
+  --shadow-btn: 0 12rpx 26rpx rgba(231, 121, 82, 0.28);
   --shadow-stat: 0 4rpx 12rpx rgba(132, 90, 58, 0.12);
-  --radius-card: 26rpx;
+  --radius-card: 30rpx;
   --radius-md: 16rpx;
   --radius-sm: 12rpx;
   --radius-pill: 999rpx;

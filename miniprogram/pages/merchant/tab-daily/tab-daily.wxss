@@ -11,7 +11,8 @@
   right: 0;
   top: 0;
   z-index: 1000;
-  background: #E98657;
+  background: linear-gradient(135deg, #F29A69 0%, #DF6F4D 100%);
+  box-shadow: 0 8rpx 24rpx rgba(205, 101, 66, .2);
   box-sizing: border-box;
 }
 
@@ -99,7 +100,7 @@
   color: #558B2F;
 }
 
-.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; width: 100%; box-sizing: border-box; }
+.quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; width: 100%; box-sizing: border-box; }
 
 .guest-invite-card {
   position: relative;
@@ -109,18 +110,28 @@
   width: 100% !important;
   min-width: 0;
   margin: 0 0 20rpx;
-  padding: 44rpx 36rpx 32rpx;
-  border-radius: 28rpx;
+  padding: 42rpx 32rpx 30rpx;
+  border-radius: 34rpx;
   overflow: hidden;
   box-sizing: border-box;
   text-align: center;
   line-height: normal;
   font-weight: normal;
-  background: linear-gradient(165deg, #FFF8F0 0%, #FFFFFF 42%, #FFF4EA 100%);
-  border: 3rpx solid #F0C49A;
-  box-shadow:
-    0 0 0 6rpx rgba(255, 241, 231, 0.95),
-    0 18rpx 44rpx rgba(233, 134, 87, 0.16);
+  background: linear-gradient(145deg, #FFFDFC 0%, #FFF7F1 52%, #FFEDEB 100%);
+  border: 1rpx solid rgba(255, 255, 255, .96);
+  box-shadow: 0 18rpx 42rpx rgba(198, 113, 100, .16), inset 0 1rpx 0 rgba(255,255,255,.95);
+}
+
+.guest-invite-card::before {
+  content: '';
+  position: absolute;
+  width: 250rpx;
+  height: 250rpx;
+  right: -90rpx;
+  top: -120rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 205, 186, .6), rgba(255, 205, 186, 0));
+  pointer-events: none;
 }
 
 .guest-invite-card::after {
@@ -133,50 +144,23 @@
 
 .guest-invite-frame {
   position: absolute;
-  left: 14rpx;
-  right: 14rpx;
-  top: 14rpx;
-  bottom: 14rpx;
-  border-radius: 22rpx;
-  border: 2rpx dashed rgba(233, 134, 87, 0.45);
+  left: 16rpx;
+  right: 16rpx;
+  top: 16rpx;
+  bottom: 16rpx;
+  border-radius: 26rpx;
+  border: 1rpx dashed rgba(232, 120, 99, .28);
   pointer-events: none;
   z-index: 0;
-}
-
-.guest-invite-corner {
-  position: absolute;
-  z-index: 1;
-  font-size: 28rpx;
-  line-height: 1;
-  pointer-events: none;
-}
-
-.guest-invite-corner-tl {
-  left: 22rpx;
-  top: 18rpx;
-}
-
-.guest-invite-corner-tr {
-  right: 22rpx;
-  top: 18rpx;
-}
-
-.guest-invite-corner-bl {
-  left: 22rpx;
-  bottom: 18rpx;
-}
-
-.guest-invite-corner-br {
-  right: 22rpx;
-  bottom: 18rpx;
 }
 
 .guest-invite-title {
   position: relative;
   z-index: 1;
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #3D2B1F;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #533737;
+  letter-spacing: 2rpx;
   line-height: 1.3;
 }
 
@@ -186,8 +170,8 @@
   margin-top: 10rpx;
   font-size: 24rpx;
   font-weight: 600;
-  color: #E98657;
-  letter-spacing: 2rpx;
+  color: #E87863;
+  letter-spacing: 3rpx;
   line-height: 1.4;
 }
 
@@ -196,7 +180,7 @@
   z-index: 1;
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: #8A7466;
+  color: #9A7C78;
   line-height: 1.5;
 }
 
@@ -227,7 +211,7 @@
   z-index: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16rpx;
+  gap: 18rpx;
   width: 100%;
   margin-top: 28rpx;
   box-sizing: border-box;
@@ -236,14 +220,14 @@
 .guest-invite-action {
   margin: 0;
   min-width: 0;
-  min-height: 80rpx;
+  min-height: 82rpx;
   padding: 0 12rpx;
-  border-radius: 40rpx;
-  background: linear-gradient(90deg, #F09A68 0%, #E98657 55%, #E07542 100%);
-  box-shadow: 0 10rpx 24rpx rgba(233, 134, 87, 0.28);
+  border-radius: 42rpx;
+  background: linear-gradient(135deg, #F49A82 0%, #E87863 58%, #D9655C 100%);
+  box-shadow: 0 12rpx 24rpx rgba(216, 103, 91, .25);
   color: #ffffff;
-  font-size: 26rpx;
-  font-weight: 700;
+  font-size: 27rpx;
+  font-weight: 800;
   line-height: 80rpx;
   text-align: center;
   display: flex;
@@ -257,10 +241,10 @@
 }
 
 .guest-invite-action-alt {
-  background: #FFFFFF;
-  color: #E98657;
-  border: 2rpx solid #E98657;
-  box-shadow: none;
+  background: rgba(255,255,255,.72);
+  color: #D86C61;
+  border: 2rpx solid #F09D8D;
+  box-shadow: inset 0 1rpx 0 rgba(255,255,255,.8);
 }
 
 .guest-invite-action-hover {
@@ -305,8 +289,9 @@
   align-items: center;
   justify-content: center;
   padding: 28rpx 12rpx 24rpx;
-  background: #F7F8FA;
-  border-radius: 16rpx;
+  background: linear-gradient(145deg, #FFFDFB, #FFF3F0);
+  border: 1rpx solid rgba(241, 211, 205, .7);
+  border-radius: 22rpx;
   box-sizing: border-box;
   min-height: 160rpx;
 }
@@ -317,7 +302,7 @@
 
 .staff-collab-text {
   font-size: 24rpx;
-  color: #666666;
+  color: #765B5A;
   line-height: 1.3;
 }
 
@@ -337,7 +322,7 @@
   text-align: center;
   box-sizing: border-box;
 }
-.quick-item { display: flex; flex-direction: column; align-items: center; padding: 24rpx 0 20rpx; background: #F7F8FA; border-radius: 16rpx; font-size: 24rpx; color: #666666; box-sizing: border-box; }
+.quick-item { display: flex; flex-direction: column; align-items: center; padding: 24rpx 0 20rpx; background: linear-gradient(145deg, #FFF9F3, #FFF0E5); border: 1rpx solid rgba(238, 207, 183, .72); border-radius: 22rpx; font-size: 24rpx; color: #765B4A; box-sizing: border-box; box-shadow: 0 8rpx 18rpx rgba(130, 86, 54, .07); }
 .quick-item-badge-wrap { position: relative; }
 .quick-badge {
   position: absolute;
