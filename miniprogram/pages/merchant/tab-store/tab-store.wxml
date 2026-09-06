@@ -83,6 +83,22 @@
       <cs-contact />
       <view class="mode-switch-btn" bindtap="onSwitchToUser">切换用户版</view>
     </view>
+    <view class="store-luxury-header" wx:if="{{!hideMerchantTabBar && shop.store_id}}" bindtap="onGoMembership">
+      <view class="store-luxury-glow"></view>
+      <view class="store-luxury-orbit orbit-one"></view>
+      <view class="store-luxury-orbit orbit-two"></view>
+      <view class="store-luxury-spark spark-one">✦</view>
+      <view class="store-luxury-spark spark-two">✦</view>
+      <image class="store-luxury-pets" src="/images/membership/membership-hero-gold.png" mode="aspectFit" />
+      <view class="store-luxury-topline">
+        <view class="store-luxury-brand"><text class="store-luxury-crown">✦</text><text>熠森宠物 · VIP</text></view>
+      </view>
+      <view class="store-luxury-content">
+        <text class="store-luxury-name">{{shop.name || '熠森宠物门店'}}</text>
+        <view class="membership-expiry"><text class="membership-expiry-dot"></text><text>到期日 {{membership.expireAtText || membership.trialExpireAtText || '已到期'}}</text></view>
+      </view>
+      <view class="store-luxury-arrow">›</view>
+    </view>
     <oa-follow-banner scene="merchant" />
     <block wx:if="{{isAdminDisabled}}">
       <view class="card apply-disabled-card">

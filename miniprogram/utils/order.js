@@ -1,11 +1,16 @@
 const { callApiService } = require('./api');
+const { getPromotionContext } = require('./growth');
 
 function callOrderService(action, data = {}) {
   return callApiService('orderService', { action, ...data });
 }
 
 function createOrder(order, userProfile) {
-  return callOrderService('createOrder', { order, userProfile });
+  const context = getPromotionContext();
+  const payload = context && context.store_id && context.store_id === String(order && order.store_id || '').trim()
+    ? { ...order, promotion: { shareCode: context.shareCode, source: context.source } }
+    : order;
+  return callOrderService('createOrder', { order: payload, userProfile });
 }
 
 function listUserOrders() {

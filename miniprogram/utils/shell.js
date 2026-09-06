@@ -20,6 +20,7 @@ const MERCHANT_TAB_ROUTES = [
 
 const MERCHANT_APPLY_HOME = '/pages/merchant/tab-store/tab-store';
 const MERCHANT_HOME = '/pages/merchant/tab-daily/tab-daily';
+const MEMBERSHIP_HOME = '/packageExtra/membership/membership?required=1';
 const USER_HOME = '/pages/index/index';
 
 function getCurrentRoute() {
@@ -116,6 +117,38 @@ function redirectToUserIfMerchantUiBlocked() {
   }
 }
 
+function isMembershipAccessKnown(membership) {
+  if (!membership || typeof membership !== 'object') return false;
+  return typeof membership.active === 'boolean'
+    || typeof membership.accessActive === 'boolean'
+    || !!membership.statusType
+    || !!membership.accessType;
+}
+
+function hasActiveMembershipAccess(membership) {
+  if (!membership || typeof membership !== 'object') return false;
+  if (membership.active === true || membership.accessActive === true) return true;
+  return !!(
+    membership.subscriptionActive || membership.subscription_active
+    || membership.trialActive || membership.trial_active
+    || membership.migrationActive || membership.migration_active
+    || membership.promotionActive || membership.promotion_active
+  );
+}
+
+function ensureMembershipAccess(app) {
+  if (!app || (app.isMerchantDemoMode && app.isMerchantDemoMode())) return Promise.resolve(false);
+  if (!app.isMerchantApproved || !app.isMerchantApproved()) return Promise.resolve(false);
+  if (typeof app.ensureMerchantStore !== 'function') return Promise.resolve(false);
+  return app.ensureMerchantStore({ force: false }).then((shop) => {
+    if (!shop || !shop.store_id) return false;
+    const membership = shop.membership;
+    if (!isMembershipAccessKnown(membership) || hasActiveMembershipAccess(membership)) return false;
+    wx.reLaunch({ url: MEMBERSHIP_HOME });
+    return true;
+  }).catch(() => false);
+}
+
 /**
  * 先拉远程开关再决定是否拦截商家页；用于避免默认值误放行。
  * resolve(true) 表示已跳走 / 应中止页面逻辑。
@@ -125,7 +158,7 @@ function ensureMerchantPageAllowed() {
   if (redirectToUserIfMerchantUiBlocked()) return Promise.resolve(true);
   // 启动时已拉过开关且允许进入，切 Tab 不再重复打远程接口
   if (app && app.globalData && app.globalData.merchantSwitchEnabled === true) {
-    return Promise.resolve(false);
+    return ensureMembershipAccess(app);
   }
   return fetchMerchantSwitchEnabled({ force: false }).then((enabled) => {
     applyMerchantSwitchToApp(app, enabled);
@@ -137,7 +170,7 @@ function ensureMerchantPageAllowed() {
       }
       return true;
     }
-    return false;
+    return ensureMembershipAccess(app);
   });
 }
 
@@ -219,5 +252,6 @@ module.exports = {
   redirectToStoreAuthIfNeeded,
   redirectToUserIfMerchantUiBlocked,
   ensureMerchantPageAllowed,
+  hasActiveMembershipAccess,
   hasCompletedBasicSetup
 };

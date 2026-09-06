@@ -20,6 +20,7 @@ Page({
     statusLabel: '--',
     canCancel: false,
     canEdit: false,
+    canRebook: false,
     showActions: false,
     pendingEditLines: [],
     pendingEditTotalFee: null,
@@ -72,12 +73,15 @@ Page({
       store: app.getCurrentStore()
     });
     const status = order.status;
+    const canRebook = status === 'completed' || status === 'cancelled';
     this.setData({
       order,
       statusLabel: formatServiceStatus(order),
       canCancel: canUserCancelOrder(status),
       canEdit: canUserEditOrder(status, order),
-      showActions: canShowUserOrderActions(status, order),
+      canRebook,
+      // 已完成/已取消订单通常没有“修改/取消”操作，但必须保留再次预约入口。
+      showActions: canShowUserOrderActions(status, order) || canRebook,
       pendingEditLines: order.editPendingConfirm ? buildPendingEditLines(order) : [],
       pendingEditTotalFee: order.editPendingConfirm ? getPendingEditTotalFee(order) : null,
       valueAddedServicesText: Array.isArray(order.valueAddedServices) && order.valueAddedServices.length
@@ -138,6 +142,14 @@ Page({
 
   onEditOrder() {
     wx.navigateTo({ url: `/packageUser/user/order-edit/order-edit?id=${this.data.order.id}` });
+  },
+
+  onRebook() {
+    const order = this.data.order || {};
+    if (!order.store_id) return;
+    const line = encodeURIComponent(order.serviceLine || 'boarding');
+    const storeId = encodeURIComponent(order.store_id);
+    wx.navigateTo({ url: `/packageUser/user/reserve/reserve?store_id=${storeId}&serviceLine=${line}` });
   },
 
   onViewContract() {

@@ -1,10 +1,10 @@
 {
   "navigationBarTitleText": "预约服务",
-  "enableShareAppMessage": true,
   "usingComponents": {
     "calendar": "/components/calendar/calendar",
     "boarding-contract-modal": "/components/boarding-contract-modal/boarding-contract-modal",
     "oa-follow-sheet": "/components/oa-follow-sheet/oa-follow-sheet",
+    "pet-insurance-sheet": "/components/pet-insurance-sheet/pet-insurance-sheet",
     "cached-image": "/components/cached-image/cached-image"
   }
 }

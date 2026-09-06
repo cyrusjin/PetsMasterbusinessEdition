@@ -4,7 +4,6 @@
   "navigationBarBackgroundColor": "#FFF4E7",
   "navigationBarTextStyle": "black",
   "enablePullDownRefresh": true,
-  "enableShareAppMessage": true,
   "usingComponents": {
     "user-native-ad": "/components/user-native-ad/user-native-ad"
   }

@@ -16,6 +16,7 @@ const { startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../../ut
 const { isMerchantRejected } = require('../../../utils/role');
 const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
 const announcementApi = require('../../../utils/announcements');
+const { getPromotionStats } = require('../../../utils/growth');
 
 const STAFF_COUNT_TTL = 60 * 1000;
 const DAILY_POLL_MS = 60 * 1000;
@@ -52,6 +53,7 @@ Page({
     guestShareBtnText: '发送给客人预约',
     dailyUploadActive: false,
     dailyUploadText: ''
+    ,promotionStats: null
   },
 
   onLoad(options) {
@@ -116,6 +118,16 @@ Page({
       ...(extra || {}),
       ...this._guestSharePatch(shop)
     });
+    this._loadPromotionStats(shop);
+  },
+
+  _loadPromotionStats(shop) {
+    const storeId = String((shop && shop.store_id) || '').trim();
+    if (!storeId || this.data.isDemoMode || this._promotionLoading) return Promise.resolve();
+    this._promotionLoading = true;
+    return getPromotionStats(storeId, 30).then((res) => {
+      if (res && res.success) this.setData({ promotionStats: res.summary || null });
+    }).catch(() => {}).finally(() => { this._promotionLoading = false; });
   },
 
   _syncNavTitle(shop) {
@@ -672,6 +684,14 @@ Page({
   onGoLedger() {
     if (!this._guardMerchantFeature()) return;
     wx.navigateTo({ url: '/packageExtra/ledger/ledger' });
+  },
+  onGoInsurancePromotion() {
+    if (this.data.isDemoMode) {
+      wx.showToast({ title: '体验模式不可生成推广链接', icon: 'none' });
+      return;
+    }
+    if (!this._guardMerchantFeature()) return;
+    wx.navigateTo({ url: '/packageBiz/insurance-promotion/insurance-promotion' });
   },
   onGoDetail(e) {
     if (!this._guardMerchantFeature()) return;

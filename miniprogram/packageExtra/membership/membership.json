@@ -1,1 +1,7 @@
-{"navigationBarTitleText": "运营会员", "usingComponents": {}}
+{
+  "navigationBarTitleText": "订阅会员",
+  "navigationBarBackgroundColor": "#F7E9CD",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#FBF6EC",
+  "usingComponents": {}
+}

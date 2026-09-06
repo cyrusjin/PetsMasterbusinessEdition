@@ -1,0 +1,90 @@
+<view class="insurance-promotion-page">
+  <view class="promotion-hero">
+    <view class="hero-glow hero-glow-top"></view>
+    <view class="hero-glow hero-glow-bottom"></view>
+    <view class="brand-row">
+      <view class="brand-emblem">
+        <view class="brand-emblem-inner">
+          <image class="promotion-logo" src="/images/insurance/pingan-logo.png" mode="aspectFit" />
+        </view>
+      </view>
+      <view class="brand-copy">
+        <text class="brand-kicker">中国平安</text>
+        <text class="brand-subtitle">宠物保障推广计划</text>
+      </view>
+      <view class="brand-tag">安心保障</view>
+    </view>
+    <text class="promotion-eyebrow">分享一份保障，也收获一份回报</text>
+    <text class="promotion-title">推荐给客人，成交享佣金</text>
+    <view class="commission-row">
+      <view class="commission-value-wrap">
+        <text class="commission-number">{{commissionRateText}}</text>
+        <text class="commission-rate-note">保费佣金</text>
+      </view>
+      <view class="commission-divider"></view>
+      <view class="commission-copy">
+        <text class="commission-label">每笔成功投保都有回报</text>
+        <text class="commission-desc">客人通过你的专属页面成功投保后，可获得保费的 10% 推广佣金</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="promotion-card process-card">
+    <view class="card-heading-row">
+      <view class="card-heading-icon">推</view>
+      <view class="card-heading-copy">
+        <text class="promotion-card-title">三步完成推广</text>
+        <text class="promotion-card-subtitle">简单分享，轻松获得佣金</text>
+      </view>
+    </view>
+    <view class="steps-wrap">
+    <view class="step-row">
+      <view class="step-index">1</view>
+      <view class="step-copy"><text class="step-title">发送专属推广页面</text><text class="step-desc">点击下方按钮，分享给有宠物保障需求的客人</text></view>
+    </view>
+    <view class="step-row">
+      <view class="step-index">2</view>
+      <view class="step-copy"><text class="step-title">客人查看并投保</text><text class="step-desc">客人在小程序内查看中国平安宠物保障方案</text></view>
+    </view>
+    <view class="step-row">
+      <view class="step-index">3</view>
+      <view class="step-copy"><text class="step-title">获得推广佣金</text><text class="step-desc">符合结算条件的保单按保费 10% 计算佣金</text></view>
+    </view>
+    </view>
+  </view>
+
+  <view class="promotion-card link-card">
+    <view class="link-card-head">
+      <view class="link-title-row">
+        <view class="card-heading-icon link-icon">链</view>
+        <view class="link-card-title-wrap">
+          <text class="promotion-card-title">专属推广页面</text>
+          <text class="link-validity">生成后 {{validHours}} 个小时内有效</text>
+        </view>
+      </view>
+      <text class="link-status {{linkExpired ? 'expired' : ''}}" wx:if="{{shareToken}}">{{remainingText}}</text>
+    </view>
+    <view wx:if="{{preparing}}" class="link-loading">正在生成专属推广页面…</view>
+    <view wx:elif="{{prepareError}}" class="link-error">
+      <text>{{prepareError}}</text>
+      <button class="retry-btn" bindtap="onRetry">重新生成</button>
+    </view>
+    <block wx:else>
+      <view class="expire-panel">
+        <view class="expire-dot"></view>
+        <view class="expire-copy">
+          <text class="link-expire">有效期至 {{expireAtText}}</text>
+          <text class="link-tip">过期后客人会看到失效提示，重新生成即可继续分享</text>
+        </view>
+      </view>
+      <button
+        wx:if="{{!linkExpired}}"
+        class="share-insurance-btn"
+        open-type="share"
+      ><text>发送给客人</text><text class="share-btn-arrow">›</text></button>
+      <button wx:else class="share-insurance-btn" bindtap="onRetry">链接已过期，重新生成</button>
+    </block>
+  </view>
+
+  <view class="promotion-footnote"><text class="footnote-shield">✓</text><text>佣金以实际承保、退保及平台结算规则为准</text></view>
+</view>

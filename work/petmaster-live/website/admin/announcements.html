@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>公告管理 · 熠森宠物 PetMaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+  <style>
+    .ann-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .ann-layout { grid-template-columns: 1fr; }
+    }
+    .ann-form {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+    }
+    .ann-form label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+    }
+    .ann-form input[type="text"],
+    .ann-form textarea,
+    .ann-form select {
+      width: 100%;
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fff;
+      box-sizing: border-box;
+    }
+    .ann-form textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+    .ann-form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: end;
+    }
+    .ann-form-row > label { flex: 1; min-width: 140px; }
+    .ann-check {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 8px;
+      grid-auto-flow: column;
+      font-weight: 700;
+      color: var(--color-text);
+      padding-bottom: 10px;
+    }
+    .ann-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .ann-list {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+    .ann-item {
+      border: 1px solid rgba(242, 222, 201, 0.9);
+      border-radius: 14px;
+      padding: 14px 16px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .ann-item:hover,
+    .ann-item.active {
+      border-color: #E98657;
+      box-shadow: 0 6px 18px rgba(233, 134, 87, 0.12);
+    }
+    .ann-item-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .ann-item-title {
+      font-weight: 800;
+      color: var(--color-text);
+      font-size: 1.02rem;
+      line-height: 1.35;
+    }
+    .ann-item-meta {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--color-text-secondary);
+      font-size: 0.84rem;
+    }
+    .ann-item-preview {
+      margin-top: 8px;
+      color: var(--color-text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .ann-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--color-text-secondary);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: #F5F5F5;
+      color: #666;
+    }
+    .pill.pub { background: #E8F7EE; color: #1F7A45; }
+    .pill.draft { background: #FFF3E6; color: #C06A2E; }
+    .pill.arch { background: #F0F0F0; color: #777; }
+    .pill.pin { background: #FFE8D6; color: #C45C3E; }
+  </style>
+</head>
+<body class="admin-page">
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="admin-header">
+    <div class="container admin-header-inner">
+      <a class="admin-brand" href="../index.html">
+        <img src="../assets/card/card-pets.png" alt="熠森宠物" />
+        <span>
+          <strong>熠森宠物管理后台</strong>
+          <small>公告管理</small>
+        </span>
+      </a>
+      <div class="admin-user">
+        <span id="admin-user"></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container admin-nav-inner">
+      <a class="admin-nav-link" href="index.html">入驻审核</a>
+      <a class="admin-nav-link" href="stores.html">店铺管理</a>
+      <a class="admin-nav-link" href="dashboard.html">仪表盘</a>
+      <a class="admin-nav-link" href="versions.html">版本管理</a>
+      <a class="admin-nav-link active" href="announcements.html">公告管理</a>
+      <a class="admin-nav-link" href="memberships.html">会员与推广</a>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container admin-panel admin-panel-wide">
+      <div class="admin-toolbar">
+        <div>
+          <h1>公告管理</h1>
+          <p>下发至商家端「日常管理」左上角公告；发布后小程序端即时可见</p>
+        </div>
+        <div>
+          <button class="btn btn-outline btn-sm" id="refresh-btn" type="button">刷新</button>
+          <button class="btn btn-primary btn-sm" id="new-btn" type="button">新建公告</button>
+        </div>
+      </div>
+
+      <div class="ann-layout">
+        <div class="card ann-form" id="editor">
+          <input type="hidden" id="ann-id" value="" />
+          <label>
+            标题
+            <input id="ann-title" type="text" maxlength="80" placeholder="例如：五一假期接单须知" />
+          </label>
+          <label>
+            正文
+            <textarea id="ann-content" maxlength="5000" placeholder="支持换行，将原样展示在商家端公告详情"></textarea>
+          </label>
+          <div class="ann-form-row">
+            <label>
+              受众
+              <select id="ann-audience">
+                <option value="merchant">商家端</option>
+                <option value="user">用户端</option>
+                <option value="all">全部</option>
+              </select>
+            </label>
+            <label>
+              状态
+              <select id="ann-status">
+                <option value="draft">草稿</option>
+                <option value="published">已发布</option>
+                <option value="archived">已下架</option>
+              </select>
+            </label>
+            <label class="ann-check">
+              <input id="ann-pinned" type="checkbox" />
+              置顶
+            </label>
+          </div>
+          <div class="ann-actions">
+            <button class="btn btn-primary btn-sm" id="save-btn" type="button">保存</button>
+            <button class="btn btn-outline btn-sm" id="publish-btn" type="button">保存并发布</button>
+            <button class="btn btn-outline btn-sm" id="delete-btn" type="button" style="display:none;">删除</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ann-list" id="list">
+            <div class="ann-empty">加载中...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="admin.js?v=20260811e"></script>
+  <script>
+    if (!PetAdmin.requireAuth()) {
+      throw new Error('redirect');
+    }
+
+    const listEl = document.getElementById('list');
+    let items = [];
+    let selectedId = '';
+
+    document.getElementById('admin-user').textContent = PetAdmin.getUsername() || '管理员';
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      PetAdmin.clearSession();
+      window.location.href = 'login.html';
+    });
+
+    function formatTime(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return '—';
+      return d.toLocaleString('zh-CN', { hour12: false });
+    }
+
+    function statusPill(status) {
+      if (status === 'published') return '<span class="pill pub">已发布</span>';
+      if (status === 'archived') return '<span class="pill arch">已下架</span>';
+      return '<span class="pill draft">草稿</span>';
+    }
+
+    function audienceLabel(audience) {
+      if (audience === 'user') return '用户端';
+      if (audience === 'all') return '全部';
+      return '商家端';
+    }
+
+    function previewText(text) {
+      return String(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function resetForm() {
+      selectedId = '';
+      document.getElementById('ann-id').value = '';
+      document.getElementById('ann-title').value = '';
+      document.getElementById('ann-content').value = '';
+      document.getElementById('ann-audience').value = 'merchant';
+      document.getElementById('ann-status').value = 'draft';
+      document.getElementById('ann-pinned').checked = false;
+      document.getElementById('delete-btn').style.display = 'none';
+      renderList();
+    }
+
+    function fillForm(item) {
+      selectedId = item.id || '';
+      document.getElementById('ann-id').value = selectedId;
+      document.getElementById('ann-title').value = item.title || '';
+      document.getElementById('ann-content').value = item.content || '';
+      document.getElementById('ann-audience').value = item.audience || 'merchant';
+      document.getElementById('ann-status').value = item.status || 'draft';
+      document.getElementById('ann-pinned').checked = !!item.pinned;
+      document.getElementById('delete-btn').style.display = selectedId ? 'inline-flex' : 'none';
+      renderList();
+    }
+
+    function collectForm(forceStatus) {
+      return {
+        title: (document.getElementById('ann-title').value || '').trim(),
+        content: (document.getElementById('ann-content').value || '').trim(),
+        audience: document.getElementById('ann-audience').value || 'merchant',
+        status: forceStatus || document.getElementById('ann-status').value || 'draft',
+        pinned: !!document.getElementById('ann-pinned').checked
+      };
+    }
+
+    function renderList() {
+      if (!items.length) {
+        listEl.innerHTML = '<div class="ann-empty">暂无公告，点击右上角新建</div>';
+        return;
+      }
+      listEl.innerHTML = items.map(function (item) {
+        const active = item.id === selectedId ? ' active' : '';
+        const pin = item.pinned ? '<span class="pill pin">置顶</span>' : '';
+        return [
+          '<div class="ann-item' + active + '" data-id="' + PetAdmin.escapeHtml(item.id) + '">',
+          '  <div class="ann-item-top">',
+          '    <div class="ann-item-title">' + PetAdmin.escapeHtml(item.title || '未命名') + '</div>',
+          '    <div>' + statusPill(item.status) + '</div>',
+          '  </div>',
+          '  <div class="ann-item-meta">',
+          pin,
+          '    <span>' + PetAdmin.escapeHtml(audienceLabel(item.audience)) + '</span>',
+          '    <span>' + PetAdmin.escapeHtml(formatTime(item.updateTime || item.publishAt || item.createTime)) + '</span>',
+          '  </div>',
+          '  <div class="ann-item-preview">' + PetAdmin.escapeHtml(previewText(item.content)) + '</div>',
+          '</div>'
+        ].join('');
+      }).join('');
+
+      listEl.querySelectorAll('.ann-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          const id = el.getAttribute('data-id');
+          const hit = items.find(function (row) { return row.id === id; });
+          if (hit) fillForm(hit);
+        });
+      });
+    }
+
+    async function load() {
+      listEl.innerHTML = '<div class="ann-empty">加载中...</div>';
+      try {
+        const data = await PetAdmin.api('/api/admin/announcements');
+        if (!data.success) {
+          listEl.innerHTML = '<div class="ann-empty">' + PetAdmin.escapeHtml(data.errMsg || '加载失败') + '</div>';
+          return;
+        }
+        items = data.list || [];
+        if (selectedId) {
+          const hit = items.find(function (row) { return row.id === selectedId; });
+          if (hit) fillForm(hit);
+          else resetForm();
+        } else {
+          renderList();
+        }
+      } catch (err) {
+        listEl.innerHTML = '<div class="ann-empty">' + PetAdmin.escapeHtml((err && err.message) || '加载失败') + '</div>';
+      }
+    }
+
+    async function save(forceStatus) {
+      const body = collectForm(forceStatus);
+      if (!body.title) {
+        alert('请填写标题');
+        return;
+      }
+      if (!body.content) {
+        alert('请填写正文');
+        return;
+      }
+      const id = document.getElementById('ann-id').value;
+      const btn = document.getElementById('save-btn');
+      const pubBtn = document.getElementById('publish-btn');
+      btn.disabled = true;
+      pubBtn.disabled = true;
+      try {
+        const data = id
+          ? await PetAdmin.api('/api/admin/announcements/' + encodeURIComponent(id), {
+              method: 'PUT',
+              body: JSON.stringify(body)
+            })
+          : await PetAdmin.api('/api/admin/announcements', {
+              method: 'POST',
+              body: JSON.stringify(body)
+            });
+        if (!data.success) {
+          alert(data.errMsg || '保存失败');
+          return;
+        }
+        selectedId = (data.announcement && data.announcement.id) || selectedId;
+        await load();
+      } catch (err) {
+        alert((err && err.message) || '保存失败');
+      } finally {
+        btn.disabled = false;
+        pubBtn.disabled = false;
+      }
+    }
+
+    async function removeCurrent() {
+      const id = document.getElementById('ann-id').value;
+      if (!id) return;
+      if (!window.confirm('确定删除该公告吗？删除后不可恢复。')) return;
+      try {
+        const data = await PetAdmin.api('/api/admin/announcements/' + encodeURIComponent(id), {
+          method: 'DELETE'
+        });
+        if (!data.success) {
+          alert(data.errMsg || '删除失败');
+          return;
+        }
+        resetForm();
+        await load();
+      } catch (err) {
+        alert((err && err.message) || '删除失败');
+      }
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', load);
+    document.getElementById('new-btn').addEventListener('click', resetForm);
+    document.getElementById('save-btn').addEventListener('click', function () { save(); });
+    document.getElementById('publish-btn').addEventListener('click', function () { save('published'); });
+    document.getElementById('delete-btn').addEventListener('click', removeCurrent);
+    load();
+  </script>
+</body>
+</html>

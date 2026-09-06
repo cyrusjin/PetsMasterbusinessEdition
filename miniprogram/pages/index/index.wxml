@@ -96,6 +96,15 @@
     <image class="reserve-art" src="/images/home/reserve-art-v2.png" mode="aspectFit" />
   </view>
 
+  <view class="home-insurance-entry" bindtap="onGoPetInsurance">
+    <image class="home-insurance-logo" src="/images/insurance/pingan-logo.png" mode="aspectFit" />
+    <view class="home-insurance-copy">
+      <text class="home-insurance-title">购买宠物保险</text>
+      <text class="home-insurance-sub">中国平安宠物保障 · 给爱宠多一份安心</text>
+    </view>
+    <text class="home-insurance-arrow">›</text>
+  </view>
+
   <view class="status-grid">
     <view class="info-card" bindtap="onGoPetButler">
       <view class="info-card-top">

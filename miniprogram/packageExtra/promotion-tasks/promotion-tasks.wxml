@@ -1,0 +1,58 @@
+<view class="promotion-page">
+  <view class="promotion-container">
+    <view class="hero-card">
+      <view class="hero-glow"></view>
+      <view class="hero-mark">推</view>
+      <text class="hero-kicker">PROMOTION REWARDS</text>
+      <text class="hero-title">分享好服务，赢取使用权限</text>
+      <text class="hero-desc">完成推广后上传真实截图，由官网管理后台人工审核。审核通过后，系统自动发放对应权限。</text>
+      <view class="flow-row">
+        <view class="flow-item"><text class="flow-index">1</text><text>完成任务</text></view>
+        <text class="flow-arrow">›</text>
+        <view class="flow-item"><text class="flow-index">2</text><text>上传截图</text></view>
+        <text class="flow-arrow">›</text>
+        <view class="flow-item"><text class="flow-index">3</text><text>人工审核</text></view>
+        <text class="flow-arrow">›</text>
+        <view class="flow-item"><text class="flow-index">4</text><text>发放权限</text></view>
+      </view>
+    </view>
+
+    <view class="safe-tip"><text class="safe-icon">✓</text><text>截图仅用于推广审核，请勿上传包含身份证、银行卡等敏感信息的图片</text></view>
+
+    <view class="loading-card" wx:if="{{loading}}">正在加载推广任务...</view>
+    <view class="empty-card error" wx:elif="{{unavailable}}">
+      <text class="empty-title">推广审核服务暂不可用</text>
+      <text class="empty-desc">{{errorMessage}}</text>
+      <button class="retry-button" bindtap="onRetry">重新加载</button>
+    </view>
+    <view class="empty-card" wx:elif="{{!tasks.length}}">
+      <text class="empty-title">暂无可参与的推广任务</text>
+      <text class="empty-desc">官网管理后台发布任务后，会自动展示在这里</text>
+    </view>
+
+    <view class="task-list" wx:else>
+      <view class="task-card {{item.statusType}}" wx:for="{{tasks}}" wx:key="code">
+        <view class="task-top">
+          <view class="task-number">{{index + 1}}</view>
+          <view class="task-copy"><text class="task-title">{{item.title}}</text><text class="task-desc">{{item.description}}</text></view>
+          <text class="status-badge {{item.statusType}}">{{item.statusLabel}}</text>
+        </view>
+        <view class="requirement-box"><text class="requirement-label">截图要求</text><text class="requirement-text">{{item.requirementText}}</text></view>
+        <view class="reward-row"><text class="reward-label">审核奖励</text><text class="reward-value">{{item.rewardText}}</text></view>
+        <view class="review-note" wx:if="{{item.status === 'rejected' && item.reviewNote}}"><text>未通过原因：</text>{{item.reviewNote}}</view>
+        <view class="task-actions">
+          <button class="proof-button secondary" wx:if="{{item.proofUrl}}" data-url="{{item.proofUrl}}" bindtap="onPreview">查看已传截图</button>
+          <button class="proof-button primary" wx:if="{{item.canSubmit}}" data-code="{{item.code}}" bindtap="onSubmit" loading="{{submittingCode === item.code}}" disabled="{{!!submittingCode}}">{{item.actionText}}</button>
+          <view class="status-action {{item.statusType}}" wx:else>{{item.actionText}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="rules-card">
+      <text class="rules-title">审核说明</text>
+      <text>• 截图上传后进入官网管理后台的“推广审核”列表</text>
+      <text>• 工作人员核对真实性后通过或驳回，用户不能自行领取权限</text>
+      <text>• 同一任务重复或虚假提交不会重复发放奖励</text>
+    </view>
+  </view>
+</view>

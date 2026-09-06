@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>版本管理 · 熠森宠物 PetMaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+  <style>
+    .version-toolbar-extra {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .version-add {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .version-add input[type="text"] {
+      min-width: 180px;
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fff;
+    }
+    .version-add-hint {
+      width: 100%;
+      margin: 0;
+      color: var(--color-text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .version-table-wrap {
+      overflow: auto;
+      border-radius: 18px;
+    }
+    .version-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 640px;
+      background: #fff;
+    }
+    .version-table th,
+    .version-table td {
+      padding: 16px 18px;
+      text-align: left;
+      border-bottom: 1px solid rgba(242, 222, 201, 0.85);
+      vertical-align: middle;
+    }
+    .version-table th {
+      font-size: 0.92rem;
+      color: var(--color-text-secondary);
+      font-weight: 700;
+      background: rgba(255, 252, 247, 0.95);
+    }
+    .version-table tr:last-child td { border-bottom: none; }
+    .version-id {
+      font-size: 1.08rem;
+      font-weight: 800;
+      color: var(--color-text);
+    }
+    .version-note {
+      display: block;
+      margin-top: 4px;
+      color: var(--color-text-secondary);
+      font-size: 0.86rem;
+      font-weight: 500;
+    }
+    .version-time {
+      color: var(--color-text-secondary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .version-switch-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-pill.on { background: #e8f7ef; color: #1f7a4d; }
+    .status-pill.off { background: #fff1f0; color: #b42318; }
+    .toggle {
+      position: relative;
+      width: 54px;
+      height: 30px;
+      flex: 0 0 auto;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      cursor: pointer;
+      background: #d8d0c6;
+      border-radius: 999px;
+      transition: 0.2s;
+    }
+    .toggle-slider:before {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: 0.2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .toggle input:checked + .toggle-slider { background: #2f9e6b; }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(24px); }
+    .toggle input:disabled + .toggle-slider { opacity: 0.55; cursor: wait; }
+    .version-empty {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--color-text-secondary);
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="admin-header">
+    <div class="container admin-header-inner">
+      <a class="admin-brand" href="../index.html">
+        <img src="../assets/card/card-pets.png" alt="熠森宠物" />
+        <span>
+          <strong>熠森宠物管理后台</strong>
+          <small>版本管理</small>
+        </span>
+      </a>
+      <div class="admin-user">
+        <span id="admin-user"></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container admin-nav-inner">
+      <a class="admin-nav-link" href="index.html">入驻审核</a>
+      <a class="admin-nav-link" href="stores.html">店铺管理</a>
+      <a class="admin-nav-link" href="dashboard.html">仪表盘</a>
+      <a class="admin-nav-link active" href="versions.html">版本管理</a>
+      <a class="admin-nav-link" href="announcements.html">公告管理</a>
+      <a class="admin-nav-link" href="memberships.html">会员与推广</a>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container admin-panel admin-panel-wide">
+      <div class="admin-toolbar">
+        <div>
+          <h1>版本管理</h1>
+          <p>按小程序版本号控制「切换商家版」入口；提审版本可单独关闭</p>
+        </div>
+        <div class="version-toolbar-extra">
+          <button class="btn btn-outline btn-sm" id="refresh-btn" type="button">刷新</button>
+        </div>
+      </div>
+
+      <div class="card version-add">
+        <input id="new-version" type="text" placeholder="版本号，如 1.0.5 / trial / develop" maxlength="64" />
+        <label style="display:inline-flex;align-items:center;gap:8px;font-weight:700;">
+          <input id="new-enabled" type="checkbox" />
+          开启商家版
+        </label>
+        <button class="btn btn-primary btn-sm" id="add-btn" type="button">添加版本</button>
+        <p class="version-add-hint">
+          正式版填写微信后台版本号（如 1.0.5）。体验版/开发版可填 <code>trial</code> / <code>develop</code>。
+          未匹配到的版本默认关闭商家入口。可用 <code>default</code> 作为兜底。
+        </p>
+      </div>
+
+      <div class="card version-table-wrap" id="content">
+        <div class="version-empty">加载中...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="admin.js?v=20260811e"></script>
+  <script>
+    if (!PetAdmin.requireAuth()) {
+      throw new Error('redirect');
+    }
+
+    const contentEl = document.getElementById('content');
+    document.getElementById('admin-user').textContent = PetAdmin.getUsername() || '管理员';
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      PetAdmin.clearSession();
+      window.location.href = 'login.html';
+    });
+
+    function formatTime(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      if (Number.isNaN(d.getTime())) return '—';
+      return d.toLocaleString('zh-CN', { hour12: false });
+    }
+
+    function versionLabel(version) {
+      if (version === 'default') return 'default（兜底）';
+      if (version === 'trial') return 'trial（体验版）';
+      if (version === 'develop') return 'develop（开发版）';
+      if (version === 'release') return 'release（正式版环境）';
+      return version;
+    }
+
+    function render(versions) {
+      const list = Array.isArray(versions) ? versions : [];
+      if (!list.length) {
+        contentEl.innerHTML = '<div class="version-empty">暂无版本，请先在上方添加</div>';
+        return;
+      }
+
+      const rows = list.map(function (item) {
+        const enabled = !!item.merchantSwitchEnabled;
+        const ver = PetAdmin.escapeHtml(item.version || '');
+        const note = item.note ? '<span class="version-note">' + PetAdmin.escapeHtml(item.note) + '</span>' : '';
+        return [
+          '<tr data-version="' + ver + '">',
+          '  <td>',
+          '    <div class="version-id">' + PetAdmin.escapeHtml(versionLabel(item.version)) + '</div>',
+          note,
+          '  </td>',
+          '  <td class="version-time">' + PetAdmin.escapeHtml(formatTime(item.updateTime || item.createTime)) + '</td>',
+          '  <td>',
+          '    <div class="version-switch-cell">',
+          '      <span class="status-pill ' + (enabled ? 'on' : 'off') + '">' + (enabled ? '已开启' : '已关闭') + '</span>',
+          '      <label class="toggle">',
+          '        <input type="checkbox" class="js-switch" data-version="' + ver + '"' + (enabled ? ' checked' : '') + ' />',
+          '        <span class="toggle-slider"></span>',
+          '      </label>',
+          '      <button class="btn btn-outline btn-sm js-delete" type="button" data-version="' + ver + '">删除</button>',
+          '    </div>',
+          '  </td>',
+          '</tr>'
+        ].join('');
+      }).join('');
+
+      contentEl.innerHTML = [
+        '<table class="version-table">',
+        '  <thead>',
+        '    <tr>',
+        '      <th style="width:36%;">版本号</th>',
+        '      <th style="width:28%;">修改时间</th>',
+        '      <th>开启商家版</th>',
+        '    </tr>',
+        '  </thead>',
+        '  <tbody>' + rows + '</tbody>',
+        '</table>'
+      ].join('');
+
+      contentEl.querySelectorAll('.js-switch').forEach(function (el) {
+        el.addEventListener('change', function () {
+          toggleVersion(el.getAttribute('data-version'), !!el.checked, el);
+        });
+      });
+      contentEl.querySelectorAll('.js-delete').forEach(function (el) {
+        el.addEventListener('click', function () {
+          removeVersion(el.getAttribute('data-version'));
+        });
+      });
+    }
+
+    async function load() {
+      contentEl.innerHTML = '<div class="version-empty">加载中...</div>';
+      try {
+        const data = await PetAdmin.api('/api/admin/config/versions');
+        if (!data.success) {
+          contentEl.innerHTML = '<div class="version-empty">' + PetAdmin.escapeHtml(data.errMsg || '加载失败') + '</div>';
+          return;
+        }
+        render(data.versions || []);
+      } catch (err) {
+        contentEl.innerHTML = '<div class="version-empty">' + PetAdmin.escapeHtml((err && err.message) || '加载失败') + '</div>';
+      }
+    }
+
+    async function toggleVersion(version, enabled, inputEl) {
+      if (!version) return;
+      if (inputEl) inputEl.disabled = true;
+      try {
+        const data = await PetAdmin.api('/api/admin/config/versions/' + encodeURIComponent(version), {
+          method: 'PUT',
+          body: JSON.stringify({ merchantSwitchEnabled: enabled })
+        });
+        if (!data.success) {
+          alert(data.errMsg || '保存失败');
+          if (inputEl) inputEl.checked = !enabled;
+          return;
+        }
+        render(data.versions || []);
+      } catch (err) {
+        alert((err && err.message) || '保存失败');
+        if (inputEl) inputEl.checked = !enabled;
+      } finally {
+        if (inputEl) inputEl.disabled = false;
+      }
+    }
+
+    async function removeVersion(version) {
+      if (!version) return;
+      if (!window.confirm('确定删除版本「' + version + '」吗？')) return;
+      try {
+        const data = await PetAdmin.api('/api/admin/config/versions/' + encodeURIComponent(version), {
+          method: 'DELETE'
+        });
+        if (!data.success) {
+          alert(data.errMsg || '删除失败');
+          return;
+        }
+        render(data.versions || []);
+      } catch (err) {
+        alert((err && err.message) || '删除失败');
+      }
+    }
+
+    async function addVersion() {
+      const version = (document.getElementById('new-version').value || '').trim();
+      const enabled = !!document.getElementById('new-enabled').checked;
+      if (!version) {
+        alert('请填写版本号');
+        return;
+      }
+      const btn = document.getElementById('add-btn');
+      btn.disabled = true;
+      try {
+        const data = await PetAdmin.api('/api/admin/config/versions', {
+          method: 'POST',
+          body: JSON.stringify({ version: version, merchantSwitchEnabled: enabled })
+        });
+        if (!data.success) {
+          alert(data.errMsg || '添加失败');
+          return;
+        }
+        document.getElementById('new-version').value = '';
+        document.getElementById('new-enabled').checked = false;
+        render(data.versions || []);
+      } catch (err) {
+        alert((err && err.message) || '添加失败');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', load);
+    document.getElementById('add-btn').addEventListener('click', addVersion);
+    document.getElementById('new-version').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') addVersion();
+    });
+    load();
+  </script>
+</body>
+</html>

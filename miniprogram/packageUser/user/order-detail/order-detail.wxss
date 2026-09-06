@@ -39,3 +39,8 @@
   color: #FFFFFF !important;
   border: none !important;
 }
+.order-action-rebook {
+  background: linear-gradient(135deg, #F5AA78, #E98657) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}

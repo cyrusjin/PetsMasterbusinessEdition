@@ -104,6 +104,9 @@
         <view class="customer-info">
           <text class="customer-name">{{item.name}}</text>
           <text class="customer-meta">{{item.metaText}}</text>
+          <view class="customer-tags" wx:if="{{item.tags.length}}">
+            <text class="customer-tag" wx:for="{{item.tags}}" wx:key="*this">{{item}}</text>
+          </view>
         </view>
         <text class="customer-arrow">›</text>
       </view>

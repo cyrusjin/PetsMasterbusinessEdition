@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>商家入驻审核 · 熠森宠物 PetMaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+</head>
+<body class="admin-page">
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="admin-header">
+    <div class="container admin-header-inner">
+      <a class="admin-brand" href="../index.html">
+        <img src="../assets/card/card-pets.png" alt="熠森宠物" />
+        <span>
+          <strong>熠森宠物管理后台</strong>
+          <small>商家入驻审核</small>
+        </span>
+      </a>
+      <div class="admin-user">
+        <span id="admin-user"></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container admin-nav-inner">
+      <a class="admin-nav-link active" href="index.html">入驻审核</a>
+      <a class="admin-nav-link" href="stores.html">店铺管理</a>
+      <a class="admin-nav-link" href="dashboard.html">仪表盘</a>
+      <a class="admin-nav-link" href="versions.html">版本管理</a>
+      <a class="admin-nav-link" href="announcements.html">公告管理</a>
+      <a class="admin-nav-link" href="memberships.html">会员与推广</a>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container admin-panel">
+      <div class="admin-toolbar">
+        <div>
+          <h1>待审核申请</h1>
+          <p>审核通过后，商家版小程序将自动更新为已开通状态</p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="refresh-btn" type="button">刷新</button>
+      </div>
+
+      <div id="content">
+        <div class="card admin-loading">加载中...</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="contract-modal" id="contract-modal" hidden>
+    <div class="contract-modal-mask" id="contract-modal-mask"></div>
+    <div class="contract-modal-dialog card" role="dialog" aria-modal="true">
+      <div class="contract-modal-header">
+        <div>
+          <h2 id="contract-modal-title">入驻合作协议</h2>
+          <p id="contract-modal-meta"></p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="contract-modal-close" type="button">关闭</button>
+      </div>
+      <pre class="contract-modal-body" id="contract-modal-body"></pre>
+    </div>
+  </div>
+
+  <div class="contract-modal" id="preview-modal" hidden>
+    <div class="contract-modal-mask" id="preview-modal-mask"></div>
+    <div class="contract-modal-dialog card preview-modal-dialog" role="dialog" aria-modal="true">
+      <div class="contract-modal-header">
+        <div>
+          <h2 id="preview-modal-title">图片预览</h2>
+          <p id="preview-modal-meta">点击遮罩、图片或关闭按钮可退出</p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="preview-modal-close" type="button">关闭</button>
+      </div>
+      <div class="preview-modal-body">
+        <img id="preview-modal-img" alt="预览" />
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js?v=20260811e"></script>
+  <script>
+    if (!PetAdmin.requireAuth()) {
+      throw new Error('redirect');
+    }
+
+    const contentEl = document.getElementById('content');
+    const adminUserEl = document.getElementById('admin-user');
+    const contractModalEl = document.getElementById('contract-modal');
+    const contractModalTitleEl = document.getElementById('contract-modal-title');
+    const contractModalMetaEl = document.getElementById('contract-modal-meta');
+    const contractModalBodyEl = document.getElementById('contract-modal-body');
+    const previewModalEl = document.getElementById('preview-modal');
+    const previewModalTitleEl = document.getElementById('preview-modal-title');
+    const previewModalMetaEl = document.getElementById('preview-modal-meta');
+    const previewModalImgEl = document.getElementById('preview-modal-img');
+    let processingId = '';
+
+    adminUserEl.textContent = PetAdmin.getUsername();
+
+    function closeContractModal() {
+      contractModalEl.hidden = true;
+      contractModalBodyEl.textContent = '';
+      contractModalMetaEl.textContent = '';
+    }
+
+    function closePreviewModal() {
+      previewModalEl.hidden = true;
+      previewModalImgEl.src = '';
+      previewModalMetaEl.textContent = '点击遮罩、图片或关闭按钮可退出';
+    }
+
+    function openPreviewModal(url, title, meta) {
+      const src = String(url || '').trim();
+      if (!src) return;
+      previewModalTitleEl.textContent = title || '图片预览';
+      previewModalMetaEl.textContent = meta || '点击遮罩、图片或关闭按钮可退出';
+      previewModalImgEl.src = src;
+      previewModalEl.hidden = false;
+    }
+
+    document.getElementById('contract-modal-close').addEventListener('click', closeContractModal);
+    document.getElementById('contract-modal-mask').addEventListener('click', closeContractModal);
+    document.getElementById('preview-modal-close').addEventListener('click', closePreviewModal);
+    document.getElementById('preview-modal-mask').addEventListener('click', closePreviewModal);
+    previewModalImgEl.addEventListener('click', closePreviewModal);
+    document.addEventListener('keydown', function (event) {
+      if (event.key !== 'Escape') return;
+      if (!previewModalEl.hidden) closePreviewModal();
+      if (!contractModalEl.hidden) closeContractModal();
+    });
+
+    async function viewCoopContract(storeId) {
+      if (!storeId || processingId) return;
+      processingId = 'contract:' + storeId;
+      try {
+        const data = await PetAdmin.api('/api/admin/stores/coop-contract?store_id=' + encodeURIComponent(storeId));
+        if (!data.success) throw new Error(data.errMsg || '加载协议失败');
+        const contract = data.contract || {};
+        contractModalTitleEl.textContent = contract.title || '商家入驻平台合作协议';
+        contractModalMetaEl.textContent = [
+          data.storeName ? ('店铺：' + data.storeName) : '',
+          data.coopContractSignTime ? ('签署时间：' + data.coopContractSignTime) : ''
+        ].filter(Boolean).join(' · ');
+        let body = contract.bodyText || '协议正文缺失';
+        if (contract.signed && contract.signTime) {
+          body += '\n\n—— 电子签署记录 ——\n签署时间：'
+            + contract.signTime
+            + '\n签署方式：'
+            + (contract.signMethod === 'electronic' ? '电子确认' : (contract.signMethod || '电子确认'));
+        }
+        contractModalBodyEl.textContent = body;
+        contractModalEl.hidden = false;
+      } catch (err) {
+        alert(err.message || '加载协议失败');
+      } finally {
+        processingId = '';
+      }
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      PetAdmin.clearSession();
+      window.location.href = 'login.html';
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', function () {
+      loadApplications();
+    });
+
+    function renderApplications(applications) {
+      if (!applications.length) {
+        contentEl.innerHTML = '<div class="card admin-empty"><strong>暂无待审核申请</strong><span>有新的商家提交入驻申请后会显示在这里</span></div>';
+        return;
+      }
+
+      contentEl.innerHTML = applications.map(function (item) {
+        const photos = (item.storePhotos || []).map(function (url, index) {
+          return '<img src="' + PetAdmin.escapeHtml(url) + '" alt="店铺照片' + (index + 1) + '" data-url="' + PetAdmin.escapeHtml(url) + '" />';
+        }).join('');
+        const licenseUrl = String(item.businessLicense || '').trim();
+        const hasLicense = !!(item.hasBusinessLicense || licenseUrl);
+        const licenseHtml = hasLicense && licenseUrl
+          ? (
+            '<div class="apply-license-box">'
+            + '<img class="apply-license-img" src="' + PetAdmin.escapeHtml(licenseUrl) + '" alt="营业执照" data-preview="' + PetAdmin.escapeHtml(licenseUrl) + '" data-preview-title="营业执照" />'
+            + '<button class="apply-license-link" type="button" data-preview="' + PetAdmin.escapeHtml(licenseUrl) + '" data-preview-title="营业执照">点击查看大图</button>'
+            + '</div>'
+          )
+          : '<span class="store-action-muted">未上传</span>';
+
+        return [
+          '<article class="card apply-card" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-name="' + PetAdmin.escapeHtml(item.name || '未命名店铺') + '">',
+          '<div class="apply-head">',
+          '<h2>' + PetAdmin.escapeHtml(item.name || '未命名店铺') + '</h2>',
+          '<span class="apply-badge">待审核</span>',
+          '</div>',
+          '<dl class="apply-detail">',
+          '<div class="apply-row"><dt>负责人</dt><dd>' + PetAdmin.escapeHtml(item.legalName || '--') + '</dd></div>',
+          '<div class="apply-row"><dt>联系电话</dt><dd>' + PetAdmin.escapeHtml(item.contactPhone || '--') + '</dd></div>',
+          '<div class="apply-row"><dt>营业地址</dt><dd>' + PetAdmin.escapeHtml(item.address || '--') + '</dd></div>',
+          '<div class="apply-row"><dt>微信昵称</dt><dd>' + PetAdmin.escapeHtml(item.applicantNickName || item.applicantName || '--') + '</dd></div>',
+          '<div class="apply-row"><dt>微信 openid</dt><dd class="apply-openid">' + PetAdmin.escapeHtml(item.applicantOpenid || '--') + '</dd></div>',
+          '<div class="apply-row"><dt>入驻协议</dt><dd>' + (item.hasCoopContract ? ('已签署' + (item.coopContractSignTime ? ' · ' + PetAdmin.escapeHtml(item.coopContractSignTime) : '')) : '未签署') + '</dd></div>',
+          '<div class="apply-row"><dt>申请时间</dt><dd>' + PetAdmin.escapeHtml(item.applyTimeText || '--') + '</dd></div>',
+          '<div class="apply-row"><dt>营业执照</dt><dd>' + licenseHtml + '</dd></div>',
+          photos ? '<div class="apply-row"><dt>店铺照片</dt><dd><div class="apply-photos">' + photos + '</div></dd></div>' : '',
+          '</dl>',
+          '<div class="apply-actions">',
+          item.hasCoopContract
+            ? '<button class="btn btn-outline btn-sm view-contract-btn" data-id="' + PetAdmin.escapeHtml(item.store_id) + '">查看协议</button>'
+            : '',
+          hasLicense && licenseUrl
+            ? '<button class="btn btn-outline btn-sm" type="button" data-preview="' + PetAdmin.escapeHtml(licenseUrl) + '" data-preview-title="营业执照">查看执照</button>'
+            : '',
+          '<button class="btn btn-danger btn-sm reject-btn" data-id="' + PetAdmin.escapeHtml(item.store_id) + '">拒绝</button>',
+          '<button class="btn btn-primary btn-sm approve-btn" data-id="' + PetAdmin.escapeHtml(item.store_id) + '">同意开通</button>',
+          '</div>',
+          '</article>'
+        ].join('');
+      }).join('');
+
+      contentEl.querySelectorAll('.view-contract-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          viewCoopContract(btn.getAttribute('data-id'));
+        });
+      });
+
+      contentEl.querySelectorAll('.approve-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const storeId = btn.getAttribute('data-id');
+          if (!storeId || processingId) return;
+          if (!window.confirm('确定同意该商家入驻并开通商家端权限？')) return;
+          review(storeId, 'approve');
+        });
+      });
+
+      contentEl.querySelectorAll('.reject-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const storeId = btn.getAttribute('data-id');
+          if (!storeId || processingId) return;
+          const reason = window.prompt('请输入拒绝原因（可选）', '资料不完整，请修改后重新申请');
+          if (reason === null) return;
+          review(storeId, 'reject', reason);
+        });
+      });
+
+      contentEl.querySelectorAll('.apply-photos img').forEach(function (img) {
+        img.setAttribute('data-preview', img.getAttribute('data-url') || img.getAttribute('src') || '');
+        img.setAttribute('data-preview-title', '店铺照片');
+      });
+
+      contentEl.querySelectorAll('[data-preview]').forEach(function (el) {
+        el.addEventListener('click', function (event) {
+          event.preventDefault();
+          const card = el.closest('.apply-card');
+          openPreviewModal(
+            el.getAttribute('data-preview'),
+            el.getAttribute('data-preview-title') || '图片预览',
+            card ? (card.getAttribute('data-name') || '') : ''
+          );
+        });
+      });
+    }
+
+    async function loadApplications() {
+      contentEl.innerHTML = '<div class="card admin-loading">加载中...</div>';
+      try {
+        const data = await PetAdmin.api('/api/admin/applications');
+        if (!data.success) throw new Error(data.errMsg || '加载失败');
+        renderApplications(data.applications || []);
+      } catch (err) {
+        contentEl.innerHTML = '<div class="card admin-empty"><strong>加载失败</strong><span>' + PetAdmin.escapeHtml(err.message) + '</span></div>';
+      }
+    }
+
+    async function review(storeId, decision, rejectReason) {
+      processingId = storeId;
+      contentEl.querySelectorAll('button').forEach(function (btn) {
+        btn.disabled = true;
+      });
+
+      try {
+        const data = await PetAdmin.api('/api/admin/applications/review', {
+          method: 'POST',
+          body: JSON.stringify({
+            store_id: storeId,
+            decision: decision,
+            rejectReason: rejectReason || ''
+          })
+        });
+        if (!data.success) throw new Error(data.errMsg || '操作失败');
+        alert(decision === 'approve' ? '已开通商家权限' : '已拒绝该申请');
+        await loadApplications();
+      } catch (err) {
+        alert(err.message || '操作失败');
+        contentEl.querySelectorAll('button').forEach(function (btn) {
+          btn.disabled = false;
+        });
+      } finally {
+        processingId = '';
+      }
+    }
+
+    loadApplications();
+  </script>
+</body>
+</html>

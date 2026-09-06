@@ -111,14 +111,24 @@
   font-weight: 600;
 }
 
-.membership-badge.free {
+.membership-badge.expired {
   color: #666;
   background: rgba(0, 0, 0, 0.06);
 }
 
-.membership-badge.pro {
+.membership-badge.subscribed {
   color: #fff;
   background: #E98657;
+}
+
+.membership-badge.trial {
+  color: #276849;
+  background: rgba(64, 163, 113, .12);
+}
+
+.membership-badge.granted {
+  color: #76501d;
+  background: rgba(213, 170, 81, .16);
 }
 
 .membership-card-body {
@@ -138,6 +148,166 @@
   font-size: 24rpx;
   color: #E98657;
   font-weight: 600;
+}
+
+/* 我的门店顶部 · 黑金会员品牌区 */
+.store-luxury-header {
+  position: relative;
+  height: 228rpx;
+  margin-bottom: 22rpx;
+  overflow: hidden;
+  border: 1rpx solid rgba(255, 223, 157, .28);
+  border-radius: 30rpx;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(230, 180, 82, .28), transparent 230rpx),
+    linear-gradient(132deg, #2D1A10 0%, #4A2B17 48%, #805125 100%);
+  box-shadow: 0 16rpx 34rpx rgba(70, 39, 17, .22), inset 0 1rpx 0 rgba(255, 238, 195, .16);
+}
+
+.store-luxury-header:active { transform: scale(.992); opacity: .96; }
+
+.store-luxury-glow {
+  position: absolute;
+  top: -90rpx;
+  left: -80rpx;
+  width: 310rpx;
+  height: 250rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(222, 164, 73, .18), transparent 68%);
+}
+
+.store-luxury-orbit {
+  position: absolute;
+  border: 1rpx solid rgba(230, 190, 106, .12);
+  border-radius: 50%;
+}
+.orbit-one { top:-160rpx; right:-105rpx; width:390rpx; height:390rpx; border-color:rgba(255,225,164,.14); }
+.orbit-two { top:-98rpx; right:-48rpx; width:280rpx; height:280rpx; border-color:rgba(255,225,164,.1); }
+
+.store-luxury-spark {
+  position: absolute;
+  z-index: 2;
+  color: #FFD98C;
+  text-shadow: 0 0 14rpx rgba(255,218,139,.42);
+}
+.spark-one { top:70rpx; right:232rpx; font-size:17rpx; }
+.spark-two { top:100rpx; right:210rpx; font-size:10rpx; opacity:.7; }
+
+.store-luxury-pets {
+  position: absolute;
+  z-index: 1;
+  right: -22rpx;
+  bottom: -8rpx;
+  width: 292rpx;
+  height: 198rpx;
+  filter: drop-shadow(0 12rpx 16rpx rgba(18,8,2,.32));
+}
+
+.store-luxury-topline {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22rpx 24rpx 0;
+}
+
+.store-luxury-brand {
+  display: flex;
+  align-items: center;
+  gap: 9rpx;
+  padding: 7rpx 13rpx 7rpx 9rpx;
+  border: 1rpx solid rgba(255, 221, 149, .22);
+  border-radius: 999rpx;
+  background: rgba(255, 235, 191, .09);
+  color: #F5D99C;
+  font-size: 17rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+.store-luxury-crown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #F7D789, #B97A28);
+  color: #402313;
+  font-size: 16rpx;
+}
+
+.store-luxury-header .membership-badge {
+  position: relative;
+  z-index: 3;
+  border: 1rpx solid rgba(112,75,25,.18);
+  background: rgba(255,250,237,.58);
+  color: #704817;
+  backdrop-filter: blur(12px);
+}
+.store-luxury-header .membership-badge.subscribed {
+  border-color: transparent;
+  background: linear-gradient(135deg,#6B4516,#A97222);
+  color:#FFF2D1;
+}
+.store-luxury-header .membership-badge.trial {
+  border-color: rgba(40,116,78,.2);
+  background: rgba(237,255,245,.68);
+  color:#276849;
+}
+.store-luxury-header .membership-badge.granted {
+  border-color: rgba(126,82,20,.2);
+  background: rgba(255,246,218,.72);
+  color:#76501d;
+}
+
+.store-luxury-content {
+  position: absolute;
+  z-index: 3;
+  top: 92rpx;
+  left: 0;
+  width: 350rpx;
+  padding: 0 0 0 24rpx;
+}
+.store-luxury-name { display:block; }
+.store-luxury-name {
+  max-width: 340rpx;
+  overflow: hidden;
+  color: #FFF5DE;
+  font-size: 32rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2rpx 8rpx rgba(15, 6, 2, .22);
+}
+.membership-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 9rpx;
+  margin-top: 18rpx;
+  padding: 9rpx 15rpx;
+  border: 1rpx solid rgba(255, 222, 154, .18);
+  border-radius: 999rpx;
+  background: rgba(255, 244, 217, .1);
+  color: #F0D8A6;
+  font-size: 21rpx;
+  line-height: 1.4;
+}
+.membership-expiry-dot {
+  width: 8rpx;
+  height: 8rpx;
+  border-radius: 50%;
+  background: #F2C76F;
+  box-shadow: 0 0 10rpx rgba(242,199,111,.62);
+}
+.store-luxury-arrow {
+  position: absolute;
+  z-index: 4;
+  top: 22rpx;
+  right: 24rpx;
+  color: rgba(255, 237, 198, .58);
+  font-size: 34rpx;
+  line-height: 1;
 }
 
 .incomplete-tip {
@@ -1310,5 +1480,3 @@
 .visit-service-card.is-alt {
   background: #F4F6F8;
 }
-
-

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>店铺管理 · 熠森宠物 PetMaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+</head>
+<body class="admin-page admin-page-fluid">
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="admin-header">
+    <div class="admin-shell admin-header-inner">
+      <a class="admin-brand" href="../index.html">
+        <img src="../assets/card/card-pets.png" alt="熠森宠物" />
+        <span>
+          <strong>熠森宠物管理后台</strong>
+          <small>店铺管理</small>
+        </span>
+      </a>
+      <div class="admin-user">
+        <span id="admin-user"></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="admin-shell admin-nav-inner">
+      <a class="admin-nav-link" href="index.html">入驻审核</a>
+      <a class="admin-nav-link active" href="stores.html">店铺管理</a>
+      <a class="admin-nav-link" href="dashboard.html">仪表盘</a>
+      <a class="admin-nav-link" href="versions.html">版本管理</a>
+      <a class="admin-nav-link" href="announcements.html">公告管理</a>
+      <a class="admin-nav-link" href="memberships.html">会员与推广</a>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="admin-shell admin-panel-fluid">
+      <div class="admin-toolbar">
+        <div>
+          <h1>店铺管理</h1>
+          <p>查看店铺详情与已申请店铺，支持关闭与重新开通；可查看并补绑店主服务号 openids.oa</p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="refresh-btn" type="button">刷新</button>
+      </div>
+
+      <div class="admin-filters card">
+        <label class="admin-filter">
+          <span>状态</span>
+          <select id="status-filter">
+            <option value="">全部</option>
+            <option value="pending">待审核</option>
+            <option value="approved">已开通</option>
+            <option value="disabled">已关闭</option>
+            <option value="rejected">已拒绝</option>
+          </select>
+        </label>
+        <label class="admin-filter admin-filter-grow">
+          <span>搜索</span>
+          <input id="keyword-input" type="search" placeholder="店铺名称、编号、电话、负责人" />
+        </label>
+        <button class="btn btn-primary btn-sm" id="search-btn" type="button">搜索</button>
+      </div>
+
+      <div id="summary" class="admin-summary"></div>
+      <div id="content">
+        <div class="card admin-loading">加载中...</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="contract-modal" id="contract-modal" hidden>
+    <div class="contract-modal-mask" id="contract-modal-mask"></div>
+    <div class="contract-modal-dialog card" role="dialog" aria-modal="true">
+      <div class="contract-modal-header">
+        <div>
+          <h2 id="contract-modal-title">入驻合作协议</h2>
+          <p id="contract-modal-meta"></p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="contract-modal-close" type="button">关闭</button>
+      </div>
+      <pre class="contract-modal-body" id="contract-modal-body"></pre>
+    </div>
+  </div>
+
+  <div class="contract-modal" id="orders-modal" hidden>
+    <div class="contract-modal-mask" id="orders-modal-mask"></div>
+    <div class="contract-modal-dialog card orders-modal-dialog" role="dialog" aria-modal="true">
+      <div class="contract-modal-header">
+        <div>
+          <h2 id="orders-modal-title">店铺订单</h2>
+          <p id="orders-modal-meta"></p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="orders-modal-close" type="button">关闭</button>
+      </div>
+      <div class="orders-modal-body" id="orders-modal-body">
+        <div class="admin-loading">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="contract-modal" id="logs-modal" hidden>
+    <div class="contract-modal-mask" id="logs-modal-mask"></div>
+    <div class="contract-modal-dialog card orders-modal-dialog" role="dialog" aria-modal="true">
+      <div class="contract-modal-header">
+        <div>
+          <h2 id="logs-modal-title">历史推送</h2>
+          <p id="logs-modal-meta"></p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="logs-modal-close" type="button">关闭</button>
+      </div>
+      <div class="admin-filters push-log-filters">
+        <label class="admin-filter">
+          <span>类型</span>
+          <select id="log-type-filter">
+            <option value="">全部</option>
+            <option value="newOrder">新订单提醒</option>
+            <option value="orderCancel">订单取消</option>
+            <option value="orderStatus">订单状态更新</option>
+            <option value="dailyCheck">日常打卡</option>
+            <option value="merchantApplyApproved">入驻审核通过</option>
+            <option value="merchantApplyRejected">入驻审核拒绝</option>
+            <option value="merchantApplyAdmin">入驻申请(管理员)</option>
+          </select>
+        </label>
+        <label class="admin-filter">
+          <span>结果</span>
+          <select id="log-status-filter">
+            <option value="">全部</option>
+            <option value="sent">成功</option>
+            <option value="failed">失败</option>
+            <option value="skipped">跳过</option>
+          </select>
+        </label>
+        <button class="btn btn-outline btn-sm" id="log-refresh-btn" type="button">刷新</button>
+      </div>
+      <div class="orders-modal-body" id="logs-modal-body">
+        <div class="admin-loading">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js?v=20260811e"></script>
+  <script>
+    if (!PetAdmin.requireAuth()) {
+      throw new Error('redirect');
+    }
+
+    const STATUS_LABELS = {
+      pending: '待审核',
+      approved: '已开通',
+      disabled: '已关闭',
+      rejected: '已拒绝'
+    };
+
+    const STATUS_CLASS = {
+      pending: 'status-pending',
+      approved: 'status-approved',
+      disabled: 'status-disabled',
+      rejected: 'status-rejected'
+    };
+
+    const ORDER_STATUS_LABELS = {
+      pending: '待确认',
+      confirmed: '待签协议',
+      awaiting_arrival: '待到店',
+      boarding: '寄养中',
+      toPay: '待支付',
+      completed: '已完成',
+      cancelled: '已取消'
+    };
+
+    const ORDER_STATUS_CLASS = {
+      pending: 'status-pending',
+      confirmed: 'status-pending',
+      awaiting_arrival: 'status-approved',
+      boarding: 'status-approved',
+      toPay: 'status-pending',
+      completed: 'status-approved',
+      cancelled: 'status-rejected'
+    };
+
+    const LOG_STATUS_LABELS = {
+      sent: '成功',
+      failed: '失败',
+      skipped: '跳过'
+    };
+
+    const LOG_STATUS_CLASS = {
+      sent: 'status-approved',
+      failed: 'status-rejected',
+      skipped: 'status-disabled'
+    };
+
+    const ROLE_LABELS = {
+      merchant: '商家',
+      user: '用户',
+      admin: '管理员'
+    };
+
+    const contentEl = document.getElementById('content');
+    const summaryEl = document.getElementById('summary');
+    const adminUserEl = document.getElementById('admin-user');
+    const statusFilterEl = document.getElementById('status-filter');
+    const keywordInputEl = document.getElementById('keyword-input');
+    const contractModalEl = document.getElementById('contract-modal');
+    const contractModalTitleEl = document.getElementById('contract-modal-title');
+    const contractModalMetaEl = document.getElementById('contract-modal-meta');
+    const contractModalBodyEl = document.getElementById('contract-modal-body');
+    const ordersModalEl = document.getElementById('orders-modal');
+    const ordersModalTitleEl = document.getElementById('orders-modal-title');
+    const ordersModalMetaEl = document.getElementById('orders-modal-meta');
+    const ordersModalBodyEl = document.getElementById('orders-modal-body');
+    const logsModalEl = document.getElementById('logs-modal');
+    const logsModalTitleEl = document.getElementById('logs-modal-title');
+    const logsModalMetaEl = document.getElementById('logs-modal-meta');
+    const logsModalBodyEl = document.getElementById('logs-modal-body');
+    const logTypeFilterEl = document.getElementById('log-type-filter');
+    const logStatusFilterEl = document.getElementById('log-status-filter');
+    let processingId = '';
+    let currentLogStoreId = '';
+    let currentLogStoreName = '';
+
+    adminUserEl.textContent = PetAdmin.getUsername();
+
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      PetAdmin.clearSession();
+      window.location.href = 'login.html';
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', loadStores);
+    document.getElementById('search-btn').addEventListener('click', loadStores);
+    keywordInputEl.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') loadStores();
+    });
+
+    function closeContractModal() {
+      contractModalEl.hidden = true;
+      contractModalBodyEl.textContent = '';
+      contractModalMetaEl.textContent = '';
+    }
+
+    document.getElementById('contract-modal-close').addEventListener('click', closeContractModal);
+    document.getElementById('contract-modal-mask').addEventListener('click', closeContractModal);
+
+    function closeOrdersModal() {
+      ordersModalEl.hidden = true;
+      ordersModalBodyEl.innerHTML = '';
+      ordersModalMetaEl.textContent = '';
+    }
+
+    document.getElementById('orders-modal-close').addEventListener('click', closeOrdersModal);
+    document.getElementById('orders-modal-mask').addEventListener('click', closeOrdersModal);
+
+    function closeLogsModal() {
+      logsModalEl.hidden = true;
+      logsModalBodyEl.innerHTML = '';
+      logsModalMetaEl.textContent = '';
+      currentLogStoreId = '';
+      currentLogStoreName = '';
+    }
+
+    document.getElementById('logs-modal-close').addEventListener('click', closeLogsModal);
+    document.getElementById('logs-modal-mask').addEventListener('click', closeLogsModal);
+    document.getElementById('log-refresh-btn').addEventListener('click', function () {
+      if (currentLogStoreId) viewPushLogs(currentLogStoreId, currentLogStoreName);
+    });
+    logTypeFilterEl.addEventListener('change', function () {
+      if (currentLogStoreId) viewPushLogs(currentLogStoreId, currentLogStoreName);
+    });
+    logStatusFilterEl.addEventListener('change', function () {
+      if (currentLogStoreId) viewPushLogs(currentLogStoreId, currentLogStoreName);
+    });
+
+    function formatMoney(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '--';
+      return '¥' + num.toFixed(2);
+    }
+
+    function formatStayRange(order) {
+      const start = [order.startDate, order.startTime].filter(Boolean).join(' ');
+      const end = [order.endDate, order.endTime].filter(Boolean).join(' ');
+      if (!start && !end) return '--';
+      return (start || '--') + ' ~ ' + (end || '--');
+    }
+
+    function renderOrdersTable(orders) {
+      if (!orders.length) {
+        return '<div class="admin-empty"><strong>暂无订单</strong><span>该店铺还没有订单记录</span></div>';
+      }
+
+      return [
+        '<div class="store-table-wrap">',
+        '<table class="store-table orders-table">',
+        '<thead><tr>',
+        '<th>订单号</th>',
+        '<th>客户</th>',
+        '<th>联系电话</th>',
+        '<th>宠物</th>',
+        '<th>服务项目</th>',
+        '<th>寄养时间</th>',
+        '<th>金额</th>',
+        '<th>状态</th>',
+        '<th>下单时间</th>',
+        '<th>操作</th>',
+        '</tr></thead>',
+        '<tbody>',
+        orders.map(function (order) {
+          const status = order.status || '';
+          const statusLabel = ORDER_STATUS_LABELS[status] || status || '--';
+          const statusClass = ORDER_STATUS_CLASS[status] || '';
+          const serviceLabel = [order.serviceType || '寄养预约', order.roomName || ''].filter(Boolean).join(' · ');
+          const orderId = order.order_id || order.id || '';
+          const storeId = order.store_id || '';
+          return [
+            '<tr>',
+            '<td><strong>' + PetAdmin.escapeHtml(order.displayNo || orderId || '--') + '</strong></td>',
+            '<td>' + PetAdmin.escapeHtml(order.contactName || order.userNickName || '--') + '</td>',
+            '<td>' + PetAdmin.escapeHtml(order.contactPhone || order.userPhone || '--') + '</td>',
+            '<td>' + PetAdmin.escapeHtml(order.petName || '--') + '</td>',
+            '<td>' + PetAdmin.escapeHtml(serviceLabel) + '</td>',
+            '<td class="order-stay-range">' + PetAdmin.escapeHtml(formatStayRange(order)) + '</td>',
+            '<td>' + PetAdmin.escapeHtml(formatMoney(order.totalFee)) + '</td>',
+            '<td><span class="store-status ' + statusClass + '">' + PetAdmin.escapeHtml(statusLabel) + '</span></td>',
+            '<td>' + PetAdmin.escapeHtml(order.createTimeText || '--') + '</td>',
+            '<td class="store-actions">',
+            orderId
+              ? ('<button class="btn btn-outline btn-sm" type="button" data-order-action="view-detail" data-order-id="'
+                + PetAdmin.escapeHtml(orderId) + '" data-store-id="'
+                + PetAdmin.escapeHtml(storeId) + '">查看详情</button>')
+              : '<span class="store-action-muted">--</span>',
+            '</td>',
+            '</tr>'
+          ].join('');
+        }).join(''),
+        '</tbody></table></div>'
+      ].join('');
+    }
+
+    function openOrderDetail(orderId, storeId) {
+      if (!orderId) return;
+      const params = new URLSearchParams();
+      params.set('order_id', orderId);
+      if (storeId) params.set('store_id', storeId);
+      window.open('order-detail.html?' + params.toString(), '_blank');
+    }
+
+    async function viewStoreOrders(storeId, storeName) {
+      if (!storeId || processingId) return;
+      processingId = storeId;
+      ordersModalTitleEl.textContent = '店铺订单';
+      ordersModalMetaEl.textContent = storeName ? ('店铺：' + storeName) : '';
+      ordersModalBodyEl.innerHTML = '<div class="admin-loading">加载中...</div>';
+      ordersModalEl.hidden = false;
+
+      try {
+        const data = await PetAdmin.api('/api/admin/stores/orders?store_id=' + encodeURIComponent(storeId));
+        if (!data.success) throw new Error(data.errMsg || '加载订单失败');
+        const orders = data.orders || [];
+        ordersModalMetaEl.textContent = [
+          data.storeName ? ('店铺：' + data.storeName) : '',
+          '共 ' + (data.total || orders.length) + ' 单'
+        ].filter(Boolean).join(' · ');
+        ordersModalBodyEl.innerHTML = renderOrdersTable(orders);
+        ordersModalBodyEl.querySelectorAll('[data-order-action="view-detail"]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            openOrderDetail(
+              btn.getAttribute('data-order-id') || '',
+              btn.getAttribute('data-store-id') || ''
+            );
+          });
+        });
+      } catch (err) {
+        ordersModalBodyEl.innerHTML = '<div class="admin-empty"><strong>加载失败</strong><span>' + PetAdmin.escapeHtml(err.message) + '</span></div>';
+      } finally {
+        processingId = '';
+      }
+    }
+
+    function renderLogsTable(logs) {
+      if (!logs.length) {
+        return '<div class="admin-empty"><strong>暂无推送记录</strong><span>上线后产生的模板消息会出现在这里</span></div>';
+      }
+
+      return [
+        '<div class="store-table-wrap">',
+        '<table class="store-table orders-table">',
+        '<thead><tr>',
+        '<th>时间</th>',
+        '<th>类型</th>',
+        '<th>结果</th>',
+        '<th>接收方</th>',
+        '<th>摘要</th>',
+        '<th>订单</th>',
+        '<th>说明</th>',
+        '</tr></thead>',
+        '<tbody>',
+        logs.map(function (log) {
+          const status = log.status || '';
+          const statusLabel = LOG_STATUS_LABELS[status] || status || '--';
+          const statusClass = LOG_STATUS_CLASS[status] || '';
+          const roleLabel = ROLE_LABELS[log.recipientRole] || log.recipientRole || '--';
+          const note = log.errMsg || log.dataPreview || '--';
+          return [
+            '<tr>',
+            '<td>' + PetAdmin.escapeHtml(log.createTimeText || '--') + '</td>',
+            '<td>' + PetAdmin.escapeHtml(log.typeLabel || log.type || '--') + '</td>',
+            '<td><span class="store-status ' + statusClass + '">' + PetAdmin.escapeHtml(statusLabel) + '</span></td>',
+            '<td>' + PetAdmin.escapeHtml(roleLabel) + '<div class="store-sub">' + PetAdmin.escapeHtml(log.touserMasked || '--') + '</div></td>',
+            '<td>' + PetAdmin.escapeHtml(log.summary || '--') + '</td>',
+            '<td>' + PetAdmin.escapeHtml(log.orderDisplayNo || log.order_id || '--') + '</td>',
+            '<td class="push-log-note">' + PetAdmin.escapeHtml(note) + '</td>',
+            '</tr>'
+          ].join('');
+        }).join(''),
+        '</tbody></table></div>'
+      ].join('');
+    }
+
+    async function viewPushLogs(storeId, storeName) {
+      if (!storeId) return;
+      processingId = storeId;
+      currentLogStoreId = storeId;
+      currentLogStoreName = storeName || '';
+      logsModalTitleEl.textContent = '历史推送';
+      logsModalMetaEl.textContent = storeName ? ('店铺：' + storeName) : '';
+      logsModalBodyEl.innerHTML = '<div class="admin-loading">加载中...</div>';
+      logsModalEl.hidden = false;
+
+      try {
+        const params = new URLSearchParams();
+        params.set('store_id', storeId);
+        params.set('limit', '100');
+        if (logTypeFilterEl.value) params.set('type', logTypeFilterEl.value);
+        if (logStatusFilterEl.value) params.set('status', logStatusFilterEl.value);
+
+        const data = await PetAdmin.api('/api/admin/stores/push-logs?' + params.toString());
+        if (!data.success) throw new Error(data.errMsg || '加载推送历史失败');
+        const logs = data.logs || [];
+        logsModalMetaEl.textContent = [
+          data.storeName ? ('店铺：' + data.storeName) : (storeName ? ('店铺：' + storeName) : ''),
+          '共 ' + (data.total || logs.length) + ' 条'
+        ].filter(Boolean).join(' · ');
+        logsModalBodyEl.innerHTML = renderLogsTable(logs);
+      } catch (err) {
+        logsModalBodyEl.innerHTML = '<div class="admin-empty"><strong>加载失败</strong><span>' + PetAdmin.escapeHtml(err.message) + '</span></div>';
+      } finally {
+        processingId = '';
+      }
+    }
+
+    async function viewCoopContract(storeId) {
+      if (!storeId || processingId) return;
+      processingId = storeId;
+      try {
+        const data = await PetAdmin.api('/api/admin/stores/coop-contract?store_id=' + encodeURIComponent(storeId));
+        if (!data.success) throw new Error(data.errMsg || '加载协议失败');
+        const contract = data.contract || {};
+        contractModalTitleEl.textContent = contract.title || '商家入驻平台合作协议';
+        contractModalMetaEl.textContent = [
+          data.storeName ? ('店铺：' + data.storeName) : '',
+          data.coopContractSignTime ? ('签署时间：' + data.coopContractSignTime) : ''
+        ].filter(Boolean).join(' · ');
+        contractModalBodyEl.textContent = contract.bodyText
+          || '协议正文缺失';
+        if (contract.signed && contract.signTime) {
+          contractModalBodyEl.textContent += '\n\n—— 电子签署记录 ——\n签署时间：'
+            + contract.signTime
+            + '\n签署方式：'
+            + (contract.signMethod === 'electronic' ? '电子确认' : (contract.signMethod || '电子确认'));
+        }
+        contractModalEl.hidden = false;
+      } catch (err) {
+        alert(err.message || '加载协议失败');
+      } finally {
+        processingId = '';
+      }
+    }
+
+    function renderStores(stores, total) {
+      summaryEl.textContent = '共 ' + total + ' 家店铺，当前显示 ' + stores.length + ' 条';
+
+      if (!stores.length) {
+        contentEl.innerHTML = '<div class="card admin-empty"><strong>暂无店铺</strong><span>调整筛选条件后重试</span></div>';
+        return;
+      }
+
+      contentEl.innerHTML = [
+        '<div class="store-list-desktop store-table-wrap card">',
+        '<table class="store-table">',
+        '<thead><tr>',
+        '<th>店铺</th>',
+        '<th>负责人</th>',
+        '<th>微信昵称</th>',
+        '<th>微信 openid</th>',
+        '<th>openids.oa</th>',
+        '<th>联系电话</th>',
+        '<th>入驻状态</th>',
+        '<th>营业状态</th>',
+        '<th>更新时间</th>',
+        '<th>操作</th>',
+        '</tr></thead>',
+        '<tbody>',
+        stores.map(renderStoreRow).join(''),
+        '</tbody></table></div>',
+        '<div class="store-list-mobile">',
+        stores.map(renderStoreCard).join(''),
+        '</div>'
+      ].join('');
+
+      bindStoreActions(contentEl);
+    }
+
+    function bindStoreActions(root) {
+      root.querySelectorAll('[data-action]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const storeId = btn.getAttribute('data-id');
+          const action = btn.getAttribute('data-action');
+          if (!storeId || !action || processingId) return;
+          if (action === 'view-detail') {
+            window.location.href = 'store-detail.html?store_id=' + encodeURIComponent(storeId);
+            return;
+          }
+          if (action === 'view-orders') {
+            viewStoreOrders(storeId, btn.getAttribute('data-name') || '');
+            return;
+          }
+          if (action === 'view-logs') {
+            logTypeFilterEl.value = '';
+            logStatusFilterEl.value = '';
+            viewPushLogs(storeId, btn.getAttribute('data-name') || '');
+            return;
+          }
+          if (action === 'view-contract') {
+            viewCoopContract(storeId);
+            return;
+          }
+          if (action === 'view-license') {
+            const url = btn.getAttribute('data-url');
+            if (url) window.open(url, '_blank', 'noopener');
+            return;
+          }
+          if (action === 'bind-oa') {
+            bindStoreOa(storeId, btn.getAttribute('data-oa') || '');
+            return;
+          }
+          if (action === 'disable') {
+            const reason = window.prompt('请输入关闭原因（可选）', '店铺已被平台关闭，如有疑问请联系客服');
+            if (reason === null) return;
+            updateAccess(storeId, 'disable', reason);
+            return;
+          }
+          if (action === 'enable') {
+            if (!window.confirm('确定重新开通该店铺？商家端权限将恢复。')) return;
+            updateAccess(storeId, 'enable');
+            return;
+          }
+          if (action === 'delete') {
+            deleteStore(storeId, btn.getAttribute('data-name') || '');
+          }
+        });
+      });
+    }
+
+    function buildStoreActionsHtml(item) {
+      const status = item.merchantApplyStatus || '';
+      const oaBound = !!item.ownerOaBound;
+      const oaOpenid = item.ownerOaOpenid || '';
+      const actions = [];
+      actions.push('<button class="btn btn-outline btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-action="view-detail">详情</button>');
+      actions.push('<button class="btn btn-outline btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-name="' + PetAdmin.escapeHtml(item.name || '') + '" data-action="view-orders">订单</button>');
+      actions.push('<button class="btn btn-outline btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-name="' + PetAdmin.escapeHtml(item.name || '') + '" data-action="view-logs">推送</button>');
+      actions.push('<button class="btn btn-outline btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-oa="' + PetAdmin.escapeHtml(oaOpenid) + '" data-action="bind-oa">' + (oaBound ? '改绑OA' : '补绑OA') + '</button>');
+      if (item.hasCoopContract) {
+        actions.push('<button class="btn btn-outline btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-action="view-contract">协议</button>');
+      }
+      if (item.hasBusinessLicense && item.businessLicense) {
+        actions.push('<button class="btn btn-outline btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-url="' + PetAdmin.escapeHtml(item.businessLicense) + '" data-action="view-license">执照</button>');
+      }
+      if (status === 'approved') {
+        actions.push('<button class="btn btn-danger btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-action="disable">关闭</button>');
+      } else if (status === 'disabled') {
+        actions.push('<button class="btn btn-primary btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-action="enable">开通</button>');
+      }
+      actions.push('<button class="btn btn-danger btn-sm" data-id="' + PetAdmin.escapeHtml(item.store_id) + '" data-name="' + PetAdmin.escapeHtml(item.name || '') + '" data-action="delete">删除</button>');
+      return actions.length ? actions.join('') : '<span class="store-action-muted">--</span>';
+    }
+
+    function renderStoreCard(item) {
+      const status = item.merchantApplyStatus || '';
+      const statusLabel = STATUS_LABELS[status] || status || '--';
+      const statusClass = STATUS_CLASS[status] || '';
+      const note = status === 'disabled'
+        ? (item.adminDisableReason || '')
+        : (status === 'rejected' ? (item.rejectReason || '') : '');
+      const oaBound = !!item.ownerOaBound;
+      const oaOpenid = item.ownerOaOpenid || '';
+      const oaStatusClass = oaBound ? 'status-approved' : 'status-rejected';
+      const oaStatusLabel = oaBound ? '已绑定' : '未绑定';
+
+      return [
+        '<article class="card store-mobile-card">',
+        '<div class="store-mobile-head">',
+        '<div class="store-mobile-title">',
+        '<strong>' + PetAdmin.escapeHtml(item.name || '未命名店铺') + '</strong>',
+        '<div class="store-sub">' + PetAdmin.escapeHtml(item.displayNo || item.store_id || '--') + '</div>',
+        note ? '<div class="store-note">' + PetAdmin.escapeHtml(note) + '</div>' : '',
+        '</div>',
+        '<div class="store-mobile-badges">',
+        '<span class="store-status ' + statusClass + '">' + PetAdmin.escapeHtml(statusLabel) + '</span>',
+        '<span class="detail-biz-status">' + PetAdmin.escapeHtml(item.businessStatus || '--') + '</span>',
+        '</div>',
+        '</div>',
+        '<dl class="store-mobile-meta">',
+        '<div><dt>负责人</dt><dd>' + PetAdmin.escapeHtml(item.legalName || '--') + '</dd></div>',
+        '<div><dt>微信昵称</dt><dd>' + PetAdmin.escapeHtml(item.applicantNickName || item.applicantName || '--') + '</dd></div>',
+        '<div><dt>联系电话</dt><dd>' + PetAdmin.escapeHtml(item.contactPhone || item.applicantPhone || '--') + '</dd></div>',
+        '<div><dt>更新时间</dt><dd>' + PetAdmin.escapeHtml(item.updateTimeText || '--') + '</dd></div>',
+        '<div class="store-mobile-meta-full"><dt>微信 openid</dt><dd class="store-openid">' + PetAdmin.escapeHtml(item.applicantOpenid || '--') + '</dd></div>',
+        '<div class="store-mobile-meta-full"><dt>openids.oa</dt><dd>',
+        '<span class="store-status ' + oaStatusClass + '">' + PetAdmin.escapeHtml(oaStatusLabel) + '</span>',
+        '<div class="store-sub store-openid">' + PetAdmin.escapeHtml(oaOpenid || '--') + '</div>',
+        '</dd></div>',
+        '</dl>',
+        '<div class="store-mobile-actions">' + buildStoreActionsHtml(item) + '</div>',
+        '</article>'
+      ].join('');
+    }
+
+    function renderStoreRow(item) {
+      const status = item.merchantApplyStatus || '';
+      const statusLabel = STATUS_LABELS[status] || status || '--';
+      const statusClass = STATUS_CLASS[status] || '';
+      const note = status === 'disabled'
+        ? (item.adminDisableReason || '')
+        : (status === 'rejected' ? (item.rejectReason || '') : '');
+
+      const oaBound = !!item.ownerOaBound;
+      const oaOpenid = item.ownerOaOpenid || '';
+      const oaStatusClass = oaBound ? 'status-approved' : 'status-rejected';
+      const oaStatusLabel = oaBound ? '已绑定' : '未绑定';
+      const actionsHtml = buildStoreActionsHtml(item);
+
+      return [
+        '<tr>',
+        '<td><strong>' + PetAdmin.escapeHtml(item.name || '未命名店铺') + '</strong>',
+        '<div class="store-sub">' + PetAdmin.escapeHtml(item.displayNo || item.store_id || '--') + '</div>',
+        note ? '<div class="store-note">' + PetAdmin.escapeHtml(note) + '</div>' : '',
+        '</td>',
+        '<td>' + PetAdmin.escapeHtml(item.legalName || '--') + '</td>',
+        '<td>' + PetAdmin.escapeHtml(item.applicantNickName || item.applicantName || '--') + '</td>',
+        '<td class="store-openid">' + PetAdmin.escapeHtml(item.applicantOpenid || '--') + '</td>',
+        '<td class="store-openid">',
+        '<span class="store-status ' + oaStatusClass + '">' + PetAdmin.escapeHtml(oaStatusLabel) + '</span>',
+        '<div class="store-sub">' + PetAdmin.escapeHtml(oaOpenid || '--') + '</div>',
+        '</td>',
+        '<td>' + PetAdmin.escapeHtml(item.contactPhone || item.applicantPhone || '--') + '</td>',
+        '<td><span class="store-status ' + statusClass + '">' + PetAdmin.escapeHtml(statusLabel) + '</span></td>',
+        '<td>' + PetAdmin.escapeHtml(item.businessStatus || '--') + '</td>',
+        '<td>' + PetAdmin.escapeHtml(item.updateTimeText || '--') + '</td>',
+        '<td class="store-actions">' + actionsHtml + '</td>',
+        '</tr>'
+      ].join('');
+    }
+
+    async function bindStoreOa(storeId, currentOa) {
+      if (!storeId || processingId) return;
+      const tip = [
+        '请输入店主的服务号 openids.oa',
+        '可在微信公众平台 → 用户管理 中查看粉丝 openid',
+        '留空并确认将清空绑定'
+      ].join('\n');
+      const input = window.prompt(tip, currentOa || '');
+      if (input === null) return;
+
+      const oaOpenid = String(input || '').trim();
+      if (!oaOpenid) {
+        if (!window.confirm('确定清空该店主的 openids.oa？清空后将无法收到服务号推送。')) return;
+      }
+
+      processingId = storeId;
+      contentEl.querySelectorAll('button').forEach(function (btn) {
+        btn.disabled = true;
+      });
+
+      try {
+        const data = await PetAdmin.api('/api/admin/stores/bind-oa', {
+          method: 'POST',
+          body: JSON.stringify({
+            store_id: storeId,
+            oa_openid: oaOpenid
+          })
+        });
+        if (!data.success) throw new Error(data.errMsg || '绑定失败');
+        alert(oaOpenid ? '已绑定 openids.oa' : '已清空 openids.oa');
+        await loadStores();
+      } catch (err) {
+        alert(err.message || '绑定失败');
+        contentEl.querySelectorAll('button').forEach(function (btn) {
+          btn.disabled = false;
+        });
+      } finally {
+        processingId = '';
+      }
+    }
+
+    async function loadStores() {
+      contentEl.innerHTML = '<div class="card admin-loading">加载中...</div>';
+      summaryEl.textContent = '';
+
+      const params = new URLSearchParams();
+      const status = statusFilterEl.value;
+      const keyword = keywordInputEl.value.trim();
+      if (status) params.set('status', status);
+      if (keyword) params.set('keyword', keyword);
+
+      try {
+        const query = params.toString();
+        const data = await PetAdmin.api('/api/admin/stores' + (query ? '?' + query : ''));
+        if (!data.success) throw new Error(data.errMsg || '加载失败');
+        renderStores(data.stores || [], data.total || 0);
+      } catch (err) {
+        contentEl.innerHTML = '<div class="card admin-empty"><strong>加载失败</strong><span>' + PetAdmin.escapeHtml(err.message) + '</span></div>';
+      }
+    }
+
+    async function updateAccess(storeId, action, reason) {
+      processingId = storeId;
+      contentEl.querySelectorAll('button').forEach(function (btn) {
+        btn.disabled = true;
+      });
+
+      try {
+        const data = await PetAdmin.api('/api/admin/stores/access', {
+          method: 'POST',
+          body: JSON.stringify({
+            store_id: storeId,
+            action: action,
+            reason: reason || ''
+          })
+        });
+        if (!data.success) throw new Error(data.errMsg || '操作失败');
+        alert(action === 'disable' ? '店铺已关闭' : '店铺已重新开通');
+        await loadStores();
+      } catch (err) {
+        alert(err.message || '操作失败');
+        contentEl.querySelectorAll('button').forEach(function (btn) {
+          btn.disabled = false;
+        });
+      } finally {
+        processingId = '';
+      }
+    }
+
+    async function deleteStore(storeId, storeName) {
+      if (!storeId || processingId) return;
+      const label = storeName || storeId;
+      const tip = [
+        '确定删除店铺「' + label + '」？',
+        '',
+        '删除后不可恢复：',
+        '· 店铺资料与入驻申请将被清除',
+        '· 店主需重新完成商家入驻并填写资料',
+        '· 该店订单、日志、记账等业务数据一并删除'
+      ].join('\n');
+      if (!window.confirm(tip)) return;
+
+      const confirmText = window.prompt('请输入店铺名称以确认删除：\n' + label, '');
+      if (confirmText === null) return;
+      if (String(confirmText).trim() !== String(label).trim()) {
+        alert('店铺名称不匹配，已取消删除');
+        return;
+      }
+
+      processingId = storeId;
+      contentEl.querySelectorAll('button').forEach(function (btn) {
+        btn.disabled = true;
+      });
+
+      try {
+        const data = await PetAdmin.api('/api/admin/stores/delete', {
+          method: 'POST',
+          body: JSON.stringify({ store_id: storeId })
+        });
+        if (!data.success) throw new Error(data.errMsg || '删除失败');
+        alert('店铺已删除，该用户下次登录需重新商家入驻');
+        await loadStores();
+      } catch (err) {
+        alert(err.message || '删除失败');
+        contentEl.querySelectorAll('button').forEach(function (btn) {
+          btn.disabled = false;
+        });
+      } finally {
+        processingId = '';
+      }
+    }
+
+    loadStores().then(function () {
+      const params = new URLSearchParams(window.location.search || '');
+      const viewContractId = params.get('view_contract');
+      if (viewContractId) viewCoopContract(viewContractId);
+    });
+  </script>
+</body>
+</html>

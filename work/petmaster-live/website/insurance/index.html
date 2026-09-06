@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#fff7ef">
+  <title>平安宠物保险购买指引｜熠森宠物</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #3d2b1f;
+      --muted: #887568;
+      --brand: #e98657;
+      --brand-deep: #d96f43;
+      --line: rgba(108, 73, 51, .11);
+      --paper: rgba(255, 255, 255, .92);
+    }
+    * { box-sizing: border-box; }
+    html { background: #fff7ef; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: max(24px, env(safe-area-inset-top)) 18px max(30px, env(safe-area-inset-bottom));
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 95% 2%, rgba(247, 190, 146, .34), transparent 34%),
+        radial-gradient(circle at 0 78%, rgba(190, 220, 202, .24), transparent 34%),
+        #fff7ef;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    }
+    .shell { width: min(100%, 520px); margin: 0 auto; }
+    .brand { display: flex; align-items: center; gap: 10px; margin: 4px 4px 22px; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 13px;
+      color: #fff;
+      background: linear-gradient(145deg, #f3a273, var(--brand));
+      box-shadow: 0 8px 22px rgba(217, 111, 67, .22);
+      font-size: 21px;
+    }
+    .brand-name { font-size: 16px; font-weight: 700; letter-spacing: .04em; }
+    .brand-sub { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .card {
+      overflow: hidden;
+      padding: 30px 24px 24px;
+      border: 1px solid rgba(255, 255, 255, .82);
+      border-radius: 28px;
+      background: var(--paper);
+      box-shadow: 0 18px 55px rgba(111, 75, 53, .11);
+      backdrop-filter: blur(16px);
+    }
+    .hero { text-align: center; }
+    .pet-icon {
+      display: grid;
+      place-items: center;
+      width: 78px;
+      height: 78px;
+      margin: 0 auto 20px;
+      border-radius: 25px;
+      background: linear-gradient(145deg, #fff1e6, #ffe0cb);
+      font-size: 39px;
+      transform: rotate(-2deg);
+    }
+    h1 { margin: 0; font-size: 25px; line-height: 1.35; letter-spacing: -.02em; }
+    .lead { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .notice {
+      display: flex;
+      gap: 12px;
+      margin: 26px 0 20px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fffaf6;
+      text-align: left;
+    }
+    .notice-num {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: var(--brand-deep);
+      background: #ffe8d9;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .notice strong { display: block; margin: 2px 0 4px; font-size: 15px; }
+    .notice p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 999px;
+      font: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, #f09a69, var(--brand-deep));
+      box-shadow: 0 12px 24px rgba(217, 111, 67, .24);
+    }
+    .btn-primary:active { transform: scale(.985); }
+    .btn-link { margin-top: 10px; color: var(--brand-deep); background: #fff1e8; }
+    .btn-link[hidden] { display: none; }
+    .hint { margin: 16px 8px 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+    .provider {
+      margin: 18px 4px 0;
+      color: #a08d80;
+      font-size: 11px;
+      line-height: 1.7;
+      text-align: center;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(34px, calc(env(safe-area-inset-bottom) + 18px));
+      z-index: 10;
+      padding: 11px 18px;
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(45, 34, 27, .9);
+      font-size: 14px;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      transition: opacity .2s, transform .2s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true">🐾</div>
+      <div>
+        <div class="brand-name">熠森宠物</div>
+        <div class="brand-sub">PetMaster · 宠物生活服务</div>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="hero">
+        <div class="pet-icon" aria-hidden="true">🐶</div>
+        <h1>前往平安宠物保险</h1>
+        <p class="lead">受微信页面访问规则限制，请复制购买链接后在手机浏览器中打开。</p>
+      </div>
+
+      <div class="notice">
+        <div class="notice-num">1</div>
+        <div>
+          <strong>复制购买链接</strong>
+          <p>打开手机浏览器，在地址栏粘贴链接并访问，即可进入平安官方页面。</p>
+        </div>
+      </div>
+
+      <button id="copyButton" class="btn btn-primary" type="button">复制平安购买链接</button>
+      <a id="openButton" class="btn btn-link" href="#" rel="noreferrer">已在手机浏览器，直接打开</a>
+      <p class="hint">复制完成后，请切换到手机浏览器，在地址栏中粘贴并访问。</p>
+    </section>
+
+    <footer class="provider">保险产品及承保、理赔服务由中国平安相关保险机构提供。熠森宠物仅提供页面入口，请以平安官方页面展示的产品条款为准。</footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">购买链接已复制</div>
+  <script>
+    (function () {
+      var productUrl = 'https://emcs.pa18.com/v2/product/p_pet/index.html?appType=01&key=120260618157662108057987395&productName=%E5%B9%B3%E5%AE%89%E5%AE%A0%E6%97%A0%E5%BF%A7%C2%B7%E7%88%B1%E5%AE%A0%E4%BF%9D%E9%9A%9C%E5%8D%A12.0%E7%89%88(%E7%BA%BF%E4%B8%8B%E7%89%88)';
+      var copyButton = document.getElementById('copyButton');
+      var openButton = document.getElementById('openButton');
+      var toast = document.getElementById('toast');
+      var toastTimer;
+
+      openButton.href = productUrl;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2200);
+      }
+
+      function fallbackCopy() {
+        var input = document.createElement('textarea');
+        input.value = productUrl;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+        var copied = document.execCommand('copy');
+        document.body.removeChild(input);
+        if (!copied) throw new Error('copy failed');
+      }
+
+      copyButton.addEventListener('click', function () {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(productUrl)
+            .then(function () { showToast('购买链接已复制'); })
+            .catch(function () {
+              try { fallbackCopy(); showToast('购买链接已复制'); }
+              catch (error) { showToast('复制失败，请稍后重试'); }
+            });
+          return;
+        }
+        try { fallbackCopy(); showToast('购买链接已复制'); }
+        catch (error) { showToast('复制失败，请稍后重试'); }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -214,10 +214,25 @@ function filterCustomers(customers, keyword) {
   });
 }
 
+function decorateCustomerTags(customers, tagMap = {}) {
+  return (Array.isArray(customers) ? customers : []).map((customer) => {
+    const saved = tagMap[customer.id] || {};
+    const systemTags = [];
+    if (customer.orderCount <= 1) systemTags.push('新客户');
+    else if (customer.orderCount >= 5) systemTags.push('高频客户');
+    else systemTags.push('老客户');
+    if (customer.petCount > 1) systemTags.push('多宠家庭');
+    if (customer.lastOrderTime && Date.now() - customer.lastOrderTime < 30 * 86400000) systemTags.push('近期客户');
+    const tags = [...systemTags, ...(Array.isArray(saved.tags) ? saved.tags : [])];
+    return { ...customer, tags, customTags: Array.isArray(saved.tags) ? saved.tags : [], customerNote: saved.note || '' };
+  });
+}
+
 module.exports = {
   getCustomerKey,
   buildCustomersFromOrders,
   findCustomerById,
   listCustomerOrders,
   filterCustomers
+  ,decorateCustomerTags
 };

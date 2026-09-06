@@ -1,0 +1,48 @@
+<view wx:if="{{loading}}" class="insurance-state">
+  <view class="insurance-state-icon loading-icon">···</view>
+  <text class="insurance-state-title">正在验证保险页面</text>
+  <text class="insurance-state-desc">请稍候</text>
+</view>
+
+<view wx:elif="{{expired}}" class="insurance-state">
+  <view class="insurance-state-icon">⌛</view>
+  <text class="insurance-state-title">{{errorText || '链接已过期'}}</text>
+  <text class="insurance-state-desc">保险推广页面仅在生成后 {{validHours}} 小时内有效，请联系商家重新发送。</text>
+  <button class="insurance-state-btn" bindtap="onGoHome">返回小程序首页</button>
+</view>
+
+<view wx:else class="insurance-guide">
+  <view class="insurance-guide-card">
+    <view class="insurance-guide-icon">🐾</view>
+    <text class="insurance-guide-title">前往平安宠物保险</text>
+    <text class="insurance-guide-desc">点击二维码放大后长按识别，扫码后将自动进入平安购买页面。</text>
+
+    <view class="insurance-qr-wrap" bindtap="onPreviewInsuranceQr">
+      <image
+        class="insurance-qr"
+        src="{{insuranceQrPath}}"
+        mode="aspectFit"
+        show-menu-by-longpress="{{true}}"
+      />
+    </view>
+    <text class="insurance-qr-hint">点击放大，再长按识别二维码</text>
+
+    <view class="insurance-guide-step">
+      <text class="insurance-guide-step-num">1</text>
+      <view class="insurance-guide-step-content">
+        <text class="insurance-guide-step-title">二维码无法识别时</text>
+        <text class="insurance-guide-step-desc">点击下方按钮复制链接，再打开手机浏览器粘贴访问。</text>
+      </view>
+    </view>
+    <view class="insurance-guide-step">
+      <text class="insurance-guide-step-num">2</text>
+      <view class="insurance-guide-step-content">
+        <text class="insurance-guide-step-title">在手机浏览器打开</text>
+        <text class="insurance-guide-step-desc">打开手机浏览器，在地址栏粘贴链接并访问。</text>
+      </view>
+    </view>
+
+    <button class="insurance-copy-btn" bindtap="onCopyInsuranceLink">复制平安购买链接</button>
+    <text class="insurance-guide-provider">保险产品及承保、理赔服务由中国平安相关保险机构提供，请以平安官方页面条款为准。</text>
+  </view>
+</view>

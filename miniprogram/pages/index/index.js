@@ -1,4 +1,5 @@
 const app = getApp();
+const { capturePromotionEntry } = require('../../utils/growth');
 const { guardUserTabPage } = require('../../utils/shell');
 const { buildStoreShareConfig, buildTimelineShareConfig, resolveShareStoreId, listGuestShareCards, prefetchStoreShareImage } = require('../../utils/storeShare');
 const storeDebug = require('../../utils/storeDebug');
@@ -13,6 +14,7 @@ const {
 } = require('../../utils/userAuth');
 const { copyText } = require('../../utils/clipboard');
 const { hideHomeButton, getCustomNavMetrics } = require('../../utils/navBar');
+const { openPetInsurance } = require('../../utils/petInsurance');
 const petApi = require('../../utils/pet');
 const butler = require('../../utils/petButler');
 const { claimProxyOrdersForGuest, extractProxyClaimToken } = require('../../utils/proxyOrder');
@@ -238,6 +240,7 @@ Page({
     hideHomeButton();
     this._initCustomNav();
     storeDebug.logEntryOptions('首页 onLoad', options);
+    capturePromotionEntry(options || {});
 
     const petInvite = String((options && (options.pet_invite || options.inviteId)) || '').trim();
     if (petInvite) {
@@ -772,6 +775,10 @@ Page({
       return;
     }
     this._navigateToReserve(cards.length === 1 ? cards[0].key : '');
+  },
+
+  onGoPetInsurance() {
+    openPetInsurance();
   },
 
   onCloseReservePicker() {

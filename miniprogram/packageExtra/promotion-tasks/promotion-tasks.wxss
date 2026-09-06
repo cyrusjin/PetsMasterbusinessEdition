@@ -1,0 +1,52 @@
+page { background:#f8f2e8; }
+.promotion-page { min-height:100vh; color:#403523; background:radial-gradient(circle at 95% 2%,rgba(224,176,83,.22),transparent 390rpx),linear-gradient(180deg,#fffaf0,#f6eee1); }
+.promotion-container { padding:24rpx 28rpx 70rpx; }
+.hero-card { position:relative; overflow:hidden; padding:30rpx 28rpx 26rpx; border:1rpx solid rgba(151,99,24,.3); border-radius:32rpx; background:linear-gradient(145deg,#fff9e9,#ecd092 64%,#ce9c46); box-shadow:0 20rpx 48rpx rgba(105,70,20,.16); }
+.hero-glow { position:absolute; top:-150rpx; right:-100rpx; width:390rpx; height:390rpx; border:1rpx solid rgba(103,65,14,.1); border-radius:50%; }
+.hero-mark { position:absolute; top:31rpx; right:29rpx; display:flex; align-items:center; justify-content:center; width:72rpx; height:72rpx; border-radius:23rpx; background:rgba(91,57,15,.82); color:#ffe5a2; font-size:27rpx; font-weight:800; }
+.hero-kicker,.hero-title,.hero-desc { position:relative; z-index:1; display:block; }
+.hero-kicker { color:#98671f; font-size:16rpx; font-weight:700; letter-spacing:2rpx; }
+.hero-title { width:510rpx; margin-top:12rpx; color:#422b10; font-size:38rpx; font-weight:800; line-height:1.25; }
+.hero-desc { width:570rpx; margin-top:13rpx; color:#755b34; font-size:20rpx; line-height:1.55; }
+.flow-row { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; margin-top:26rpx; padding:17rpx 15rpx; border-radius:19rpx; background:rgba(81,51,13,.72); }
+.flow-item { display:flex; flex-direction:column; align-items:center; gap:6rpx; color:#fff1cc; font-size:16rpx; }
+.flow-index { display:flex; align-items:center; justify-content:center; width:29rpx; height:29rpx; border-radius:50%; background:#f0c665; color:#5e3b0e; font-size:16rpx; font-weight:800; }
+.flow-arrow { color:rgba(255,236,192,.55); font-size:27rpx; }
+.safe-tip { display:flex; align-items:flex-start; gap:12rpx; margin-top:18rpx; padding:18rpx 20rpx; border:1rpx solid rgba(60,143,99,.18); border-radius:19rpx; background:rgba(239,252,244,.68); color:#557562; font-size:18rpx; line-height:1.45; }
+.safe-icon { color:#329065; font-weight:800; }
+.loading-card,.empty-card { margin-top:23rpx; padding:46rpx 24rpx; border:1rpx solid rgba(190,161,109,.26); border-radius:24rpx; background:rgba(255,253,248,.72); color:#968468; font-size:21rpx; text-align:center; }
+.empty-title,.empty-desc { display:block; }
+.empty-title { color:#5b4931; font-size:25rpx; font-weight:700; }
+.empty-desc { margin-top:8rpx; }
+.retry-button { width:190rpx; height:66rpx; margin:22rpx auto 0; padding:0; border-radius:17rpx; background:#76501d; color:#fff0c9; font-size:20rpx; font-weight:700; line-height:66rpx; }
+.retry-button::after { border:0; }
+.task-list { display:flex; flex-direction:column; gap:18rpx; margin-top:23rpx; }
+.task-card { padding:23rpx; border:1rpx solid rgba(190,160,105,.32); border-radius:25rpx; background:rgba(255,253,248,.84); box-shadow:0 10rpx 28rpx rgba(104,75,34,.06); }
+.task-card.approved { border-color:rgba(56,145,98,.3); background:linear-gradient(145deg,#fffefb,#edf8f1); }
+.task-card.pending { border-color:rgba(199,144,49,.34); }
+.task-top { display:flex; align-items:flex-start; gap:14rpx; }
+.task-number { display:flex; align-items:center; justify-content:center; width:44rpx; height:44rpx; flex:0 0 auto; border-radius:15rpx; background:#f0ddb5; color:#8c5b18; font-size:20rpx; font-weight:800; }
+.task-copy { display:flex; flex:1; min-width:0; flex-direction:column; }
+.task-title { color:#4c3920; font-size:25rpx; font-weight:800; }
+.task-desc { margin-top:6rpx; color:#948165; font-size:19rpx; line-height:1.45; }
+.status-badge { flex:0 0 auto; padding:6rpx 11rpx; border-radius:999rpx; background:#eee6d7; color:#8a795f; font-size:16rpx; }
+.status-badge.pending { background:#fff1d5; color:#a16b16; }
+.status-badge.approved { background:#e5f5eb; color:#2f8258; }
+.status-badge.rejected { background:#fae9e5; color:#a35948; }
+.requirement-box { display:flex; flex-direction:column; gap:7rpx; margin-top:18rpx; padding:17rpx 18rpx; border-radius:17rpx; background:#f8f1e4; }
+.requirement-label,.reward-label { color:#9a6a24; font-size:17rpx; font-weight:700; }
+.requirement-text { color:#75644d; font-size:19rpx; line-height:1.45; }
+.reward-row { display:flex; align-items:center; justify-content:space-between; margin-top:16rpx; }
+.reward-value { color:#8b5a17; font-size:21rpx; font-weight:800; }
+.review-note { margin-top:14rpx; padding:14rpx 16rpx; border-radius:15rpx; background:#fff0ec; color:#9d5c4c; font-size:18rpx; line-height:1.45; }
+.task-actions { display:flex; justify-content:flex-end; gap:12rpx; margin-top:18rpx; }
+.proof-button { height:70rpx; margin:0; padding:0 23rpx; border-radius:17rpx; font-size:20rpx; font-weight:700; line-height:70rpx; }
+.proof-button::after { border:0; }
+.proof-button.primary { background:linear-gradient(135deg,#805216,#b77d28); color:#fff0c8; }
+.proof-button.secondary { border:1rpx solid rgba(134,88,23,.22); background:#fffaf0; color:#82551a; }
+.proof-button[disabled] { opacity:.55; }
+.status-action { padding:15rpx 20rpx; border-radius:16rpx; background:#eee6d7; color:#8d7b60; font-size:19rpx; }
+.status-action.approved { background:#e6f5eb; color:#2f8258; }
+.status-action.pending { background:#fff1d5; color:#9d6818; }
+.rules-card { display:flex; flex-direction:column; gap:11rpx; margin-top:24rpx; padding:22rpx; border:1rpx solid rgba(190,161,109,.27); border-radius:22rpx; background:rgba(255,253,248,.58); color:#83735d; font-size:18rpx; line-height:1.45; }
+.rules-title { margin-bottom:3rpx; color:#57432a; font-size:23rpx; font-weight:800; }

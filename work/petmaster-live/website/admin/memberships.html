@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>会员与推广 · 熠森宠物 PetMaster</title>
+  <link rel="stylesheet" href="admin.css?v=20260902membership3" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+</head>
+<body class="admin-page membership-admin-page">
+  <div class="bg-glow" aria-hidden="true"></div>
+  <header class="admin-header">
+    <div class="container admin-header-inner">
+      <a class="admin-brand" href="../index.html">
+        <img src="../assets/card/card-pets.png" alt="熠森宠物" />
+        <span><strong>熠森宠物管理后台</strong><small>商家会员、任务与兑换码</small></span>
+      </a>
+      <div class="admin-user">
+        <span id="admin-user"></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+  <nav class="admin-nav">
+    <div class="container admin-nav-inner">
+      <a class="admin-nav-link" href="index.html">入驻审核</a>
+      <a class="admin-nav-link" href="stores.html">店铺管理</a>
+      <a class="admin-nav-link" href="dashboard.html">仪表盘</a>
+      <a class="admin-nav-link" href="versions.html">版本管理</a>
+      <a class="admin-nav-link" href="announcements.html">公告管理</a>
+      <a class="admin-nav-link active" href="memberships.html">会员与推广</a>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container admin-panel admin-panel-wide">
+      <div class="membership-admin-hero card">
+        <div>
+          <span class="membership-admin-kicker">PETMASTER MEMBERSHIP</span>
+          <h1>高级版兑换码</h1>
+          <p>统一会员权限按时长开通。可审核推广点赞奖励，或生成指定天数的会员兑换码。</p>
+        </div>
+        <div class="membership-price-chip"><strong>¥19.9</strong><span>起 / 月</span></div>
+      </div>
+
+      <section class="card membership-task-card">
+        <div class="admin-toolbar membership-toolbar">
+          <div><h2>推广任务发布</h2><p>保存并发布后，任务才会出现在商家端；暂停后不再接受新提交。</p></div>
+          <button class="btn btn-outline btn-sm" id="task-create-btn" type="button">新建任务</button>
+        </div>
+        <form id="promotion-form" class="promotion-task-form" hidden>
+          <input id="promotion-id" type="hidden" />
+          <label><span>任务标题</span><input id="promotion-title" type="text" maxlength="80" placeholder="例如：小红书发布门店介绍" required /></label>
+          <label><span>奖励时长（月）</span><input id="promotion-reward" type="number" min="1" max="120" value="1" required /></label>
+          <label class="promotion-wide"><span>任务说明</span><textarea id="promotion-description" maxlength="500" placeholder="告诉商家需要发布什么内容" required></textarea></label>
+          <label class="promotion-wide"><span>截图要求</span><textarea id="promotion-requirement" maxlength="500" placeholder="例如：截图需清晰显示账号、正文和发布时间" required></textarea></label>
+          <label><span>开始时间（可选）</span><input id="promotion-start" type="datetime-local" /></label>
+          <label><span>结束时间（可选）</span><input id="promotion-end" type="datetime-local" /></label>
+          <label><span>排序</span><input id="promotion-sort" type="number" min="-9999" max="9999" value="0" /></label>
+          <label><span>保存状态</span><select id="promotion-status"><option value="draft">草稿</option><option value="published">立即发布</option><option value="paused">暂停</option></select></label>
+          <div class="promotion-form-actions promotion-wide"><button class="btn btn-primary" id="promotion-save-btn" type="submit">保存任务</button><button class="btn btn-outline" id="promotion-cancel-btn" type="button">取消</button></div>
+        </form>
+        <div id="promotion-task-list" class="promotion-manage-list"><div class="admin-loading">加载中...</div></div>
+      </section>
+
+      <section class="card membership-task-card">
+        <div class="admin-toolbar membership-toolbar">
+          <div><h2>推广提交审核</h2><p>核对截图和总点赞数；按 1 个赞赠送 1 天，多平台点赞数可合并。</p></div>
+          <button class="btn btn-outline btn-sm" id="task-refresh-btn" type="button">刷新</button>
+        </div>
+        <div id="task-list" class="membership-task-list"><div class="admin-loading">加载中...</div></div>
+      </section>
+
+      <section class="card membership-generate-card">
+        <div class="admin-toolbar membership-toolbar">
+          <div><h2>生成新兑换码</h2><p>兑换码会加密保存，可随时在下方完整查看和复制。</p></div>
+        </div>
+        <form id="generate-form" class="membership-form">
+          <label><span>生成数量</span><input id="code-count" type="number" min="1" max="200" value="10" required /></label>
+          <label class="membership-duration-field"><span>兑换时长（天）</span><input id="code-duration" type="number" min="1" max="3650" value="30" required /><div class="duration-quick" id="duration-quick"><button type="button" data-days="7">7 天</button><button type="button" data-days="30" class="active">30 天</button><button type="button" data-days="90">90 天</button><button type="button" data-days="180">180 天</button><button type="button" data-days="365">365 天</button></div></label>
+          <label><span>失效日期（可选）</span><input id="code-expiry" type="date" /></label>
+          <label class="membership-form-note"><span>批次备注</span><input id="code-note" type="text" maxlength="120" placeholder="例如：8 月活动赠送" /></label>
+          <button class="btn btn-primary" id="generate-btn" type="submit">生成兑换码</button>
+        </form>
+        <div id="generated-panel" class="generated-panel" hidden>
+          <div class="generated-head"><strong id="generated-title">本次生成结果</strong><div><button class="btn btn-outline btn-sm" id="copy-btn" type="button">复制全部</button><button class="btn btn-outline btn-sm" id="download-btn" type="button">下载 TXT</button></div></div>
+          <pre id="generated-codes"></pre>
+        </div>
+      </section>
+
+      <section class="card membership-list-card">
+        <div class="admin-toolbar membership-toolbar">
+          <div><h2>最近兑换码</h2><p>新生成的兑换码会完整显示；已兑换和已作废的兑换码不能再次使用。</p></div>
+          <div class="membership-list-actions"><button class="btn btn-outline btn-sm" id="copy-active-btn" type="button">复制全部未使用</button><button class="btn btn-outline btn-sm" id="refresh-btn" type="button">刷新</button></div>
+        </div>
+        <div id="code-summary" class="membership-summary"></div>
+        <div class="membership-table-wrap">
+          <table class="membership-table">
+            <thead><tr><th>兑换码</th><th>时长</th><th>状态</th><th>批次备注</th><th>生成时间</th><th>失效时间</th><th>兑换门店</th><th>操作</th></tr></thead>
+            <tbody id="codes-body"><tr><td colspan="8" class="admin-loading">加载中...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="admin.js?v=20260902membership3"></script>
+  <script>
+    if (!PetAdmin.requireAuth()) throw new Error('redirect');
+    document.getElementById('admin-user').textContent = PetAdmin.getUsername();
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      PetAdmin.clearSession(); window.location.href = 'login.html';
+    });
+
+    const bodyEl = document.getElementById('codes-body');
+    const summaryEl = document.getElementById('code-summary');
+    const generatedPanel = document.getElementById('generated-panel');
+    const generatedCodesEl = document.getElementById('generated-codes');
+    let latestCodes = [];
+    let listedCodes = [];
+    const taskListEl = document.getElementById('task-list');
+    let taskSubmissions = [];
+    const promotionTaskListEl = document.getElementById('promotion-task-list');
+    let promotionTasks = [];
+
+    function formatTime(value) {
+      if (!value) return '--';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '--' : date.toLocaleString('zh-CN', { hour12: false });
+    }
+
+    function statusLabel(status) {
+      return status === 'redeemed' ? '已兑换' : (status === 'void' ? '已作废' : '未使用');
+    }
+
+    async function copyText(text) {
+      const value = String(text || '');
+      if (!value) throw new Error('没有可复制的兑换码');
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(value);
+          return;
+        } catch (_) {
+          // 部分手机浏览器虽暴露 Clipboard API，但会拒绝调用，继续使用兼容方案。
+        }
+      }
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, value.length);
+      let copied = false;
+      try { copied = document.execCommand('copy'); } finally { textarea.remove(); }
+      if (!copied) throw new Error('浏览器未允许访问剪贴板');
+    }
+
+    function showCopied(button, originalText) {
+      if (!button) return;
+      const label = originalText || button.textContent;
+      button.textContent = '已复制';
+      setTimeout(function () { button.textContent = label; }, 1200);
+    }
+
+    function promotionStatusLabel(status) {
+      return status === 'published' ? '已发布' : (status === 'paused' ? '已暂停' : '草稿');
+    }
+
+    function toLocalInput(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 16);
+    }
+
+    function resetPromotionForm(task) {
+      const source = task || {};
+      document.getElementById('promotion-id').value = source.id || '';
+      document.getElementById('promotion-title').value = source.title || '';
+      document.getElementById('promotion-reward').value = source.rewardMonths || 1;
+      document.getElementById('promotion-description').value = source.description || '';
+      document.getElementById('promotion-requirement').value = source.requirementText || '';
+      document.getElementById('promotion-start').value = toLocalInput(source.startsAt);
+      document.getElementById('promotion-end').value = toLocalInput(source.endsAt);
+      document.getElementById('promotion-sort').value = source.sortOrder || 0;
+      document.getElementById('promotion-status').value = source.status || 'draft';
+      document.getElementById('promotion-form').hidden = false;
+      document.getElementById('promotion-title').focus();
+    }
+
+    async function loadPromotionTasks() {
+      promotionTaskListEl.innerHTML = '<div class="admin-loading">加载中...</div>';
+      try {
+        const data = await PetAdmin.api('/api/admin/membership/promotion-tasks');
+        if (!data.success) throw new Error(data.errMsg || '加载失败');
+        promotionTasks = data.tasks || [];
+        if (!promotionTasks.length) {
+          promotionTaskListEl.innerHTML = '<div class="membership-task-empty">还没有推广任务，点击“新建任务”开始设置</div>';
+          return;
+        }
+        promotionTaskListEl.innerHTML = promotionTasks.map(function (item) {
+          const nextStatus = item.status === 'published' ? 'paused' : 'published';
+          const nextLabel = item.status === 'published' ? '暂停' : '发布';
+          return '<article class="promotion-manage-item">'
+            + '<div class="promotion-manage-main"><div><strong>' + PetAdmin.escapeHtml(item.title || '--') + '</strong><span class="promotion-status ' + PetAdmin.escapeHtml(item.status || 'draft') + '">' + promotionStatusLabel(item.status) + '</span></div>'
+            + '<p>' + PetAdmin.escapeHtml(item.description || '') + '</p><small>' + (item.rewardMode === 'like_days' ? '每 1 个赞奖励 1 天' : ('奖励 ' + Number(item.rewardMonths || 1) + ' 个月')) + ' · 截图要求：' + PetAdmin.escapeHtml(item.requirementText || '--') + '</small></div>'
+            + '<div class="promotion-manage-actions"><button class="btn btn-outline btn-sm promotion-edit-btn" data-id="' + PetAdmin.escapeHtml(item.id) + '">编辑</button><button class="btn btn-primary btn-sm promotion-status-btn" data-id="' + PetAdmin.escapeHtml(item.id) + '" data-status="' + nextStatus + '">' + nextLabel + '</button></div>'
+            + '</article>';
+        }).join('');
+      } catch (err) {
+        promotionTaskListEl.innerHTML = '<div class="admin-empty">' + PetAdmin.escapeHtml(err.message || '加载失败') + '</div>';
+      }
+    }
+
+    async function loadTasks() {
+      taskListEl.innerHTML = '<div class="admin-loading">加载中...</div>';
+      try {
+        const data = await PetAdmin.api('/api/admin/membership/tasks?status=pending');
+        if (!data.success) throw new Error(data.errMsg || '加载失败');
+        const list = data.submissions || [];
+        taskSubmissions = list;
+        if (!list.length) {
+          taskListEl.innerHTML = '<div class="membership-task-empty">暂时没有待审核的推广提交</div>';
+          return;
+        }
+        taskListEl.innerHTML = list.map(function (item) {
+          return '<article class="membership-task-item">'
+            + '<a class="membership-task-shot" href="' + PetAdmin.escapeHtml(item.screenshotUrl || '#') + '" target="_blank" rel="noopener"><img src="' + PetAdmin.escapeHtml(item.screenshotUrl || '') + '" alt="朋友圈任务截图" /></a>'
+            + '<div class="membership-task-info"><strong>' + PetAdmin.escapeHtml(item.storeName || item.storeId) + '</strong><span>任务：' + PetAdmin.escapeHtml(item.taskTitle || item.taskCode || '--') + '</span><span>门店 ID：' + PetAdmin.escapeHtml(item.storeId || '--') + '</span><span>提交时间：' + formatTime(item.submittedAt) + '</span><small>' + (item.rewardMode === 'like_days' ? '请核验截图点赞数：1 个赞奖励 1 天' : ('审核通过后自动赠送 ' + Number(item.rewardMonths || 1) + ' 个月使用权限')) + '</small></div>'
+            + '<div class="membership-task-actions"><button class="btn btn-primary btn-sm task-review-btn" data-id="' + PetAdmin.escapeHtml(item.id) + '" data-decision="approve">通过并发放</button><button class="btn btn-outline btn-sm task-review-btn" data-id="' + PetAdmin.escapeHtml(item.id) + '" data-decision="reject">驳回</button></div>'
+            + '</article>';
+        }).join('');
+      } catch (err) {
+        taskListEl.innerHTML = '<div class="admin-empty">' + PetAdmin.escapeHtml(err.message || '加载失败') + '</div>';
+      }
+    }
+
+    taskListEl.addEventListener('click', async function (event) {
+      const button = event.target.closest('.task-review-btn');
+      if (!button) return;
+      const approve = button.dataset.decision === 'approve';
+      let note = '';
+      let likeCount = 0;
+      if (!approve) {
+        note = prompt('请输入驳回原因，商家可以修改后重新提交：', '') || '';
+        if (!note.trim()) return;
+      } else {
+        const item = taskSubmissions.find(function (entry) { return entry.id === button.dataset.id; });
+        if (item && item.rewardMode === 'like_days') {
+          const entered = prompt('请输入截图中核验通过的点赞数（1 个赞 = 1 天）：', '');
+          if (entered === null) return;
+          likeCount = Number(entered);
+          if (!Number.isInteger(likeCount) || likeCount < 1 || likeCount > 3650) { alert('请输入 1 到 3650 之间的整数点赞数'); return; }
+        } else if (!confirm('确认截图符合任务要求并发放对应使用权限？')) return;
+      }
+      button.disabled = true;
+      try {
+        const data = await PetAdmin.api('/api/admin/membership/tasks/review', { method: 'POST', body: JSON.stringify({ id: button.dataset.id, decision: button.dataset.decision, note: note, likeCount: likeCount }) });
+        if (!data.success) throw new Error(data.errMsg || '审核失败');
+        await loadTasks();
+      } catch (err) { alert(err.message || '审核失败'); button.disabled = false; }
+    });
+
+    async function loadCodes() {
+      bodyEl.innerHTML = '<tr><td colspan="8" class="admin-loading">加载中...</td></tr>';
+      try {
+        const data = await PetAdmin.api('/api/admin/membership/codes?limit=300');
+        if (!data.success) throw new Error(data.errMsg || '加载失败');
+        const list = data.codes || [];
+        listedCodes = list;
+        const counts = list.reduce(function (acc, item) { acc[item.status] = (acc[item.status] || 0) + 1; return acc; }, {});
+        summaryEl.innerHTML = '<span>共 ' + list.length + ' 个</span><span class="is-active">未使用 ' + (counts.active || 0) + '</span><span>已兑换 ' + (counts.redeemed || 0) + '</span><span>已作废 ' + (counts.void || 0) + '</span>';
+        if (!list.length) {
+          bodyEl.innerHTML = '<tr><td colspan="8" class="admin-empty">还没有生成过兑换码</td></tr>';
+          return;
+        }
+        bodyEl.innerHTML = list.map(function (item) {
+          const fullCode = item.codeAvailable && item.code ? item.code : '';
+          const codeCell = fullCode
+            ? '<div class="redeem-code-cell"><code>' + PetAdmin.escapeHtml(fullCode) + '</code><button class="code-copy-btn" type="button" data-code="' + PetAdmin.escapeHtml(fullCode) + '" aria-label="复制兑换码 ' + PetAdmin.escapeHtml(fullCode) + '">复制</button></div>'
+            : '<div class="redeem-code-cell is-legacy"><code>' + PetAdmin.escapeHtml(item.codePreview || '--') + '</code><small>历史码无法恢复</small></div>';
+          return '<tr>'
+            + '<td>' + codeCell + '</td>'
+            + '<td><strong>' + (item.durationDays ? (Number(item.durationDays) + ' 天') : (Number(item.durationMonths || 1) + ' 个月')) + '</strong></td>'
+            + '<td><span class="code-status ' + PetAdmin.escapeHtml(item.status) + '">' + statusLabel(item.status) + '</span></td>'
+            + '<td>' + PetAdmin.escapeHtml(item.note || '--') + '</td>'
+            + '<td>' + formatTime(item.createdAt) + '</td>'
+            + '<td>' + formatTime(item.expiresAt) + '</td>'
+            + '<td>' + PetAdmin.escapeHtml(item.redeemedStoreId || '--') + '</td>'
+            + '<td>' + (item.status === 'active' ? '<button class="btn btn-outline btn-sm void-btn" data-id="' + PetAdmin.escapeHtml(item.id) + '">作废</button>' : '--') + '</td>'
+            + '</tr>';
+        }).join('');
+      } catch (err) {
+        bodyEl.innerHTML = '<tr><td colspan="8" class="admin-empty">' + PetAdmin.escapeHtml(err.message || '加载失败') + '</td></tr>';
+      }
+    }
+
+    document.getElementById('generate-form').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const button = document.getElementById('generate-btn');
+      button.disabled = true; button.textContent = '生成中...';
+      try {
+        const expiry = document.getElementById('code-expiry').value;
+        const data = await PetAdmin.api('/api/admin/membership/codes/generate', {
+          method: 'POST',
+          body: JSON.stringify({
+            count: Number(document.getElementById('code-count').value),
+            durationDays: Number(document.getElementById('code-duration').value),
+            expiresAt: expiry ? (expiry + 'T23:59:59+08:00') : '',
+            note: document.getElementById('code-note').value
+          })
+        });
+        if (!data.success) throw new Error(data.errMsg || '生成失败');
+        latestCodes = data.codes || [];
+        generatedCodesEl.textContent = latestCodes.join('\n');
+        document.getElementById('generated-title').textContent = '本次生成 ' + latestCodes.length + ' 个 · 每个可兑换 ' + Number(data.durationDays || 1) + ' 天';
+        generatedPanel.hidden = false;
+        await loadCodes();
+      } catch (err) {
+        alert(err.message || '生成失败');
+      } finally {
+        button.disabled = false; button.textContent = '生成兑换码';
+      }
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', async function () {
+      try { await copyText(latestCodes.join('\n')); showCopied(this, '复制全部'); }
+      catch (err) { alert((err && err.message) || '复制失败，请手动选择复制'); }
+    });
+
+    document.getElementById('copy-active-btn').addEventListener('click', async function () {
+      const codes = listedCodes.filter(function (item) { return item.status === 'active' && item.codeAvailable && item.code; }).map(function (item) { return item.code; });
+      try { await copyText(codes.join('\n')); showCopied(this, '复制全部未使用'); }
+      catch (err) { alert((err && err.message) || '没有可复制的未使用兑换码'); }
+    });
+
+    document.getElementById('download-btn').addEventListener('click', function () {
+      const blob = new Blob([latestCodes.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'petmaster-membership-codes-' + Date.now() + '.txt';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    bodyEl.addEventListener('click', async function (event) {
+      const copyButton = event.target.closest('.code-copy-btn');
+      if (copyButton) {
+        try { await copyText(copyButton.dataset.code); showCopied(copyButton, '复制'); }
+        catch (err) { alert((err && err.message) || '复制失败，请手动选择复制'); }
+        return;
+      }
+      const button = event.target.closest('.void-btn');
+      if (!button || !confirm('确定作废这个兑换码？此操作不可恢复。')) return;
+      button.disabled = true;
+      try {
+        const data = await PetAdmin.api('/api/admin/membership/codes/void', { method: 'POST', body: JSON.stringify({ id: button.dataset.id }) });
+        if (!data.success) throw new Error(data.errMsg || '作废失败');
+        await loadCodes();
+      } catch (err) { alert(err.message || '作废失败'); button.disabled = false; }
+    });
+
+    document.getElementById('duration-quick').addEventListener('click', function (event) {
+      const button = event.target.closest('button[data-days]');
+      if (!button) return;
+      document.getElementById('code-duration').value = button.dataset.days;
+      document.querySelectorAll('#duration-quick button').forEach(function (item) { item.classList.toggle('active', item === button); });
+    });
+
+    document.getElementById('code-duration').addEventListener('input', function () {
+      const value = String(this.value || '');
+      document.querySelectorAll('#duration-quick button').forEach(function (item) { item.classList.toggle('active', item.dataset.days === value); });
+    });
+
+    document.getElementById('task-create-btn').addEventListener('click', function () { resetPromotionForm(null); });
+    document.getElementById('promotion-cancel-btn').addEventListener('click', function () { document.getElementById('promotion-form').hidden = true; });
+    document.getElementById('promotion-form').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const button = document.getElementById('promotion-save-btn');
+      button.disabled = true; button.textContent = '保存中...';
+      try {
+        const data = await PetAdmin.api('/api/admin/membership/promotion-tasks/save', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: document.getElementById('promotion-id').value,
+            title: document.getElementById('promotion-title').value,
+            rewardMonths: Number(document.getElementById('promotion-reward').value),
+            description: document.getElementById('promotion-description').value,
+            requirementText: document.getElementById('promotion-requirement').value,
+            startsAt: document.getElementById('promotion-start').value,
+            endsAt: document.getElementById('promotion-end').value,
+            sortOrder: Number(document.getElementById('promotion-sort').value),
+            status: document.getElementById('promotion-status').value
+          })
+        });
+        if (!data.success) throw new Error(data.errMsg || '保存失败');
+        document.getElementById('promotion-form').hidden = true;
+        await loadPromotionTasks();
+      } catch (err) { alert(err.message || '保存失败'); }
+      finally { button.disabled = false; button.textContent = '保存任务'; }
+    });
+
+    promotionTaskListEl.addEventListener('click', async function (event) {
+      const editButton = event.target.closest('.promotion-edit-btn');
+      if (editButton) {
+        const task = promotionTasks.find(function (item) { return item.id === editButton.dataset.id; });
+        if (task) resetPromotionForm(task);
+        return;
+      }
+      const statusButton = event.target.closest('.promotion-status-btn');
+      if (!statusButton || !confirm(statusButton.dataset.status === 'published' ? '确认发布这个推广任务？' : '确认暂停这个推广任务？')) return;
+      statusButton.disabled = true;
+      try {
+        const data = await PetAdmin.api('/api/admin/membership/promotion-tasks/status', { method: 'POST', body: JSON.stringify({ id: statusButton.dataset.id, status: statusButton.dataset.status }) });
+        if (!data.success) throw new Error(data.errMsg || '操作失败');
+        await loadPromotionTasks();
+      } catch (err) { alert(err.message || '操作失败'); statusButton.disabled = false; }
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', loadCodes);
+    document.getElementById('task-refresh-btn').addEventListener('click', loadTasks);
+    loadTasks();
+    loadPromotionTasks();
+    loadCodes();
+  </script>
+</body>
+</html>

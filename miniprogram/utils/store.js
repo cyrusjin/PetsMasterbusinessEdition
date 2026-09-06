@@ -51,12 +51,22 @@ function getMembershipStatus(storeId) {
   return callStoreService('getMembershipStatus', { store_id: storeId || '' });
 }
 
-function createMembershipPay(storeId) {
-  return callStoreService('createMembershipPay', { store_id: storeId || '' });
+function createMembershipPay(storeId, planCode) {
+  return callStoreService('createMembershipPay', {
+    store_id: storeId || '',
+    plan_code: planCode || 'pro_monthly'
+  });
 }
 
 function queryMembershipPay(orderId) {
   return callStoreService('queryMembershipPay', { order_id: orderId || '' });
+}
+
+function redeemMembershipCode(storeId, code) {
+  return callStoreService('redeemMembershipCode', {
+    store_id: storeId || '',
+    code: String(code || '').trim().toUpperCase()
+  });
 }
 
 module.exports = {
@@ -72,5 +82,6 @@ module.exports = {
   getStoreOaShareLink,
   getMembershipStatus,
   createMembershipPay,
-  queryMembershipPay
+  queryMembershipPay,
+  redeemMembershipCode
 };

@@ -487,6 +487,53 @@
   height: 188rpx;
 }
 
+.home-insurance-entry {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  min-height: 108rpx;
+  margin-bottom: 20rpx;
+  padding: 20rpx 26rpx;
+  box-sizing: border-box;
+  border: 1rpx solid #F5D5C1;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #FFF9F4 0%, #FFF1E7 100%);
+  box-shadow: 0 10rpx 24rpx rgba(222, 125, 75, 0.1);
+}
+
+.home-insurance-logo {
+  flex-shrink: 0;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+}
+
+.home-insurance-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-insurance-title {
+  display: block;
+  color: #5B4535;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.home-insurance-sub {
+  display: block;
+  margin-top: 8rpx;
+  color: #A98972;
+  font-size: 21rpx;
+}
+
+.home-insurance-arrow {
+  flex-shrink: 0;
+  color: #E85B18;
+  font-size: 40rpx;
+  font-weight: 300;
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -874,6 +921,7 @@
 .store-phone-row:active,
 .store-wechat-row:active,
 .reserve-card:active,
+.home-insurance-entry:active,
 .pet-hero:active,
 .info-card:active {
   opacity: 0.9;

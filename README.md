@@ -1,4 +1,4 @@
-# PetMasterBusiness（宠大师 · 双端合一）
+# PetMasterBusiness（熠森宠物 · 双端合一）
 
 本仓库为商家端 AppID 小程序，已内嵌宠主端（用户版）页面。默认入口为用户首页；已入驻商家冷启动默认进入商家端。
 

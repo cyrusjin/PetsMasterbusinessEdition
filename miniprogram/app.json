@@ -29,6 +29,7 @@
         "user/pet-butler/walk/walk",
         "user/pet-butler/milestones/milestones",
         "user/reserve/reserve",
+        "user/pet-insurance/pet-insurance",
         "user/proxy-claim/proxy-claim",
         "user/boarding-contract/boarding-contract",
         "user/order-detail/order-detail",
@@ -49,6 +50,7 @@
         "daily-logs/daily-logs",
         "pickup-manage/pickup-manage",
         "holiday-pricing/holiday-pricing",
+        "insurance-promotion/insurance-promotion",
         "share-guest/share-guest"
       ]
     },
@@ -77,7 +79,8 @@
         "customer-detail/customer-detail",
         "ledger/ledger",
         "ledger/ledger-edit",
-        "membership/membership"
+        "membership/membership",
+        "promotion-tasks/promotion-tasks"
       ]
     }
   ],

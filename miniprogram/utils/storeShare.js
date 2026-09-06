@@ -4,6 +4,7 @@ const { normalizeHomeFeeding } = require('./homeFeeding');
 const { isHomeVisitPricingComplete } = require('./homeVisitPricing');
 const { getBookableServiceOptions, getServiceShareMeta } = require('./serviceLines');
 const { peekCachedPath, resolveImageUrl, isLocalImagePath } = require('./imageCache');
+const growth = require('./growth');
 
 const DEFAULT_SHARE_IMAGE = '/images/default-avatar.png';
 /** 旧版落地页（历史分享卡片兼容） */
@@ -75,12 +76,14 @@ function resolveShareServiceLine(shop, serviceLine) {
   return '';
 }
 
-function buildSharePath(storeId, serviceLine) {
+function buildSharePath(storeId, serviceLine, tracking) {
   const id = (storeId || '').trim();
   const line = String(serviceLine || '').trim();
   const parts = [];
   if (id) parts.push(`store_id=${encodeURIComponent(id)}`);
   if (line) parts.push(`serviceLine=${encodeURIComponent(line)}`);
+  if (tracking && tracking.shareCode) parts.push(`shareCode=${encodeURIComponent(tracking.shareCode)}`);
+  if (tracking && tracking.source) parts.push(`source=${encodeURIComponent(tracking.source)}`);
   if (!parts.length) return USER_RESERVE_PATH;
   return `${USER_RESERVE_PATH}?${parts.join('&')}`;
 }
@@ -153,7 +156,7 @@ function prefetchStoreShareImage(shop) {
   return resolveImageUrl(logo).then(remember).catch(() => DEFAULT_SHARE_IMAGE);
 }
 
-function buildStoreShareConfig(shop, storeId, serviceLine) {
+function buildStoreShareConfig(shop, storeId, serviceLine, tracking) {
   const id = resolveShareStoreId(shop) || (storeId || '').trim();
   const line = resolveShareServiceLine(shop, serviceLine);
   const meta = line ? getServiceShareMeta(line) : getServiceShareMeta('');
@@ -162,7 +165,7 @@ function buildStoreShareConfig(shop, storeId, serviceLine) {
     : (getShareableServiceOptions(shop).length > 1 ? '开始预约本店服务' : CUSTOMER_SHARE_TITLE);
   return {
     title,
-    path: buildSharePath(id, line),
+    path: buildSharePath(id, line, tracking),
     imageUrl: resolveShareImageUrl(shop)
   };
 }
@@ -221,7 +224,14 @@ function buildMerchantShareConfig(page, extra) {
     promptShareUnavailable();
   }
   const serviceLine = extra && extra.serviceLine;
-  return buildStoreShareConfig(shop, shop.store_id, serviceLine);
+  const shareCode = growth.createShareCode(shop.store_id);
+  growth.recordPromotionEvent({
+    store_id: shop.store_id,
+    shareCode,
+    source: 'merchant_share',
+    type: 'share'
+  }).catch(() => {});
+  return buildStoreShareConfig(shop, shop.store_id, serviceLine, { shareCode, source: 'merchant_share' });
 }
 
 function shouldOpenGuestSharePicker(shop) {

@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>招商数据看板 · 熠森宠物 PetMaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+</head>
+<body class="admin-page">
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="admin-header">
+    <div class="container admin-header-inner">
+      <a class="admin-brand" href="../index.html">
+        <img src="../assets/card/card-pets.png" alt="熠森宠物" />
+        <span>
+          <strong>熠森宠物管理后台</strong>
+          <small>招商数据看板</small>
+        </span>
+      </a>
+      <div class="admin-user">
+        <span id="admin-user"></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container admin-nav-inner">
+      <a class="admin-nav-link" href="index.html">入驻审核</a>
+      <a class="admin-nav-link" href="stores.html">店铺管理</a>
+      <a class="admin-nav-link active" href="dashboard.html">仪表盘</a>
+      <a class="admin-nav-link" href="versions.html">版本管理</a>
+      <a class="admin-nav-link" href="announcements.html">公告管理</a>
+      <a class="admin-nav-link" href="memberships.html">会员与推广</a>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container admin-panel admin-panel-wide">
+      <div class="admin-toolbar">
+        <div>
+          <h1>招商数据看板</h1>
+          <p>网络规模 · 门店用户 · 帮助增收 · 交易体量 · 单店模型 · <span id="updated-at">加载中</span></p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="refresh-btn" type="button">刷新</button>
+      </div>
+
+      <!-- ① 招商一屏：投资人最先看见的 6 个铁证 -->
+      <section class="dash-block">
+        <div class="dash-block-label">招商核心指标</div>
+        <div id="invest-grid" class="dash-invest-grid">
+          <div class="card admin-loading">加载中...</div>
+        </div>
+      </section>
+
+      <!-- ② 今日脉搏：证明生意在持续发生 -->
+      <section class="dash-block">
+        <div class="dash-block-label">今日经营脉搏</div>
+        <div id="pulse-grid" class="dash-kpi-grid dash-pulse-grid">
+          <div class="card admin-loading">加载中...</div>
+        </div>
+      </section>
+
+      <section class="dash-block">
+        <div class="dash-block-label">保险弹窗转化</div>
+        <div id="insurance-grid" class="dash-kpi-grid">
+          <div class="card admin-loading">加载中...</div>
+        </div>
+      </section>
+
+      <!-- ③ 增长趋势 + 单店模型 -->
+      <div class="dash-split-grid">
+        <div class="card dash-panel">
+          <div class="dash-section-head">
+            <div>
+              <h2>近 14 日增长趋势</h2>
+              <p>新单量 · 完成单 · 完成 GMV —— 看网络是否在加速</p>
+            </div>
+          </div>
+          <div id="trend-chart" class="dash-chart"></div>
+        </div>
+        <div class="card dash-panel">
+          <div class="dash-section-head">
+            <div>
+              <h2>单店经营模型</h2>
+              <p>招商话术里的「一家店大概能做成什么样」</p>
+            </div>
+          </div>
+          <div id="unit-model" class="dash-unit-model">
+            <div class="admin-loading">加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ 门店贡献双榜：单量 + 增收 -->
+      <div class="dash-split-grid">
+        <div class="card dash-panel">
+          <div class="dash-section-head">
+            <div>
+              <h2>门店单量 Top 10</h2>
+              <p>按累计订单数排序 —— 谁在真正跑单</p>
+            </div>
+          </div>
+          <div id="top-orders" class="dash-rank-list dash-rank-list-short">
+            <div class="admin-loading">加载中...</div>
+          </div>
+        </div>
+        <div class="card dash-panel">
+          <div class="dash-section-head">
+            <div>
+              <h2>门店增收 Top 10</h2>
+              <p>按完成单 GMV 排序 —— 谁在真正赚钱</p>
+            </div>
+          </div>
+          <div id="top-stores" class="dash-rank-list dash-rank-list-short">
+            <div class="admin-loading">加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑤ 各门店明细：招商最关心的「拆到店」 -->
+      <div class="card dash-table-card dash-report-card">
+        <div class="dash-section-head">
+          <div>
+            <h2>各门店贡献明细</h2>
+            <p>单量 · 累计增收 · 近 30 日表现 · 客单价 —— 可直接用于招商材料</p>
+          </div>
+          <label class="dash-search">
+            <input id="revenue-keyword" type="search" placeholder="搜索店铺 / 注册地" />
+          </label>
+        </div>
+        <div id="revenue-summary" class="dash-rev-summary"></div>
+        <div class="store-table-wrap">
+          <table class="store-table dash-store-table">
+            <thead>
+              <tr>
+                <th>店铺</th>
+                <th>注册地</th>
+                <th>累计单量</th>
+                <th>30 日单量</th>
+                <th>累计增收</th>
+                <th>30 日增收</th>
+                <th>客单价</th>
+                <th>完成率</th>
+              </tr>
+            </thead>
+            <tbody id="revenue-tbody">
+              <tr><td colspan="8" class="admin-loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ⑥ 全国版图 -->
+      <div class="dash-map-grid">
+        <div class="card dash-map-card">
+          <div class="dash-section-head">
+            <div>
+              <h2>全国门店版图</h2>
+              <p>点越大订单越多 · 证明网络覆盖与密度</p>
+            </div>
+            <div class="dash-map-legend">
+              <span class="dash-dot approved"></span>已开通
+              <span class="dash-dot pending"></span>待审核
+              <span class="dash-dot other"></span>其他
+            </div>
+          </div>
+          <div id="china-map" class="dash-china-map"></div>
+        </div>
+
+        <div class="card dash-side-card">
+          <div class="dash-section-head">
+            <div>
+              <h2>城市密度榜</h2>
+              <p>按省市看开店与 GMV 贡献</p>
+            </div>
+          </div>
+          <div id="region-list" class="dash-rank-list">
+            <div class="admin-loading">加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑦ 运营健康：内部管理用，默认折叠 -->
+      <details class="dash-ops-fold card">
+        <summary class="dash-ops-summary">
+          <div>
+            <strong>运营健康（内部）</strong>
+            <span>漏斗积压 · 零单店 · 供给体验 —— 招商洽谈时一般不展开</span>
+          </div>
+        </summary>
+        <div class="dash-ops-body">
+          <div class="dash-split-grid">
+            <div class="dash-panel dash-panel-flat">
+              <div class="dash-section-head">
+                <div>
+                  <h2>订单漏斗</h2>
+                  <p>全量状态积压，看卡在哪一环</p>
+                </div>
+              </div>
+              <div id="funnel-list" class="dash-funnel">
+                <div class="admin-loading">加载中...</div>
+              </div>
+            </div>
+            <div class="dash-panel dash-panel-flat">
+              <div class="dash-section-head">
+                <div>
+                  <h2>供给与体验</h2>
+                  <p>活跃店、待审积压、打卡覆盖</p>
+                </div>
+              </div>
+              <div id="health-box" class="dash-health">
+                <div class="admin-loading">加载中...</div>
+              </div>
+            </div>
+          </div>
+          <div class="dash-split-grid">
+            <div class="dash-panel dash-panel-flat">
+              <div class="dash-section-head">
+                <div>
+                  <h2>收入结构（近 30 日）</h2>
+                  <p>寄养费 / 接送费拆分</p>
+                </div>
+              </div>
+              <div id="revenue-box" class="dash-revenue">
+                <div class="admin-loading">加载中...</div>
+              </div>
+            </div>
+            <div class="dash-panel dash-panel-flat">
+              <div class="dash-section-head">
+                <div>
+                  <h2>30 日零单 / 待激活店</h2>
+                  <p>已开通但近 30 天无新单</p>
+                </div>
+              </div>
+              <div id="zombie-stores" class="dash-rank-list dash-rank-list-short">
+                <div class="admin-loading">加载中...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ⑧ 宠物数据：增值叙事，靠后 -->
+      <details class="dash-ops-fold card">
+        <summary class="dash-ops-summary">
+          <div>
+            <strong>宠物数据资产</strong>
+            <span>档案结构 · 健康指标 · 宠种贡献 —— 可支撑后续数据服务叙事</span>
+          </div>
+        </summary>
+        <div class="dash-ops-body">
+          <div id="pet-kpi" class="dash-kpi-grid dash-report-kpi">
+            <div class="admin-loading">加载中...</div>
+          </div>
+          <div class="dash-split-grid dash-report-split">
+            <div>
+              <h3 class="dash-subhead">体型 / 类型分布</h3>
+              <div id="pet-type-chart" class="dash-chart dash-chart-sm"></div>
+            </div>
+            <div>
+              <h3 class="dash-subhead">热门品种 Top</h3>
+              <div id="pet-breed-list" class="dash-rank-list dash-rank-list-short">
+                <div class="admin-loading">加载中...</div>
+              </div>
+            </div>
+          </div>
+          <div class="dash-split-grid dash-report-split">
+            <div>
+              <h3 class="dash-subhead">年龄结构</h3>
+              <div id="pet-age-chart" class="dash-chart dash-chart-sm"></div>
+            </div>
+            <div>
+              <h3 class="dash-subhead">订单宠种贡献</h3>
+              <div id="pet-order-type" class="dash-rank-list dash-rank-list-short">
+                <div class="admin-loading">加载中...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- ⑨ 店铺全量明细（含状态） -->
+      <div class="card dash-table-card">
+        <div class="dash-section-head">
+          <div>
+            <h2>店铺全量明细</h2>
+            <p>状态 · 单量 · GMV · 活跃度 · 点击进详情</p>
+          </div>
+          <label class="dash-search">
+            <input id="store-keyword" type="search" placeholder="搜索店铺 / 地址 / 注册地" />
+          </label>
+        </div>
+        <div class="store-table-wrap">
+          <table class="store-table dash-store-table">
+            <thead>
+              <tr>
+                <th>店铺</th>
+                <th>状态</th>
+                <th>注册地</th>
+                <th>单量</th>
+                <th>GMV</th>
+                <th>完成率</th>
+                <th>进行中</th>
+                <th>最近下单</th>
+              </tr>
+            </thead>
+            <tbody id="store-tbody">
+              <tr><td colspan="8" class="admin-loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="admin.js?v=20260811e"></script>
+  <script>
+    if (!PetAdmin.requireAuth()) {
+      throw new Error('redirect');
+    }
+
+    const STATUS_LABELS = {
+      pending: '待审核',
+      approved: '已开通',
+      disabled: '已关闭',
+      rejected: '已拒绝'
+    };
+
+    const STATUS_CLASS = {
+      pending: 'status-pending',
+      approved: 'status-approved',
+      disabled: 'status-disabled',
+      rejected: 'status-rejected'
+    };
+
+    const FUNNEL_LABELS = {
+      pending: '待确认',
+      confirmed: '待签协议',
+      awaiting_arrival: '待到店',
+      boarding: '寄养中',
+      toPay: '待支付',
+      completed: '已完成'
+    };
+
+    let dashboardData = null;
+    let mapChart = null;
+    let trendChart = null;
+    let petTypeChart = null;
+    let petAgeChart = null;
+    let chinaMapReady = null;
+
+    document.getElementById('admin-user').textContent = PetAdmin.getUsername() || '管理员';
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      PetAdmin.clearSession();
+      window.location.href = 'login.html';
+    });
+    document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+    document.getElementById('store-keyword').addEventListener('input', function () {
+      renderStoreTable(dashboardData && dashboardData.stores);
+    });
+    document.getElementById('revenue-keyword').addEventListener('input', function () {
+      renderRevenueTable(dashboardData && dashboardData.storeRevenueReport);
+    });
+
+    function money(n) {
+      const v = Number(n) || 0;
+      return v.toLocaleString('zh-CN', { maximumFractionDigits: 0 });
+    }
+
+    function deltaText(v) {
+      const n = Number(v) || 0;
+      if (!n) return '较昨日持平';
+      return (n > 0 ? '较昨日 +' : '较昨日 ') + n + '%';
+    }
+
+    function ensureChinaMap() {
+      if (chinaMapReady) return chinaMapReady;
+      chinaMapReady = fetch('assets/china.json?v=20260804d')
+        .then(function (res) {
+          if (!res.ok) throw new Error('地图数据加载失败');
+          return res.json();
+        })
+        .then(function (geoJson) {
+          echarts.registerMap('china', geoJson);
+          return true;
+        })
+        .catch(function (err) {
+          chinaMapReady = null;
+          throw err;
+        });
+      return chinaMapReady;
+    }
+
+    function statusBadge(status) {
+      const label = STATUS_LABELS[status] || status || '--';
+      const cls = STATUS_CLASS[status] || '';
+      return '<span class="store-status ' + cls + '">' + PetAdmin.escapeHtml(label) + '</span>';
+    }
+
+    /** 招商一屏：规模 → 商家/客人用户 → 增收 → 单量 → 店均 → 版图 */
+    function renderInvestHero(data) {
+      const ops = (data.summary && data.summary.ops) || {};
+      const stores = (data.summary && data.summary.stores) || {};
+      const orders = (data.summary && data.summary.orders) || {};
+      const items = [
+        {
+          key: 'stores',
+          label: '合作门店',
+          value: stores.approved || 0,
+          unit: '家',
+          hint: '营业中 ' + (stores.open || 0) + ' · 待审 ' + (ops.pendingStores || 0),
+          tone: 'primary'
+        },
+        {
+          key: 'merchant-users',
+          label: '商家用户',
+          value: ops.merchantUserCount || 0,
+          unit: '人',
+          hint: '店主 ' + (ops.merchantOwnerCount || 0) + ' · 员工 ' + (ops.merchantStaffCount || 0)
+        },
+        {
+          key: 'guest-users',
+          label: '客人用户',
+          value: ops.guestUserCount || 0,
+          unit: '人',
+          hint: '微信正式版累计 ' + money(ops.userTotal || 0) + ' · 下过单 ' + money(ops.orderedUserCount || 0)
+        },
+        {
+          key: 'gmv',
+          label: '累计帮门店增收',
+          value: '¥' + money(ops.totalGmv),
+          unit: '',
+          hint: '近 30 日 ¥' + money(ops.gmv30d) + ' · 近 7 日 ¥' + money(ops.gmv7d),
+          tone: 'accent'
+        },
+        {
+          key: 'subscription-revenue',
+          label: '订阅收益',
+          value: '¥' + money((((data.membership || {}).subscriptionRevenue || {}).totalRevenue)),
+          unit: '',
+          hint: '近 30 日 ¥' + money((((data.membership || {}).subscriptionRevenue || {}).revenue30d)) +
+            ' · 支付成功 ' + ((((data.membership || {}).subscriptionRevenue || {}).paidOrderCount) || 0) + ' 笔 · 当前付费 VIP ' +
+            ((((data.membership || {}).subscriptionRevenue || {}).activePaidVipCount) || 0) + ' 家（不含兑换码）',
+          tone: 'accent'
+        },
+        {
+          key: 'orders',
+          label: '平台总订单',
+          value: money(orders.total || 0),
+          unit: '单',
+          hint: '已完成 ' + money(orders.completed || 0) + ' · 进行中 ' + money(orders.active || 0)
+        },
+        {
+          key: 'unit',
+          label: '店均累计单量',
+          value: ops.avgOrdersPerStore || 0,
+          unit: '单/店',
+          hint: '店均增收 ¥' + money(ops.avgGmvPerStore) + ' · 店均完成 ' + (ops.avgCompletedPerStore || 0)
+        },
+        {
+          key: 'geo',
+          label: '覆盖城市',
+          value: ops.cityCount || 0,
+          unit: '城',
+          hint: '覆盖 ' + (ops.provinceCount || 0) + ' 省 · 30 日有单店 ' + (ops.earningStores30d || 0)
+        }
+      ];
+      document.getElementById('invest-grid').innerHTML = items.map(function (item) {
+        const tone = item.tone ? ' dash-invest-kpi-' + item.tone : '';
+        return (
+          '<div class="card dash-invest-kpi' + tone + '">' +
+            '<div class="dash-invest-label">' + PetAdmin.escapeHtml(item.label) + '</div>' +
+            '<div class="dash-invest-value-row">' +
+              '<span class="dash-invest-value">' + item.value + '</span>' +
+              (item.unit
+                ? '<span class="dash-invest-unit">' + PetAdmin.escapeHtml(item.unit) + '</span>'
+                : '') +
+            '</div>' +
+            '<div class="dash-invest-hint">' + PetAdmin.escapeHtml(item.hint) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function renderPulse(data) {
+      const ops = (data.summary && data.summary.ops) || {};
+      const stores = (data.summary && data.summary.stores) || {};
+      const items = [
+        { label: '今日增收', value: '¥' + money(ops.todayGmv), hint: deltaText(ops.todayGmvDelta), tone: 'primary' },
+        { label: '今日新单', value: ops.todayOrders || 0, hint: deltaText(ops.todayOrderDelta) + ' · 完成 ' + (ops.todayCompleted || 0) },
+        { label: '当前在住', value: ops.boardingCount || 0, hint: '寄养中订单' },
+        { label: '7 日活跃店', value: ops.activeStores7d || 0, hint: '占已开通 ' + (ops.activeStoreRate7d || 0) + '%' },
+        { label: '30 日有单店', value: ops.earningStores30d || 0, hint: '已开通 ' + (stores.approved || 0) },
+        { label: '7 日新用户', value: ops.newUsers7d || 0, hint: '30 日新增 ' + (ops.newUsers30d || 0) },
+        { label: '30 日客单价', value: '¥' + money(ops.aov30d), hint: '平均寄养 ' + (ops.avgDays30d || 0) + ' 天' },
+        { label: '订单完成率', value: ((data.summary && data.summary.orders && data.summary.orders.completeRate) || 0) + '%', hint: '取消率 ' + ((data.summary && data.summary.orders && data.summary.orders.cancelRate) || 0) + '%' }
+      ];
+      document.getElementById('pulse-grid').innerHTML = items.map(function (item) {
+        return (
+          '<div class="card dash-kpi' + (item.tone === 'primary' ? ' dash-kpi-primary' : '') + '">' +
+            '<div class="dash-kpi-value">' + item.value + '</div>' +
+            '<div class="dash-kpi-label">' + PetAdmin.escapeHtml(item.label) + '</div>' +
+            '<div class="dash-kpi-hint">' + PetAdmin.escapeHtml(item.hint) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function renderInsuranceMetrics(data) {
+      const stats = (data.insurance && data.insurance.checkoutPopup) || {};
+      const items = [
+        { label: '累计曝光', value: money(stats.impressions || 0), hint: '下单成功后实际展示次数' },
+        { label: '累计点击', value: money(stats.clicks || 0), hint: '点击“购买保险”次数' },
+        { label: '累计点击率', value: (stats.clickRate || 0) + '%', hint: '累计点击 ÷ 累计曝光', tone: 'primary' },
+        { label: '近 30 日点击率', value: (stats.clickRate30d || 0) + '%', hint: (stats.clicks30d || 0) + ' 次点击 / ' + (stats.impressions30d || 0) + ' 次曝光' }
+      ];
+      document.getElementById('insurance-grid').innerHTML = items.map(function (item) {
+        return (
+          '<div class="card dash-kpi' + (item.tone === 'primary' ? ' dash-kpi-primary' : '') + '">' +
+            '<div class="dash-kpi-value">' + item.value + '</div>' +
+            '<div class="dash-kpi-label">' + PetAdmin.escapeHtml(item.label) + '</div>' +
+            '<div class="dash-kpi-hint">' + PetAdmin.escapeHtml(item.hint) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function renderUnitModel(data) {
+      const ops = (data.summary && data.summary.ops) || {};
+      const orders = (data.summary && data.summary.orders) || {};
+      const stores = (data.summary && data.summary.stores) || {};
+      const rows = [
+        { label: '店均累计单量', value: (ops.avgOrdersPerStore || 0) + ' 单', note: '总单 / 已开通店' },
+        { label: '店均累计增收', value: '¥' + money(ops.avgGmvPerStore), note: '完成单 GMV / 已开通店' },
+        { label: '近 30 日客单价', value: '¥' + money(ops.aov30d), note: '完成单均价' },
+        { label: '平均寄养天数', value: (ops.avgDays30d || 0) + ' 天', note: '近 30 日完成单' },
+        { label: '接送渗透率', value: (ops.pickupRate30d || 0) + '%', note: '近 30 日新单' },
+        { label: '7 日店活率', value: (ops.activeStoreRate7d || 0) + '%', note: (ops.activeStores7d || 0) + ' / ' + (stores.approved || 0) + ' 店' },
+        { label: '用户下单转化', value: (ops.orderUserRate || 0) + '%', note: '下过单 / 注册用户' },
+        { label: '平台完成率', value: (orders.completeRate || 0) + '%', note: '已完成 / 非取消单' }
+      ];
+      document.getElementById('unit-model').innerHTML =
+        '<div class="dash-unit-grid">' +
+        rows.map(function (r) {
+          return (
+            '<div class="dash-unit-item">' +
+              '<div class="dash-unit-value">' + PetAdmin.escapeHtml(r.value) + '</div>' +
+              '<div class="dash-unit-label">' + PetAdmin.escapeHtml(r.label) + '</div>' +
+              '<div class="dash-unit-note">' + PetAdmin.escapeHtml(r.note) + '</div>' +
+            '</div>'
+          );
+        }).join('') +
+        '</div>';
+    }
+
+    function renderTrend(trend) {
+      const el = document.getElementById('trend-chart');
+      if (!window.echarts) {
+        el.innerHTML = '<div class="dash-empty">图表库未加载</div>';
+        return;
+      }
+      if (trendChart) {
+        trendChart.dispose();
+        trendChart = null;
+      }
+      trendChart = echarts.init(el);
+      const dates = (trend || []).map(function (d) { return d.date.slice(5); });
+      trendChart.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['新单', '完成单', 'GMV'], top: 0 },
+        grid: { left: 40, right: 48, top: 36, bottom: 28 },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#A98972' } },
+        yAxis: [
+          { type: 'value', name: '单量', axisLabel: { color: '#A98972' }, splitLine: { lineStyle: { color: '#F2DEC9' } } },
+          { type: 'value', name: 'GMV', axisLabel: { color: '#A98972' }, splitLine: { show: false } }
+        ],
+        series: [
+          {
+            name: '新单',
+            type: 'bar',
+            data: (trend || []).map(function (d) { return d.orderCount; }),
+            itemStyle: { color: '#F7AA78', borderRadius: [6, 6, 0, 0] }
+          },
+          {
+            name: '完成单',
+            type: 'line',
+            smooth: true,
+            data: (trend || []).map(function (d) { return d.completedCount; }),
+            itemStyle: { color: '#6FA462' }
+          },
+          {
+            name: 'GMV',
+            type: 'line',
+            yAxisIndex: 1,
+            smooth: true,
+            data: (trend || []).map(function (d) { return d.gmv; }),
+            itemStyle: { color: '#E98657' },
+            areaStyle: { color: 'rgba(233,134,87,0.12)' }
+          }
+        ]
+      });
+    }
+
+    function renderFunnel(funnel, orders) {
+      const max = Math.max.apply(null, (funnel || []).map(function (f) { return f.count || 0 }).concat([1]));
+      const cancelRate = (orders && orders.cancelRate) || 0;
+      const html = (funnel || []).map(function (f) {
+        const pct = Math.round(((f.count || 0) / max) * 100);
+        return (
+          '<div class="dash-funnel-item">' +
+            '<div class="dash-funnel-top">' +
+              '<span>' + PetAdmin.escapeHtml(FUNNEL_LABELS[f.status] || f.status) + '</span>' +
+              '<strong>' + (f.count || 0) + '</strong>' +
+            '</div>' +
+            '<div class="dash-rank-bar"><i style="width:' + pct + '%"></i></div>' +
+          '</div>'
+        );
+      }).join('');
+      document.getElementById('funnel-list').innerHTML =
+        html +
+        '<div class="dash-funnel-foot">全量取消率 <strong>' + cancelRate + '%</strong> · 完成率 <strong>' +
+        ((orders && orders.completeRate) || 0) + '%</strong></div>';
+    }
+
+    function renderRevenue(data) {
+      const ops = (data.summary && data.summary.ops) || {};
+      const d30 = (data.periods && data.periods.d30) || {};
+      const boarding = ops.boardingFee30d || 0;
+      const shipping = ops.shippingFee30d || 0;
+      const total = Math.max(boarding + shipping, 1);
+      document.getElementById('revenue-box').innerHTML =
+        '<div class="dash-rev-hero">' +
+          '<div><div class="dash-kpi-label">近 30 日完成 GMV</div><div class="dash-kpi-value">¥' + money(ops.gmv30d) + '</div></div>' +
+          '<div class="dash-rev-metrics">' +
+            '<div><b>¥' + money(ops.aov30d) + '</b><span>客单价</span></div>' +
+            '<div><b>' + (ops.avgDays30d || 0) + ' 天</b><span>平均寄养</span></div>' +
+            '<div><b>' + (ops.pickupRate30d || 0) + '%</b><span>接送渗透</span></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dash-rev-bar">' +
+          '<i class="boarding" style="width:' + Math.round(boarding / total * 100) + '%"></i>' +
+          '<i class="shipping" style="width:' + Math.round(shipping / total * 100) + '%"></i>' +
+        '</div>' +
+        '<div class="dash-rev-legend">' +
+          '<span>寄养 ¥' + money(boarding) + '</span>' +
+          '<span>接送 ¥' + money(shipping) + '</span>' +
+          '<span>30 日新单 ' + (d30.orderCount || 0) + '</span>' +
+        '</div>';
+    }
+
+    function renderHealth(data) {
+      const ops = (data.summary && data.summary.ops) || {};
+      const stores = (data.summary && data.summary.stores) || {};
+      const rows = [
+        ['已开通 / 营业中', (stores.approved || 0) + ' / ' + (stores.open || 0)],
+        ['7 日 / 30 日活跃店', (ops.activeStores7d || 0) + ' / ' + (ops.activeStores30d || 0)],
+        ['待审均等待', (ops.pendingAvgWaitHours || 0) + ' 小时'],
+        ['协议已签店铺', stores.contractSigned || 0],
+        ['开通接送能力', stores.pickupEnabled || 0],
+        ['在住打卡覆盖', (ops.checkinCoverage || 0) + '%'],
+        ['7 日打卡 / 异常', (ops.publishedLogs7d || 0) + ' / ' + (ops.abnormalLogs7d || 0)],
+        ['注册用户 / 下过单', (ops.userTotal || 0) + ' / ' + (ops.orderedUserCount || 0)],
+        ['商家用户 / 客人用户', (ops.merchantUserCount || 0) + ' / ' + (ops.guestUserCount || 0)],
+        ['7 日新用户', ops.newUsers7d || 0],
+        ['访店绑定宠主', ops.visitBoundUsers || 0]
+      ];
+      document.getElementById('health-box').innerHTML = rows.map(function (r) {
+        return (
+          '<div class="dash-health-row">' +
+            '<span>' + PetAdmin.escapeHtml(r[0]) + '</span>' +
+            '<strong>' + PetAdmin.escapeHtml(String(r[1])) + '</strong>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function renderSimpleBars(list, elId, valueKey, emptyText) {
+      const el = document.getElementById(elId);
+      const rows = list || [];
+      if (!rows.length) {
+        el.innerHTML = '<div class="dash-empty">' + PetAdmin.escapeHtml(emptyText) + '</div>';
+        return;
+      }
+      const max = Math.max.apply(null, rows.map(function (r) { return r[valueKey] || r.count || 0; }).concat([1]));
+      el.innerHTML = rows.slice(0, 12).map(function (r, idx) {
+        const value = r[valueKey] != null ? r[valueKey] : (r.count || 0);
+        const width = Math.round((value / max) * 100);
+        const meta = r.gmv != null
+          ? ('单量 ' + (r.orderCount || 0) + ' · GMV ¥' + money(r.gmv))
+          : (value + ' 只');
+        return (
+          '<div class="dash-rank-item">' +
+            '<div class="dash-rank-top">' +
+              '<span class="dash-rank-idx">' + (idx + 1) + '</span>' +
+              '<span class="dash-rank-name">' + PetAdmin.escapeHtml(r.name || '未填写') + '</span>' +
+              '<span class="dash-rank-count">' + value + '</span>' +
+            '</div>' +
+            '<div class="dash-rank-bar"><i style="width:' + Math.max(8, width) + '%"></i></div>' +
+            '<div class="dash-rank-meta">' + PetAdmin.escapeHtml(meta) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function renderPieOrBar(elId, chartRefName, rows, mode) {
+      const el = document.getElementById(elId);
+      if (!window.echarts) {
+        el.innerHTML = '<div class="dash-empty">图表库未加载</div>';
+        return;
+      }
+      if (chartRefName === 'petType' && petTypeChart) {
+        petTypeChart.dispose();
+        petTypeChart = null;
+      }
+      if (chartRefName === 'petAge' && petAgeChart) {
+        petAgeChart.dispose();
+        petAgeChart = null;
+      }
+      const chart = echarts.init(el);
+      if (chartRefName === 'petType') petTypeChart = chart;
+      if (chartRefName === 'petAge') petAgeChart = chart;
+
+      const data = (rows || []).filter(function (r) { return (r.count || 0) > 0; });
+      if (!data.length) {
+        el.innerHTML = '<div class="dash-empty">暂无数据</div>';
+        return;
+      }
+
+      if (mode === 'pie') {
+        chart.setOption({
+          tooltip: { trigger: 'item' },
+          series: [{
+            type: 'pie',
+            radius: ['42%', '68%'],
+            itemStyle: { borderRadius: 6, borderColor: '#fffdf8', borderWidth: 2 },
+            label: { color: '#5B4535', formatter: '{b}\n{c}' },
+            data: data.map(function (r) {
+              return { name: r.name, value: r.count };
+            }),
+            color: ['#E98657', '#F7AA78', '#F0A020', '#6FA462', '#C8AA92', '#A98972']
+          }]
+        });
+        return;
+      }
+
+      chart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: 40, right: 16, top: 20, bottom: 28 },
+        xAxis: {
+          type: 'category',
+          data: data.map(function (r) { return r.name; }),
+          axisLabel: { color: '#A98972', fontSize: 11 }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: '#A98972' },
+          splitLine: { lineStyle: { color: '#F2DEC9' } }
+        },
+        series: [{
+          type: 'bar',
+          data: data.map(function (r) { return r.count; }),
+          itemStyle: { color: '#E98657', borderRadius: [6, 6, 0, 0] },
+          barMaxWidth: 36
+        }]
+      });
+    }
+
+    function renderPetReport(report) {
+      const pet = report || {};
+      const summary = pet.summary || {};
+      const catCount = summary.catCount || 0;
+      const dogCount = summary.dogCount || 0;
+      const catDogValue = (catCount || dogCount)
+        ? ('猫 ' + catCount + ' 狗 ' + dogCount)
+        : '--';
+      const catDogHint = (catCount || dogCount)
+        ? ('猫 ' + (summary.catRate || 0) + '% · 狗 ' + (summary.dogRate || 0) + '%')
+        : '暂无猫狗数据';
+      const kpis = [
+        { label: '登记宠物', value: summary.total || 0, hint: '7 日新增 ' + (summary.new7d || 0) },
+        { label: '30 日新增', value: summary.new30d || 0, hint: '档案增长' },
+        { label: '已接种占比', value: (summary.vaccinatedRate || 0) + '%', hint: (summary.vaccinated || 0) + ' 只已接种' },
+        { label: '绝育占比', value: (summary.neuteredRate || 0) + '%', hint: '过敏史 ' + (summary.allergyRate || 0) + '%' },
+        { label: '既往病史', value: (summary.medicalHistoryRate || 0) + '%', hint: '犬证 ' + (summary.dogLicenseRate || 0) + '%' },
+        { label: '公 / 母', value: ((pet.byGender || []).map(function (g) { return (g.name || '') + (g.count || 0); }).join(' ') || '--'), hint: '性别结构' },
+        { label: '猫 / 狗', value: catDogValue, hint: catDogHint }
+      ];
+      document.getElementById('pet-kpi').innerHTML = kpis.map(function (item) {
+        return (
+          '<div class="card dash-kpi">' +
+            '<div class="dash-kpi-value">' + item.value + '</div>' +
+            '<div class="dash-kpi-label">' + PetAdmin.escapeHtml(item.label) + '</div>' +
+            '<div class="dash-kpi-hint">' + PetAdmin.escapeHtml(item.hint) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      renderPieOrBar('pet-type-chart', 'petType', pet.byType || [], 'pie');
+      renderSimpleBars(pet.topBreeds || [], 'pet-breed-list', 'count', '暂无品种数据');
+      renderPieOrBar('pet-age-chart', 'petAge', pet.ageBuckets || [], 'bar');
+      renderSimpleBars(pet.orderByPetType || [], 'pet-order-type', 'orderCount', '暂无订单宠种数据');
+    }
+
+    function renderRevenueTable(report) {
+      const rev = report || {};
+      const summary = rev.summary || {};
+      document.getElementById('revenue-summary').innerHTML =
+        '<div class="dash-rev-summary-item"><b>' + money(summary.orderCount || 0) + '</b><span>累计总单量</span></div>' +
+        '<div class="dash-rev-summary-item"><b>¥' + money(summary.gmvAll) + '</b><span>累计总增收</span></div>' +
+        '<div class="dash-rev-summary-item"><b>' + money(summary.completedCount || 0) + '</b><span>累计完成单</span></div>' +
+        '<div class="dash-rev-summary-item"><b>¥' + money(summary.gmv30d) + '</b><span>30 日增收</span></div>' +
+        '<div class="dash-rev-summary-item"><b>' + (summary.earningStores30d || 0) + '</b><span>30 日有营收店</span></div>' +
+        '<div class="dash-rev-summary-item"><b>¥' + money(summary.aovAll) + '</b><span>平台客单价</span></div>';
+
+      const keyword = (document.getElementById('revenue-keyword').value || '').trim().toLowerCase();
+      const rows = (rev.stores || []).filter(function (s) {
+        if (!keyword) return true;
+        const hay = [s.name, s.displayNo, s.regionLabel, s.address, s.store_id].join(' ').toLowerCase();
+        return hay.indexOf(keyword) >= 0;
+      }).slice().sort(function (a, b) {
+        if ((b.orderCount || 0) !== (a.orderCount || 0)) return (b.orderCount || 0) - (a.orderCount || 0);
+        return (b.gmvAll || 0) - (a.gmvAll || 0);
+      });
+      const tbody = document.getElementById('revenue-tbody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="dash-empty">暂无匹配店铺</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function (s) {
+        const href = 'store-detail.html?store_id=' + encodeURIComponent(s.store_id || '');
+        return (
+          '<tr class="dash-store-row" data-href="' + PetAdmin.escapeHtml(href) + '">' +
+            '<td>' +
+              '<a class="store-name-link" href="' + PetAdmin.escapeHtml(href) + '">' +
+                PetAdmin.escapeHtml(s.name || '未命名') +
+              '</a>' +
+              '<div class="store-sub">' + PetAdmin.escapeHtml(s.displayNo || s.store_id || '') + '</div>' +
+            '</td>' +
+            '<td>' + PetAdmin.escapeHtml(s.regionLabel || '--') + '</td>' +
+            '<td><strong>' + (s.orderCount || 0) + '</strong></td>' +
+            '<td>' + (s.orders30d || 0) + '</td>' +
+            '<td><strong>¥' + money(s.gmvAll) + '</strong></td>' +
+            '<td>¥' + money(s.gmv30d) + '</td>' +
+            '<td>¥' + money(s.aovAll) + '</td>' +
+            '<td>' + (s.completeRate || 0) + '%</td>' +
+          '</tr>'
+        );
+      }).join('');
+
+      Array.prototype.forEach.call(tbody.querySelectorAll('.dash-store-row'), function (tr) {
+        tr.addEventListener('click', function (e) {
+          if (e.target && e.target.closest('a')) return;
+          const href = tr.getAttribute('data-href');
+          if (href) window.location.href = href;
+        });
+      });
+    }
+
+    function renderStoreRank(list, elId, emptyText, mode) {
+      const el = document.getElementById(elId);
+      const rows = list || [];
+      if (!rows.length) {
+        el.innerHTML = '<div class="dash-empty">' + PetAdmin.escapeHtml(emptyText) + '</div>';
+        return;
+      }
+      const max = Math.max.apply(null, rows.map(function (r) {
+        if (mode === 'zombie') return 1;
+        if (mode === 'orders') return r.orderCount || 0;
+        return r.gmv || 0;
+      }).concat([1]));
+      el.innerHTML = rows.map(function (r, idx) {
+        var value;
+        var barBase;
+        if (mode === 'zombie') {
+          value = r.lastOrderAtText || '从未下单';
+          barBase = 100 - idx * 8;
+        } else if (mode === 'orders') {
+          value = (r.orderCount || 0) + ' 单 · ¥' + money(r.gmv);
+          barBase = Math.round(((r.orderCount || 0) / max) * 100);
+        } else {
+          value = '¥' + money(r.gmv) + ' · ' + (r.orderCount || 0) + ' 单';
+          barBase = Math.round(((r.gmv || 0) / max) * 100);
+        }
+        const href = 'store-detail.html?store_id=' + encodeURIComponent(r.store_id || '');
+        return (
+          '<a class="dash-rank-item dash-rank-link" href="' + PetAdmin.escapeHtml(href) + '">' +
+            '<div class="dash-rank-top">' +
+              '<span class="dash-rank-idx">' + (idx + 1) + '</span>' +
+              '<span class="dash-rank-name">' + PetAdmin.escapeHtml(r.name) + '</span>' +
+              '<span class="dash-rank-count">' + PetAdmin.escapeHtml(value) + '</span>' +
+            '</div>' +
+            '<div class="dash-rank-bar"><i style="width:' + Math.max(8, barBase) + '%"></i></div>' +
+            '<div class="dash-rank-meta">' + PetAdmin.escapeHtml(r.regionLabel || '--') +
+              (mode === 'zombie' ? '' : (' · 完成率 ' + (r.completeRate || 0) + '%')) +
+            '</div>' +
+          '</a>'
+        );
+      }).join('');
+    }
+
+    function markerColor(status) {
+      if (status === 'approved') return '#E98657';
+      if (status === 'pending') return '#F0A020';
+      if (status === 'disabled') return '#A98972';
+      return '#C8AA92';
+    }
+
+    function normalizeProvinceName(name) {
+      let raw = String(name || '').trim();
+      if (!raw || raw === '未知') return raw;
+      return raw
+        .replace(/特别行政区$/, '')
+        .replace(/维吾尔自治区$/, '')
+        .replace(/壮族自治区$/, '')
+        .replace(/回族自治区$/, '')
+        .replace(/自治区$/, '')
+        .replace(/省$/, '')
+        .replace(/市$/, '');
+    }
+
+    function showMapError(message) {
+      const el = document.getElementById('china-map');
+      if (!el) return;
+      el.innerHTML =
+        '<div class="dash-empty" style="padding-top:180px">' +
+          PetAdmin.escapeHtml(message || '地图加载失败') +
+        '</div>';
+    }
+
+    function renderMap(data) {
+      const el = document.getElementById('china-map');
+      if (!window.echarts) {
+        showMapError('图表库未加载，请检查网络后刷新');
+        return;
+      }
+      if (mapChart) {
+        mapChart.dispose();
+        mapChart = null;
+      }
+      el.innerHTML = '';
+      mapChart = echarts.init(el);
+      if (!el._dashResizeBound) {
+        el._dashResizeBound = true;
+        window.addEventListener('resize', function () {
+          if (mapChart) mapChart.resize();
+          if (trendChart) trendChart.resize();
+          if (petTypeChart) petTypeChart.resize();
+          if (petAgeChart) petAgeChart.resize();
+        });
+      }
+
+      const mapStores = data.mapStores || [];
+      const provinces = data.provinces || [];
+      const maxProvince = Math.max(1, ...provinces.map(function (p) { return p.storeCount || 0; }));
+      const regions = provinces.map(function (p) {
+        const ratio = (p.storeCount || 0) / maxProvince;
+        const alpha = 0.12 + ratio * 0.55;
+        return {
+          name: normalizeProvinceName(p.province),
+          itemStyle: { areaColor: 'rgba(233, 134, 87, ' + alpha.toFixed(2) + ')' },
+          storeCount: p.storeCount || 0,
+          orderCount: p.orderCount || 0,
+          gmv: p.gmv || 0
+        };
+      });
+
+      const scatter = mapStores.map(function (s) {
+        const size = 12 + Math.min(30, Math.sqrt(s.orderCount || 0) * 3.2);
+        return {
+          name: s.name,
+          value: [s.longitude, s.latitude, s.orderCount || 0],
+          store_id: s.store_id,
+          displayNo: s.displayNo,
+          address: s.address,
+          regionLabel: s.regionLabel,
+          merchantApplyStatus: s.merchantApplyStatus,
+          orderCount: s.orderCount || 0,
+          gmv: s.gmv || 0,
+          itemStyle: { color: markerColor(s.merchantApplyStatus) },
+          symbolSize: size
+        };
+      });
+
+      mapChart.setOption({
+        tooltip: {
+          trigger: 'item',
+          formatter: function (params) {
+            if (params.seriesType === 'effectScatter') {
+              const d = params.data || {};
+              return (
+                '<strong>' + PetAdmin.escapeHtml(d.name || '') + '</strong><br/>' +
+                '状态：' + PetAdmin.escapeHtml(STATUS_LABELS[d.merchantApplyStatus] || '--') + '<br/>' +
+                '注册地：' + PetAdmin.escapeHtml(d.regionLabel || '--') + '<br/>' +
+                '单量：' + (d.orderCount || 0) + '<br/>' +
+                'GMV：¥' + money(d.gmv)
+              );
+            }
+            return PetAdmin.escapeHtml(params.name || '');
+          }
+        },
+        geo: {
+          map: 'china',
+          roam: true,
+          zoom: 1.2,
+          center: [104.1, 35.5],
+          scaleLimit: { min: 0.8, max: 8 },
+          label: { show: false },
+          itemStyle: { areaColor: '#FFF4E9', borderColor: '#E8C9AD', borderWidth: 1 },
+          emphasis: {
+            itemStyle: { areaColor: '#FFE2C8' },
+            label: { show: true, color: '#4E3729', fontSize: 12 }
+          },
+          regions: regions
+        },
+        series: [{
+          name: '门店',
+          type: 'effectScatter',
+          coordinateSystem: 'geo',
+          data: scatter,
+          showEffectOn: 'emphasis',
+          rippleEffect: { scale: 2.4, brushType: 'stroke' },
+          label: {
+            show: scatter.length > 0 && scatter.length <= 36,
+            formatter: '{b}',
+            position: 'right',
+            color: '#4E3729',
+            fontSize: 11,
+            fontWeight: 700
+          },
+          zlevel: 2
+        }]
+      }, true);
+
+      mapChart.off('click');
+      mapChart.on('click', function (params) {
+        if (params.data && params.data.store_id) {
+          window.location.href = 'store-detail.html?store_id=' + encodeURIComponent(params.data.store_id);
+        }
+      });
+    }
+
+    function renderRegions(regions) {
+      const list = regions || [];
+      const el = document.getElementById('region-list');
+      if (!list.length) {
+        el.innerHTML = '<div class="dash-empty">暂无注册地数据</div>';
+        return;
+      }
+      const max = Math.max.apply(null, list.map(function (r) { return r.storeCount || 0; })) || 1;
+      el.innerHTML = list.slice(0, 20).map(function (r, idx) {
+        const width = Math.round(((r.storeCount || 0) / max) * 100);
+        return (
+          '<div class="dash-rank-item">' +
+            '<div class="dash-rank-top">' +
+              '<span class="dash-rank-idx">' + (idx + 1) + '</span>' +
+              '<span class="dash-rank-name">' + PetAdmin.escapeHtml(r.regionLabel) + '</span>' +
+              '<span class="dash-rank-count">' + (r.storeCount || 0) + ' 店</span>' +
+            '</div>' +
+            '<div class="dash-rank-bar"><i style="width:' + width + '%"></i></div>' +
+            '<div class="dash-rank-meta">开通 ' + (r.approvedCount || 0) +
+              ' · 单量 ' + (r.orderCount || 0) +
+              ' · GMV ¥' + money(r.gmv) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function renderStoreTable(stores) {
+      const keyword = (document.getElementById('store-keyword').value || '').trim().toLowerCase();
+      const rows = (stores || []).filter(function (s) {
+        if (!keyword) return true;
+        const hay = [s.name, s.displayNo, s.address, s.regionLabel, s.province, s.city, s.legalName, s.contactPhone]
+          .join(' ').toLowerCase();
+        return hay.indexOf(keyword) >= 0;
+      });
+      const tbody = document.getElementById('store-tbody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="dash-empty">暂无匹配店铺</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function (s) {
+        const href = 'store-detail.html?store_id=' + encodeURIComponent(s.store_id || '');
+        return (
+          '<tr class="dash-store-row" data-href="' + PetAdmin.escapeHtml(href) + '">' +
+            '<td>' +
+              '<a class="store-name-link" href="' + PetAdmin.escapeHtml(href) + '">' +
+                PetAdmin.escapeHtml(s.name || '未命名') +
+              '</a>' +
+              '<div class="store-sub">' + PetAdmin.escapeHtml(s.displayNo || s.store_id || '') +
+                (s.isZombie ? ' · 30日零单' : '') +
+              '</div>' +
+            '</td>' +
+            '<td>' + statusBadge(s.merchantApplyStatus) + '</td>' +
+            '<td>' + PetAdmin.escapeHtml(s.regionLabel || '--') + '</td>' +
+            '<td><strong>' + (s.orderCount || 0) + '</strong></td>' +
+            '<td>¥' + money(s.gmv) + '</td>' +
+            '<td>' + (s.completeRate || 0) + '%</td>' +
+            '<td>' + (s.activeOrderCount || 0) + '</td>' +
+            '<td>' + PetAdmin.escapeHtml(s.lastOrderAtText || '--') + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+
+      Array.prototype.forEach.call(tbody.querySelectorAll('.dash-store-row'), function (tr) {
+        tr.addEventListener('click', function (e) {
+          if (e.target && e.target.closest('a')) return;
+          const href = tr.getAttribute('data-href');
+          if (href) window.location.href = href;
+        });
+      });
+    }
+
+    async function loadDashboard() {
+      const refreshBtn = document.getElementById('refresh-btn');
+      refreshBtn.disabled = true;
+      try {
+        const data = await PetAdmin.api('/api/admin/dashboard');
+        if (!data || !data.success) {
+          throw new Error((data && data.errMsg) || '加载失败');
+        }
+        dashboardData = data;
+        document.getElementById('updated-at').textContent =
+          '更新于 ' + (data.generatedAtText || new Date().toLocaleString('zh-CN'));
+        renderInvestHero(data);
+        renderPulse(data);
+        renderInsuranceMetrics(data);
+        renderTrend(data.trend || []);
+        renderUnitModel(data);
+        renderStoreRank(data.topStoresByOrders || data.topStores, 'top-orders', '暂无订单门店', 'orders');
+        renderStoreRank(data.topStores, 'top-stores', '暂无完成单门店', 'top');
+        renderRevenueTable(data.storeRevenueReport);
+        renderRegions(data.regions);
+        renderStoreTable(data.stores);
+        // 内部折叠区
+        renderFunnel(data.funnel || [], (data.summary && data.summary.orders) || {});
+        renderRevenue(data);
+        renderHealth(data);
+        renderStoreRank(data.zombieStores, 'zombie-stores', '暂无 30 日零单店', 'zombie');
+        renderPetReport(data.petReport);
+
+        try {
+          await ensureChinaMap();
+          renderMap(data);
+        } catch (mapErr) {
+          console.error(mapErr);
+          showMapError((mapErr && mapErr.message) || '地图数据加载失败');
+        }
+      } catch (err) {
+        document.getElementById('invest-grid').innerHTML =
+          '<div class="card dash-empty">' + PetAdmin.escapeHtml((err && err.message) || '加载失败') + '</div>';
+        document.getElementById('pulse-grid').innerHTML =
+          '<div class="card dash-empty">无法加载</div>';
+        ['funnel-list', 'revenue-box', 'health-box', 'unit-model', 'top-orders', 'top-stores', 'zombie-stores', 'region-list', 'pet-breed-list', 'pet-order-type'].forEach(function (id) {
+          const node = document.getElementById(id);
+          if (node) node.innerHTML = '<div class="dash-empty">无法加载</div>';
+        });
+        document.getElementById('pet-kpi').innerHTML =
+          '<div class="card dash-empty">无法加载</div>';
+        document.getElementById('store-tbody').innerHTML =
+          '<tr><td colspan="8" class="dash-empty">无法加载</td></tr>';
+        document.getElementById('revenue-tbody').innerHTML =
+          '<tr><td colspan="8" class="dash-empty">无法加载</td></tr>';
+        document.getElementById('updated-at').textContent = '加载失败';
+        showMapError((err && err.message) || '加载失败');
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

@@ -96,6 +96,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.customer-tags { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 8rpx; }
+.customer-tag { padding: 4rpx 10rpx; border-radius: 999rpx; background: #FFF1E7; color: #C96F45; font-size: 20rpx; line-height: 1.35; }
 .customer-arrow {
   font-size: 32rpx;
   color: #CCCCCC;

@@ -1,8 +1,9 @@
 const app = getApp();
-const { buildCustomersFromOrders, filterCustomers, findCustomerById } = require('../utils/customers');
+const { buildCustomersFromOrders, filterCustomers, findCustomerById, decorateCustomerTags } = require('../utils/customers');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked } = require('../../utils/shell');
 const { listGuestShareCards } = require('../../utils/storeShare');
+const { listCustomerTags, updateCustomerTags } = require('../../utils/growth');
 const {
   startProxySessionFromCustomer,
   openProxyReserve,
@@ -33,6 +34,7 @@ Page({
     unassignedGuest: null,
     servicePickerVisible: false,
     serviceCards: []
+    ,tagMap: {}
   },
 
   onLoad(options) {
@@ -49,6 +51,11 @@ Page({
     if (this._isProxy && redirectToUserIfMerchantUiBlocked()) return;
     if (redirectToStoreAuthIfNeeded()) return;
     if (this._isProxy) {
+      // 先用商家日常页已缓存的订单渲染客人列表，网络刷新在后台完成。
+      const cachedGuests = buildCustomersFromOrders(app.getOrders());
+      if (cachedGuests.length || buildUnassignedGuest()) {
+        this._applyGuestFilter(this._decorate(cachedGuests));
+      }
       this._loadGuests({
         force: false,
         showLoading: !this.data.allGuests.length && !this.data.unassignedGuest
@@ -63,7 +70,10 @@ Page({
       });
       return;
     }
+    const cachedCustomers = buildCustomersFromOrders(app.getOrders());
+    if (cachedCustomers.length) this._applyFilter(this._decorate(cachedCustomers));
     this._loadCustomers({ force: false, showLoading: !this.data.allCustomers.length });
+    this._loadTags();
   },
 
   onPullDownRefresh() {
@@ -80,6 +90,26 @@ Page({
       allCustomers: list,
       customers: filterCustomers(list, kw)
     });
+  },
+
+  _decorate(list) {
+    return decorateCustomerTags(list, this.data.tagMap || {});
+  },
+
+  _storeId() {
+    return String((app.getShop && app.getShop() && app.getShop().store_id) || (app.globalData && app.globalData.merchantStoreId) || '').trim();
+  },
+
+  _loadTags() {
+    const storeId = this._storeId();
+    if (!storeId || this._tagLoading) return Promise.resolve();
+    this._tagLoading = true;
+    return listCustomerTags(storeId).then((res) => {
+      const tagMap = (res && res.success && res.tags) || {};
+      this.setData({ tagMap });
+      if (this._isProxy) this._applyGuestFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
+      else this._applyFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
+    }).catch(() => {}).finally(() => { this._tagLoading = false; });
   },
 
   _applyGuestFilter(assignedGuests, keyword) {
@@ -107,12 +137,13 @@ Page({
           wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
           return;
         }
-        this._applyFilter(buildCustomersFromOrders(app.getOrders()));
+        this._applyFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
+        this._loadTags();
       })
       .catch((err) => {
         console.error('[客户管理] 加载失败', err);
         if (app.getOrders().length) {
-          this._applyFilter(buildCustomersFromOrders(app.getOrders()));
+          this._applyFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
         } else {
           wx.showToast({
             title: (err && err.message) || '加载失败',
@@ -133,12 +164,13 @@ Page({
           wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
           return;
         }
-        this._applyGuestFilter(buildCustomersFromOrders(app.getOrders()));
+        this._applyGuestFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
+        this._loadTags();
       })
       .catch((err) => {
         console.error('[代客人下单] 加载客人失败', err);
         if (app.getOrders().length) {
-          this._applyGuestFilter(buildCustomersFromOrders(app.getOrders()));
+          this._applyGuestFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
         } else {
           this._applyGuestFilter([]);
         }

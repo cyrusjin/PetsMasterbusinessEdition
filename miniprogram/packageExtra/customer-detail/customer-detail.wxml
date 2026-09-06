@@ -44,6 +44,12 @@
         <text class="detail-label">微信昵称</text>
         <text class="detail-value">{{customer.nickName}}</text>
       </view>
+      <view class="tag-editor-row">
+        <view class="tag-list" wx:if="{{customer.tags.length}}">
+          <text class="customer-tag" wx:for="{{customer.tags}}" wx:key="*this">{{item}}</text>
+        </view>
+        <text class="tag-edit-btn" bindtap="onEditTags">{{tagSaving ? '保存中…' : '编辑标签'}}</text>
+      </view>
     </view>
 
     <view class="card">

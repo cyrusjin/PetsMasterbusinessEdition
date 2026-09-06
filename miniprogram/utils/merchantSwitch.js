@@ -12,7 +12,7 @@ const CACHE_TTL = 60 * 1000;
  * 过审后再打开。不要依赖 getAccountInfoSync().version——
  * 审核期微信常仍返回线上旧版或空，会误命中 default=开启。
  */
-const LOCAL_APP_VERSION = '1.0.9';
+const LOCAL_APP_VERSION = '1.0.12';
 
 let cachedMiniProgramMeta = null;
 
@@ -216,7 +216,24 @@ function applyMerchantSwitchToApp(app, enabled) {
   app.globalData.merchantSwitchEnabled = on;
   // 与商家开关同源：关闭时进入审核 UI（去 AI 字样 / 隐藏问诊）
   app.globalData.auditMode = !on;
+  syncUserTabBarAuditMode(!on);
   return on;
+}
+
+/** 将审核态及时同步给当前用户端自定义底栏。 */
+function syncUserTabBarAuditMode(auditMode) {
+  try {
+    if (typeof getCurrentPages !== 'function') return;
+    const pages = getCurrentPages();
+    const current = pages[pages.length - 1];
+    if (!current || typeof current.getTabBar !== 'function') return;
+    const tabBar = current.getTabBar();
+    if (tabBar && typeof tabBar.syncAuditMode === 'function') {
+      tabBar.syncAuditMode(!!auditMode);
+    }
+  } catch (err) {
+    // 页面或底栏尚未创建时由组件 attached/page show 再同步。
+  }
 }
 
 function applyAuditModeToApp(app, auditMode) {

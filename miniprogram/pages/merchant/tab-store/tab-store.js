@@ -479,9 +479,13 @@ Page({
     contractClauseCustomized: false,
     membership: {
       active: false,
-      freeDogLimit: 5,
-      boardingCount: 0,
-      priceYuan: '9.9',
+      subscriptionActive: false,
+      trialActive: false,
+      migrationActive: false,
+      promotionActive: false,
+      statusType: 'expired',
+      statusLabel: '试用已结束',
+      statusLine: '开通会员后继续使用全部功能',
       expireAtText: ''
     },
     savingContractClause: false,
@@ -1653,7 +1657,46 @@ Page({
       washValueAddedServices: normalizeWashProductsForUi(normalizedShop.washValueAddedServices),
       washFreeMode: parseWashFreeMinDays(normalizedShop.washFreeMinDays) > 0 ? 'minDays' : 'none',
       valueAddedServices: resolveStoreValueAddedServices(normalizedShop),
-      membership: normalizedShop.membership || this.data.membership,
+      membership: (() => {
+        const membership = normalizedShop.membership || this.data.membership || {};
+        const trialActive = !!(membership.trialActive || membership.trial_active || membership.accessType === 'trial');
+        const migrationActive = !!(membership.migrationActive || membership.migration_active || membership.accessType === 'migration');
+        const promotionActive = !!(membership.promotionActive || membership.promotion_active || membership.accessType === 'promotion');
+        const subscriptionActive = membership.subscriptionActive != null
+          ? !!membership.subscriptionActive
+          : (membership.subscription_active != null ? !!membership.subscription_active : (!!membership.active && !trialActive && !migrationActive && !promotionActive));
+        const active = trialActive || subscriptionActive || migrationActive || promotionActive || !!membership.active;
+        const expireAtText = membership.expireAtText || membership.expire_at_text || '';
+        const trialExpireAtText = membership.trialExpireAtText || membership.trial_expire_at_text || expireAtText;
+        const trialDays = Number(membership.trialDaysRemaining != null ? membership.trialDaysRemaining : membership.trial_days_remaining) || 0;
+        const statusType = subscriptionActive ? 'subscribed' : ((promotionActive || migrationActive) ? 'granted' : (trialActive ? 'trial' : 'expired'));
+        const statusLabel = subscriptionActive
+          ? '会员生效中'
+          : (promotionActive ? '推广权益中' : (migrationActive ? '老用户限免' : (trialActive ? '免费试用中' : '试用已结束')));
+        const statusLine = subscriptionActive
+          ? (expireAtText ? `会员有效期至 ${expireAtText}` : '平台全部功能已开放')
+          : (promotionActive
+            ? (expireAtText ? `推广权益有效期至 ${expireAtText}` : '推广审核已通过，全部功能已开放')
+            : (migrationActive
+              ? (expireAtText ? `老用户免费使用至 ${expireAtText}` : '老用户免费使用至 2026年9月10日')
+              : (trialActive
+                ? (trialExpireAtText ? `试用有效期至 ${trialExpireAtText}` : `还剩 ${trialDays || 7} 天免费试用`)
+                : '开通会员后继续使用全部功能')));
+        return {
+          ...membership,
+          active,
+          subscriptionActive,
+          trialActive,
+          migrationActive,
+          promotionActive,
+          statusType,
+          statusLabel,
+          statusLine,
+          expireAtText,
+          trialExpireAtText,
+          trialDaysRemaining: trialDays
+        };
+      })(),
       hf: this._buildHomeFeedingForm(normalizedShop.homeFeeding),
       ...billingState,
       ...pickBusinessHoursState(normalizedShop),

@@ -1,48 +1,110 @@
-<view class="merchant-page">
-  <view class="container">
-    <view class="card hero-card">
-      <text class="hero-title">运营会员</text>
-      <text class="hero-desc">免费版可同时接待 {{membership.freeDogLimit || 5}} 只寄养中宠物；开通后当月不限数量。</text>
-      <view class="price-row">
-        <text class="price-symbol">¥</text>
-        <text class="price-num">{{membership.priceYuan || '9.9'}}</text>
-        <text class="price-unit">/ {{membership.periodDays || 30}} 天</text>
+<view class="membership-page">
+  <view class="ambient ambient-one"></view>
+  <view class="ambient ambient-two"></view>
+
+  <view class="membership-container">
+    <view class="hero-card {{membership.statusType}}">
+      <view class="hero-orbit orbit-one"></view>
+      <view class="hero-orbit orbit-two"></view>
+      <image class="hero-pets" src="/images/membership/membership-hero-gold.png" mode="aspectFit" />
+      <view class="hero-bar">
+        <view class="brand-lockup">
+          <view class="brand-mark">P</view>
+          <view class="brand-copy"><text class="brand-name">PETMASTER</text><text class="brand-sub">门店经营会员</text></view>
+        </view>
+        <view class="status-pill {{membership.statusType}}"><view class="status-dot"></view><text>{{membership.statusLabel}}</text></view>
+      </view>
+      <view class="hero-copy">
+        <text class="hero-kicker">ALL FEATURES. ONE MEMBERSHIP.</text>
+        <text class="hero-title">{{membership.statusTitle}}</text>
+        <text class="hero-desc">{{membership.statusDesc}}</text>
+      </view>
+      <view class="trial-banner" wx:if="{{membership.trialActive}}">
+        <view class="trial-days"><text class="trial-number">{{membership.trialDaysRemaining || 7}}</text><text class="trial-unit">天</text></view>
+        <view class="trial-copy"><text class="trial-title">完整功能免费体验</text><text class="trial-desc">试用结束后，订阅会员即可继续使用</text></view>
       </view>
     </view>
 
-    <view class="card" wx:if="{{unavailable}}">
-      <view class="card-title">暂未开放</view>
-      <text class="tip-text">会员开通服务正在准备中，当前无需也不能完成支付。若接单遇到额度提示，请联系平台管理员。</text>
+    <view class="notice-card" wx:if="{{unavailable}}">
+      <view class="notice-icon">!</view>
+      <view><text class="notice-title">订阅状态暂不可用</text><text class="notice-text">请稍后重试，或联系平台客服</text></view>
     </view>
 
-    <block wx:else>
-      <view class="card">
-        <view class="card-title">当前状态</view>
-        <view class="status-row">
-          <text class="status-label">套餐</text>
-          <text class="status-value {{membership.active ? 'pro' : ''}}">{{membership.active ? '会员版' : '免费版'}}</text>
+    <view class="required-card" wx:if="{{accessRequired && !membership.accessActive}}">
+      <view class="required-lock">锁</view>
+      <view class="required-copy"><text class="required-title">试用权益已到期</text><text class="required-desc">选择下方任一套餐完成订阅，即可继续进入商家经营端</text></view>
+    </view>
+
+    <view class="promise-strip">
+      <view class="promise-item"><text class="promise-icon">7</text><text>注册即享 7 天试用</text></view>
+      <view class="promise-line"></view>
+      <view class="promise-item"><text class="promise-icon">✓</text><text>所有功能完整开放</text></view>
+      <view class="promise-line"></view>
+      <view class="promise-item"><text class="promise-icon">∞</text><text>不按宠物数量收费</text></view>
+    </view>
+
+    <view class="promotion-entry" bindtap="onGoPromotion">
+      <view class="promotion-entry-icon">推</view>
+      <view class="promotion-entry-copy">
+        <view class="promotion-entry-title-row"><text class="promotion-entry-title">推广任务</text><text class="promotion-entry-tag">人工审核</text></view>
+        <text class="promotion-entry-desc">上传推广截图，官网后台审核通过后发放使用权限</text>
+      </view>
+      <text class="promotion-entry-arrow">›</text>
+    </view>
+
+    <view class="section-heading">
+      <view><text class="section-kicker">MEMBERSHIP PLAN</text><text class="section-title">选择订阅周期</text></view>
+      <text class="section-note">一套会员 · 全部功能</text>
+    </view>
+    <view class="notice-card" wx:if="{{!membership.canPurchase}}">
+      <view class="notice-icon">主</view>
+      <view><text class="notice-title">仅店主可办理订阅</text><text class="notice-text">员工可查看会员状态，请联系店主完成购买、兑换或推广任务提交</text></view>
+    </view>
+
+    <view class="plan-list">
+      <view class="plan-card {{selectedPlan === item.code ? 'selected' : ''}} {{item.code !== 'pro_monthly' ? 'recommended' : ''}}" wx:for="{{plans}}" wx:key="code" data-code="{{item.code}}" bindtap="onSelectPlan">
+        <view class="plan-radio"><view class="plan-radio-dot"></view></view>
+        <view class="plan-main">
+          <view class="plan-title-row"><text class="plan-name">{{item.name}}</text><text class="plan-badge" wx:if="{{item.badge}}">{{item.badge}}</text></view>
+          <text class="plan-period">会员服务 · {{item.periodText}}</text>
         </view>
-        <view class="status-row">
-          <text class="status-label">寄养中</text>
-          <text class="status-value">{{membership.boardingCount || 0}} / {{membership.active ? '不限' : (membership.freeDogLimit || 5)}}</text>
-        </view>
-        <view class="status-row" wx:if="{{membership.active}}">
-          <text class="status-label">有效期至</text>
-          <text class="status-value">{{membership.expireAtText}}</text>
+        <view class="plan-price-area">
+          <text class="plan-original" wx:if="{{item.originalPriceYuan}}">原价 ¥{{item.originalPriceYuan}}</text>
+          <view class="plan-price-wrap"><text class="plan-symbol">¥</text><text class="plan-price">{{item.priceYuan}}</text><text class="plan-suffix">/{{item.priceUnit}}</text></view>
         </view>
       </view>
+    </view>
 
-      <view class="card">
-        <view class="card-title">会员权益</view>
-        <view class="benefit-item">同时寄养中宠物数量不限</view>
-        <view class="benefit-item">确认接单与确认到店不再受免费额度限制</view>
-        <view class="benefit-item">到期后自动回免费档，已在住宠物不受影响</view>
-      </view>
-    </block>
-
-    <button class="btn-primary" bindtap="onPay" loading="{{paying}}" disabled="{{paying || unavailable || !membership.enabled}}">
-      {{unavailable ? '暂未开放' : (membership.active ? '续费会员' : '立即开通')}}
+    <button class="upgrade-button" bindtap="onPay" loading="{{paying}}" disabled="{{paying || unavailable || !membership.enabled || !membership.canPurchase}}">
+      <text class="button-spark">✦</text>
+      <text>{{membership.subscriptionActive ? '续费会员服务' : (membership.trialActive ? '试用结束后继续使用' : '立即开通会员')}}</text>
+      <text class="button-arrow">›</text>
     </button>
-    <text class="pay-tip" wx:if="{{unavailable || !membership.payConfigured}}">支付能力上线后将在此开通</text>
+    <text class="pay-tip" wx:if="{{!membership.payConfigured}}">微信支付暂未配置，可使用兑换码开通会员</text>
+
+    <view class="benefit-section">
+      <text class="benefit-heading">一次订阅，安心经营</text>
+      <view class="benefit-list">
+        <view class="benefit-row"><view class="benefit-icon">全</view><view class="benefit-copy"><text class="benefit-title">全部功能开放</text><text class="benefit-desc">订单、客户、寄养日常与经营数据完整可用</text></view><text class="benefit-check">✓</text></view>
+        <view class="benefit-row"><view class="benefit-icon">∞</view><view class="benefit-copy"><text class="benefit-title">寄养数量不限</text><text class="benefit-desc">会员有效期内不设宠物数量上限，经营规模不影响使用</text></view><text class="benefit-check">✓</text></view>
+        <view class="benefit-row"><view class="benefit-icon">续</view><view class="benefit-copy"><text class="benefit-title">有效期自动顺延</text><text class="benefit-desc">提前续费也不会损失已有会员天数</text></view><text class="benefit-check">✓</text></view>
+      </view>
+    </view>
+
+    <view class="voucher-card">
+      <view class="voucher-header"><view class="voucher-icon">券</view><view class="voucher-copy"><text class="voucher-title">会员兑换码</text><text class="voucher-desc">已有兑换码？在这里兑换会员时长</text></view></view>
+      <view class="redeem-row">
+        <input class="redeem-input" value="{{redeemCode}}" maxlength="32" placeholder="请输入兑换码" placeholder-class="redeem-placeholder" bindinput="onRedeemInput" />
+        <button class="redeem-button" bindtap="onRedeem" loading="{{redeeming}}" disabled="{{redeeming || unavailable || !membership.canPurchase}}">兑换</button>
+      </view>
+    </view>
+
+    <view class="rules-card">
+      <view class="rule-row"><text class="rule-dot"></text><text>本次服务上线前注册的老用户，可免费使用至 2026 年 9 月 10 日</text></view>
+      <view class="rule-row"><text class="rule-dot"></text><text>新门店注册成功后自动获得 7 天完整功能试用</text></view>
+      <view class="rule-row"><text class="rule-dot"></text><text>试用或会员到期后，需续费才能继续使用平台功能</text></view>
+      <view class="rule-row"><text class="rule-dot"></text><text>推广截图需经官网后台人工审核，审核通过后才发放权限</text></view>
+    </view>
+    <text class="footer-brand">PETMASTER · 专注照护，也专注经营</text>
   </view>
 </view>

@@ -114,6 +114,10 @@
   color: #333333;
   text-align: right;
 }
+.tag-editor-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding-top: 20rpx; margin-top: 20rpx; border-top: 1rpx solid #F2DEC9; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 8rpx; flex: 1; }
+.customer-tag { padding: 5rpx 12rpx; border-radius: 999rpx; background: #FFF1E7; color: #C96F45; font-size: 21rpx; line-height: 1.35; }
+.tag-edit-btn { flex-shrink: 0; color: #E98657; font-size: 24rpx; }
 .empty-pets {
   padding: 24rpx 0 8rpx;
   text-align: center;

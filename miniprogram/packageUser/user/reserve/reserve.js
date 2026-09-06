@@ -79,6 +79,8 @@ const {
   isUnassignedSession
 } = require('../../../utils/proxyOrder');
 const { buildStoreShareConfig, prefetchStoreShareImage } = require('../../../utils/storeShare');
+const { capturePromotionEntry } = require('../../../utils/growth');
+const { openPetInsurance, recordPetInsuranceEvent } = require('../../../utils/petInsurance');
 
 /** 超过该字数时预览截断，点击查看完整 */
 const NOTICE_EXPAND_CHARS = 90;
@@ -531,6 +533,7 @@ Page({
     signedContractDraft: null,
     contractModalVisible: false,
     oaFollowSheetVisible: false,
+    insuranceSheetVisible: false,
     contractModalSignable: false,
     contractDoc: {},
     pickupNoticeExpandable: false,
@@ -589,12 +592,16 @@ Page({
     this._pageReady = false;
     this._choosingPickupLocation = false;
     const storeId = String((options && options.store_id) || '').trim();
+    capturePromotionEntry(options || {});
     this._entryStoreId = storeId;
     this._entryServiceLine = String((options && (options.serviceLine || options.line)) || '').trim();
     this._proxyMode = String((options && options.proxy) || '') === '1';
     this._proxyClaimToken = '';
     this._submitting = false;
     this._proxySubmitted = false;
+    this._insurancePromptShown = false;
+    this._insuranceClickTracked = false;
+    this._continueAfterInsuranceOnReturn = false;
     this.setData({
       proxyMode: this._proxyMode,
       submitBtnText: this._proxyMode ? '保存并发送给客人' : '提交预约'
@@ -605,6 +612,11 @@ Page({
   },
 
   onShow() {
+    if (this._continueAfterInsuranceOnReturn) {
+      this._continueAfterInsuranceOnReturn = false;
+      this._continueAfterInsuranceSheet();
+      return;
+    }
     app.ensureCloudAndLogin()
       .then(() => {
         if (this._choosingPickupLocation) {
@@ -2981,7 +2993,7 @@ Page({
       ? `已提交${list.length}只宠物预约`
       : '预约成功';
     wx.showToast({ title: toastTitle, icon: 'success' });
-    setTimeout(() => this._afterReserveSuccess(), 700);
+    setTimeout(() => this._afterReserveSuccess(list), 700);
   },
 
   _afterProxyReserveSuccess(savedOrders) {
@@ -3031,7 +3043,57 @@ Page({
     return buildStoreShareConfig(store, storeId, this.data.serviceLine);
   },
 
-  _afterReserveSuccess() {
+  _afterReserveSuccess(savedOrders) {
+    if (this._insurancePromptShown) return;
+    this._insurancePromptShown = true;
+    const list = Array.isArray(savedOrders) ? savedOrders.filter(Boolean) : [];
+    const first = list[0] || {};
+    const rawId = first.orderGroupId
+      || list.map((item) => item.id).filter(Boolean).join('_')
+      || `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    this._insuranceExposureId = `checkout_${String(rawId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 96)}`;
+    this._insuranceStoreId = String(
+      first.store_id
+      || (this.data.store && this.data.store.store_id)
+      || (app.getStoreId && app.getStoreId())
+      || ''
+    ).trim();
+    this.setData({ insuranceSheetVisible: true }, () => {
+      this._recordInsuranceEvent('impression');
+    });
+  },
+
+  _recordInsuranceEvent(eventType) {
+    if (!this._insuranceExposureId || !this._insuranceStoreId) return;
+    recordPetInsuranceEvent({
+      eventType,
+      eventId: this._insuranceExposureId,
+      store_id: this._insuranceStoreId
+    }).catch(() => {});
+  },
+
+  onBuyInsuranceFromSheet() {
+    this.setData({ insuranceSheetVisible: false });
+    if (!this._insuranceClickTracked) {
+      this._insuranceClickTracked = true;
+      this._recordInsuranceEvent('click');
+    }
+    openPetInsurance({
+      success: () => {
+        this._continueAfterInsuranceOnReturn = true;
+      },
+      fail: () => {
+        this._continueAfterInsuranceSheet();
+      }
+    });
+  },
+
+  onCloseInsuranceSheet() {
+    this.setData({ insuranceSheetVisible: false });
+    this._continueAfterInsuranceSheet();
+  },
+
+  _continueAfterInsuranceSheet() {
     const user = (app.globalData && app.globalData.userInfo) || {};
     if (isOaBound(user)) {
       setTimeout(() => this._goOrdersAfterReserve(), 700);

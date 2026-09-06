@@ -1,0 +1,24 @@
+<view class="insurance-sheet-root" wx:if="{{show}}" catchtouchmove="onPanelTap">
+  <view class="insurance-sheet-mask" bindtap="onMaskTap"></view>
+  <view class="insurance-sheet-panel" catchtap="onPanelTap">
+    <view class="insurance-sheet-handle"></view>
+    <view class="insurance-sheet-close" catchtap="onClose">×</view>
+
+    <view class="insurance-sheet-brand">中国平安 · 宠物保障</view>
+    <text class="insurance-sheet-title">给爱宠多一份安心</text>
+    <text class="insurance-sheet-desc">平安宠无忧 · 爱宠保障卡 2.0 版</text>
+
+    <view class="insurance-qr-card" bindtap="onPreviewQrcode">
+      <image
+        class="insurance-qrcode"
+        src="{{qrcodePath}}"
+        mode="aspectFit"
+        show-menu-by-longpress="{{true}}"
+      />
+    </view>
+    <text class="insurance-sheet-hint">长按识别二维码，或点击下方按钮查看保障方案</text>
+
+    <button class="insurance-buy-btn" bindtap="onBuy">购买宠物保险</button>
+    <text class="insurance-sheet-note">保险产品及投保服务由中国平安提供，投保前请仔细阅读保障范围、免责条款及投保须知。</text>
+  </view>
+</view>

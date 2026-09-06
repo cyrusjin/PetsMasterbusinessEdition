@@ -9,9 +9,19 @@ function getMembershipStatus(storeId) {
     .then((res) => rejectOnFailure(res, '加载会员信息失败'));
 }
 
-function createMembershipPay(storeId) {
-  return callStoreMembership('createMembershipPay', { store_id: storeId || '' })
+function createMembershipPay(storeId, planCode) {
+  return callStoreMembership('createMembershipPay', {
+    store_id: storeId || '',
+    plan_code: planCode || 'pro_monthly'
+  })
     .then((res) => rejectOnFailure(res, '创建支付失败'));
+}
+
+function redeemMembershipCode(storeId, code) {
+  return callStoreMembership('redeemMembershipCode', {
+    store_id: storeId || '',
+    code: String(code || '').trim().toUpperCase()
+  }).then((res) => rejectOnFailure(res, '兑换失败'));
 }
 
 function queryMembershipPay(orderId) {
@@ -30,34 +40,10 @@ function getMembershipPageUrl() {
   return '/packageExtra/membership/membership';
 }
 
-/**
- * 接单/到店因免费额度拦截时引导开通会员
- * @returns {boolean} 是否已按会员错误处理
- */
-function handleMembershipRequiredError(err, options = {}) {
+/** 试用或订阅到期时，直接进入会员订阅页。 */
+function handleMembershipRequiredError(err) {
   if (!isMembershipRequiredError(err)) return false;
-  // 会员功能未上线：静默忽略专属提示（服务端 enabled=false 时本不应走到这里）
-  if (options.forcePrompt !== true) {
-    return true;
-  }
-  const res = err.response || err;
-  const membership = (res && res.membership) || {};
-  const limit = membership.freeDogLimit != null ? membership.freeDogLimit : 5;
-  const content = (res && res.errMsg)
-    || `免费版同时寄养中最多 ${limit} 只，开通会员后可无限接待`;
-  const pageUrl = options.pageUrl || getMembershipPageUrl();
-  wx.showModal({
-    title: '需要开通会员',
-    content,
-    confirmText: options.showEntry === false ? '知道了' : '去开通',
-    showCancel: options.showEntry !== false,
-    cancelText: '取消',
-    success: (r) => {
-      if (r.confirm && options.showEntry !== false) {
-        wx.navigateTo({ url: pageUrl });
-      }
-    }
-  });
+  wx.reLaunch({ url: `${getMembershipPageUrl()}?required=1` });
   return true;
 }
 
@@ -92,6 +78,9 @@ function pollMembershipPaid(orderId, tries = 6) {
     if (res.status === 'paid' || (res.membership && res.membership.active)) {
       return res;
     }
+    if (['failed', 'closed', 'revoked', 'refunded'].includes(res.status)) {
+      return Promise.reject(new Error(res.status === 'refunded' ? '该订单已退款' : '支付未完成，请重新发起'));
+    }
     left -= 1;
     if (left <= 0) {
       return Promise.reject(new Error('支付结果确认超时，请稍后刷新会员页查看'));
@@ -106,6 +95,7 @@ function pollMembershipPaid(orderId, tries = 6) {
 module.exports = {
   getMembershipStatus,
   createMembershipPay,
+  redeemMembershipCode,
   queryMembershipPay,
   isMembershipRequiredError,
   handleMembershipRequiredError,

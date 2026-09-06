@@ -104,7 +104,10 @@ function request(path, data = {}, options = {}) {
           return;
         }
         const errMsg = (body && body.errMsg) || `HTTP ${status}`;
-        resolve({ success: false, errMsg });
+        // 保留业务错误码及附加数据（例如订阅额度状态），让页面可以给出准确引导。
+        resolve(body && typeof body === 'object'
+          ? { ...body, success: false, errMsg }
+          : { success: false, errMsg });
       },
       fail: (err) => {
         resolve({

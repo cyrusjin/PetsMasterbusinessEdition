@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>店铺详情 · 熠森宠物 PetMaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+</head>
+<body class="admin-page">
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="admin-header">
+    <div class="container admin-header-inner">
+      <a class="admin-brand" href="../index.html">
+        <img src="../assets/card/card-pets.png" alt="熠森宠物" />
+        <span>
+          <strong>熠森宠物管理后台</strong>
+          <small>店铺详情</small>
+        </span>
+      </a>
+      <div class="admin-user">
+        <span id="admin-user"></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="admin-nav">
+    <div class="container admin-nav-inner">
+      <a class="admin-nav-link" href="index.html">入驻审核</a>
+      <a class="admin-nav-link active" href="stores.html">店铺管理</a>
+      <a class="admin-nav-link" href="dashboard.html">仪表盘</a>
+      <a class="admin-nav-link" href="versions.html">版本管理</a>
+      <a class="admin-nav-link" href="announcements.html">公告管理</a>
+      <a class="admin-nav-link" href="memberships.html">会员与推广</a>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <div class="container admin-panel admin-panel-wide">
+      <div class="admin-toolbar">
+        <div>
+          <a class="detail-back" href="stores.html">← 返回店铺列表</a>
+          <h1 id="page-title">店铺详情</h1>
+          <p id="page-desc">查看商家在小程序中配置的全部店铺信息</p>
+        </div>
+        <div class="detail-toolbar-actions">
+          <button class="btn btn-outline btn-sm" id="refresh-btn" type="button">刷新</button>
+        </div>
+      </div>
+      <div id="content">
+        <div class="card admin-loading">加载中...</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="contract-modal" id="preview-modal" hidden>
+    <div class="contract-modal-mask" id="preview-modal-mask"></div>
+    <div class="contract-modal-dialog card preview-modal-dialog" role="dialog" aria-modal="true">
+      <div class="contract-modal-header">
+        <div>
+          <h2 id="preview-modal-title">图片预览</h2>
+          <p id="preview-modal-meta">点击遮罩、图片或关闭按钮可退出</p>
+        </div>
+        <button class="btn btn-outline btn-sm" id="preview-modal-close" type="button">关闭</button>
+      </div>
+      <div class="preview-modal-body">
+        <img id="preview-modal-img" alt="预览" />
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js?v=20260811e"></script>
+  <script>
+    if (!PetAdmin.requireAuth()) {
+      throw new Error('redirect');
+    }
+
+    const STATUS_LABELS = {
+      pending: '待审核',
+      approved: '已开通',
+      disabled: '已关闭',
+      rejected: '已拒绝'
+    };
+
+    const STATUS_CLASS = {
+      pending: 'status-pending',
+      approved: 'status-approved',
+      disabled: 'status-disabled',
+      rejected: 'status-rejected'
+    };
+
+    const WEEKDAY_LABELS = {
+      1: '周一', 2: '周二', 3: '周三', 4: '周四',
+      5: '周五', 6: '周六', 7: '周日'
+    };
+
+    const CHECK_IN_CHARGE_LABELS = {
+      full: '全价',
+      half: '半价',
+      free: '免费'
+    };
+
+    const DEPARTURE_DAY_CHARGE_LABELS = {
+      full: '全价',
+      free: '免费',
+      half: '按时间段'
+    };
+
+    const BILLING_MODE_LABELS = {
+      weight: '按宠物体重区间收费',
+      room: '按房间类型收费',
+      custom: '自定义收费'
+    };
+
+    const ORDER_STATUS_LABELS = {
+      pending: '待确认',
+      confirmed: '待签协议',
+      awaiting_arrival: '待到店',
+      boarding: '寄养中',
+      toPay: '待支付',
+      completed: '已完成',
+      cancelled: '已取消'
+    };
+
+    const contentEl = document.getElementById('content');
+    const pageTitleEl = document.getElementById('page-title');
+    const pageDescEl = document.getElementById('page-desc');
+    const adminUserEl = document.getElementById('admin-user');
+    const previewModalEl = document.getElementById('preview-modal');
+    const previewModalTitleEl = document.getElementById('preview-modal-title');
+    const previewModalMetaEl = document.getElementById('preview-modal-meta');
+    const previewModalImgEl = document.getElementById('preview-modal-img');
+
+    adminUserEl.textContent = PetAdmin.getUsername();
+
+    document.getElementById('logout-btn').addEventListener('click', function () {
+      PetAdmin.clearSession();
+      window.location.href = 'login.html';
+    });
+    document.getElementById('refresh-btn').addEventListener('click', loadDetail);
+
+    function closePreviewModal() {
+      previewModalEl.hidden = true;
+      previewModalImgEl.src = '';
+      previewModalMetaEl.textContent = '点击遮罩、图片或关闭按钮可退出';
+    }
+
+    document.getElementById('preview-modal-close').addEventListener('click', closePreviewModal);
+    document.getElementById('preview-modal-mask').addEventListener('click', closePreviewModal);
+    previewModalImgEl.addEventListener('click', closePreviewModal);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !previewModalEl.hidden) closePreviewModal();
+    });
+    document.getElementById('preview-modal-meta').textContent = '点击遮罩、图片或关闭按钮可退出';
+
+    function getStoreId() {
+      const params = new URLSearchParams(window.location.search || '');
+      return (params.get('store_id') || '').trim();
+    }
+
+    function text(value, fallback) {
+      const str = value == null ? '' : String(value).trim();
+      return str || (fallback == null ? '--' : fallback);
+    }
+
+    function formatMoney(value) {
+      if (value === '' || value === null || value === undefined) return '--';
+      const num = Number(value);
+      if (!Number.isFinite(num)) return text(value);
+      return '¥' + (Number.isInteger(num) ? String(num) : num.toFixed(2));
+    }
+
+    function renderStoreDashboard(dashboard) {
+      const d = dashboard || {};
+      const items = [
+        { label: '累计订单', value: d.totalOrders || 0, hint: '近 30 日 ' + (d.orders30d || 0) + ' 单' },
+        { label: '进行中', value: d.activeOrders || 0, hint: '当前在住 ' + (d.boardingOrders || 0) + ' 单' },
+        { label: '累计成交', value: formatMoney(d.totalGmv || 0), hint: '近 30 日 ' + formatMoney(d.gmv30d || 0), primary: true },
+        { label: '订单完成率', value: (d.completionRate || 0) + '%', hint: '已完成 ' + (d.completedOrders || 0) + ' · 已取消 ' + (d.cancelledOrders || 0) },
+        { label: '客单价', value: formatMoney(d.avgOrderValue || 0), hint: '按已完成订单计算' },
+        { label: '服务客人', value: d.customerCount || 0, hint: '累计下单用户' },
+        { label: '服务宠物', value: d.petCount || 0, hint: '订单关联宠物档案' }
+      ];
+      return [
+        '<section class="detail-business-section">',
+        '<div class="detail-section-heading"><div><h2>经营仪表盘</h2><p>这家店的订单、成交与客户概览</p></div></div>',
+        '<div class="dash-kpi-grid detail-kpi-grid">',
+        items.map(function (item) {
+          return '<div class="card dash-kpi' + (item.primary ? ' dash-kpi-primary' : '') + '">' +
+            '<div class="dash-kpi-value">' + PetAdmin.escapeHtml(String(item.value)) + '</div>' +
+            '<div class="dash-kpi-label">' + PetAdmin.escapeHtml(item.label) + '</div>' +
+            '<div class="dash-kpi-hint">' + PetAdmin.escapeHtml(item.hint) + '</div>' +
+          '</div>';
+        }).join(''),
+        '</div></section>'
+      ].join('');
+    }
+
+    function renderStoreOrders(orders, total) {
+      const list = Array.isArray(orders) ? orders : [];
+      if (!list.length) {
+        return sectionCard('订单', '<div class="detail-empty-inline">暂无订单</div>');
+      }
+      const rows = list.map(function (order) {
+        const href = 'order-detail.html?order_id=' + encodeURIComponent(order.order_id || '');
+        const stay = [order.startDate || '', order.endDate || ''].filter(Boolean).join(' 至 ') || '--';
+        return [
+          '<tr class="detail-order-row" data-href="' + PetAdmin.escapeHtml(href) + '">',
+          '<td><a class="store-name-link" href="' + PetAdmin.escapeHtml(href) + '">' + PetAdmin.escapeHtml(order.displayNo || order.order_id || '--') + '</a><div class="store-sub">' + PetAdmin.escapeHtml(order.createTimeText || '--') + '</div></td>',
+          '<td><strong>' + PetAdmin.escapeHtml(order.petName || '--') + '</strong><div class="store-sub">' + PetAdmin.escapeHtml([order.petType, order.petBreed].filter(Boolean).join(' · ') || '--') + '</div></td>',
+          '<td>' + PetAdmin.escapeHtml(order.userNickName || order.contactName || '--') + '<div class="store-sub">' + PetAdmin.escapeHtml(order.contactPhone || order.userPhone || '--') + '</div></td>',
+          '<td>' + PetAdmin.escapeHtml(stay) + '</td>',
+          '<td><span class="store-status">' + PetAdmin.escapeHtml(ORDER_STATUS_LABELS[order.status] || order.status || '--') + '</span></td>',
+          '<td><strong>' + PetAdmin.escapeHtml(formatMoney(order.totalFee || 0)) + '</strong></td>',
+          '<td><a class="btn btn-outline btn-sm" href="' + PetAdmin.escapeHtml(href) + '">查看详情</a></td>',
+          '</tr>'
+        ].join('');
+      }).join('');
+      return [
+        '<section class="card detail-section" id="detail-orders">',
+        '<div class="detail-section-heading"><div><h2>订单</h2><p>共 ' + Number(total || list.length) + ' 单，点击订单可查看完整费用、协议和宠物快照</p></div></div>',
+        '<div class="store-table-wrap detail-inner-table"><table class="store-table detail-orders-table">',
+        '<thead><tr><th>订单</th><th>宠物</th><th>客人</th><th>寄养日期</th><th>状态</th><th>金额</th><th>操作</th></tr></thead>',
+        '<tbody>' + rows + '</tbody></table></div></section>'
+      ].join('');
+    }
+
+    function petDetailRow(label, value) {
+      return '<div><dt>' + PetAdmin.escapeHtml(label) + '</dt><dd>' + PetAdmin.escapeHtml(text(value)) + '</dd></div>';
+    }
+
+    function renderStorePets(pets) {
+      const list = Array.isArray(pets) ? pets : [];
+      if (!list.length) {
+        return sectionCard('宠物详情', '<div class="detail-empty-inline">暂无订单关联宠物</div>');
+      }
+      return [
+        '<section class="card detail-section" id="detail-pets">',
+        '<div class="detail-section-heading"><div><h2>宠物详情</h2><p>共 ' + list.length + ' 只，来自该店历史订单关联档案</p></div></div>',
+        '<div class="detail-pet-grid">',
+        list.map(function (pet) {
+          const photo = pet.photo
+            ? '<img class="detail-pet-photo" src="' + PetAdmin.escapeHtml(pet.photo) + '" alt="' + PetAdmin.escapeHtml(pet.name || '宠物') + '" data-preview="' + PetAdmin.escapeHtml(pet.photo) + '" />'
+            : '<div class="detail-pet-photo detail-pet-photo-empty">暂无照片</div>';
+          const health = [
+            petDetailRow('疫苗', pet.vaccination),
+            petDetailRow('驱虫日期', pet.dewormDate),
+            petDetailRow('绝育', pet.isNeutered),
+            petDetailRow('发情', pet.inHeat),
+            petDetailRow('怀孕', pet.isPregnant),
+            petDetailRow('犬证', pet.hasDogLicense),
+            petDetailRow('过敏史', pet.allergyStatus === '是' ? pet.allergy : pet.allergyStatus),
+            petDetailRow('既往病史', pet.medicalHistoryStatus === '是' ? pet.medicalHistory : pet.medicalHistoryStatus),
+            petDetailRow('性格', pet.character),
+            petDetailRow('行为习惯', pet.behaviorHabits),
+            petDetailRow('饮食禁忌', pet.dietTaboo),
+            petDetailRow('特别照护', pet.specialCare),
+            petDetailRow('备注', pet.remark)
+          ].join('');
+          return [
+            '<article class="detail-pet-card">',
+            '<div class="detail-pet-head">', photo,
+            '<div><h3>' + PetAdmin.escapeHtml(text(pet.name, '未命名宠物')) + '</h3>',
+            '<p>' + PetAdmin.escapeHtml([pet.type, pet.breed, pet.gender].filter(Boolean).join(' · ') || '--') + '</p>',
+            '<p>' + PetAdmin.escapeHtml([pet.ageText, pet.weight ? (pet.weight + 'kg') : '', pet.color].filter(Boolean).join(' · ') || '--') + '</p>',
+            '<span class="detail-pet-order-count">历史订单 ' + Number(pet.orderCount || 0) + ' 单</span></div></div>',
+            '<details class="detail-pet-more"><summary>查看完整档案</summary><dl class="detail-pet-meta">' + health + '</dl>',
+            '<div class="store-sub">最近下单：' + PetAdmin.escapeHtml(pet.lastOrderAtText || '--') + '</div></details>',
+            '</article>'
+          ].join('');
+        }).join(''),
+        '</div></section>'
+      ].join('');
+    }
+
+    function formatBusinessHours(store) {
+      if (store.hours) return store.hours;
+      const bh = store.businessHours;
+      if (!bh) return '--';
+      const weekdays = Array.isArray(bh.weekdays) ? bh.weekdays : [];
+      let dayText = '';
+      if (weekdays.length === 7) {
+        dayText = '周一至周日';
+      } else if (weekdays.length) {
+        dayText = weekdays.map(function (d) { return WEEKDAY_LABELS[d] || d; }).join('、');
+      } else {
+        dayText = '未设置营业日';
+      }
+      const open = bh.openTime || '';
+      const close = bh.closeTime || '';
+      if (open && close) return dayText + ' ' + open + '-' + close;
+      return dayText;
+    }
+
+    function kvRow(label, value, options) {
+      const opts = options || {};
+      const valueClass = opts.mono ? ' store-openid' : '';
+      const htmlValue = opts.html ? value : PetAdmin.escapeHtml(text(value));
+      return [
+        '<div class="apply-row">',
+        '<dt>' + PetAdmin.escapeHtml(label) + '</dt>',
+        '<dd class="' + valueClass.trim() + '">' + htmlValue + '</dd>',
+        '</div>'
+      ].join('');
+    }
+
+    function sectionCard(title, bodyHtml) {
+      return [
+        '<section class="card detail-section">',
+        '<h2>' + PetAdmin.escapeHtml(title) + '</h2>',
+        bodyHtml,
+        '</section>'
+      ].join('');
+    }
+
+    function renderPhotoGrid(photos, emptyText) {
+      const list = Array.isArray(photos) ? photos.filter(Boolean) : [];
+      if (!list.length) {
+        return '<div class="detail-empty-inline">' + PetAdmin.escapeHtml(emptyText || '暂无图片') + '</div>';
+      }
+      return [
+        '<div class="apply-photos detail-photos">',
+        list.map(function (url) {
+          return '<img src="' + PetAdmin.escapeHtml(url) + '" alt="店铺图片" data-preview="' + PetAdmin.escapeHtml(url) + '" />';
+        }).join(''),
+        '</div>'
+      ].join('');
+    }
+
+    function renderWeightPricing(rules) {
+      const list = (rules && Array.isArray(rules.weightPricing)) ? rules.weightPricing : [];
+      if (!list.length) return '<div class="detail-empty-inline">未配置体重计价</div>';
+      return [
+        '<div class="store-table-wrap detail-inner-table">',
+        '<table class="store-table">',
+        '<thead><tr><th>体重区间</th><th>价格/天</th></tr></thead><tbody>',
+        list.map(function (item) {
+          let label = item.label || '';
+          if (!label) {
+            const min = item.min != null ? item.min : '';
+            if (item.isAbove || item.max == null || Number(item.max) >= 999) {
+              label = min + 'kg以上';
+            } else {
+              label = min + '-' + item.max + 'kg';
+            }
+          }
+          return '<tr><td>' + PetAdmin.escapeHtml(label) + '</td><td>' + PetAdmin.escapeHtml(formatMoney(item.price)) + '</td></tr>';
+        }).join(''),
+        '</tbody></table></div>'
+      ].join('');
+    }
+
+    function renderRoomPricing(rules) {
+      const list = (rules && Array.isArray(rules.roomPricing)) ? rules.roomPricing : [];
+      if (!list.length) return '<div class="detail-empty-inline">未配置房间计价</div>';
+      return [
+        '<div class="store-table-wrap detail-inner-table">',
+        '<table class="store-table">',
+        '<thead><tr><th>房间</th><th>限重</th><th>价格/天</th><th>描述</th><th>照片</th></tr></thead><tbody>',
+        list.map(function (item) {
+          const photo = item.photo
+            ? '<img class="detail-room-thumb" src="' + PetAdmin.escapeHtml(item.photo) + '" alt="房间照片" data-preview="' + PetAdmin.escapeHtml(item.photo) + '" />'
+            : '--';
+          const maxWeight = item.maxWeight ? (item.maxWeight + 'kg') : '--';
+          return [
+            '<tr>',
+            '<td>' + PetAdmin.escapeHtml(text(item.name)) + '</td>',
+            '<td>' + PetAdmin.escapeHtml(maxWeight) + '</td>',
+            '<td>' + PetAdmin.escapeHtml(formatMoney(item.price)) + '</td>',
+            '<td class="detail-cell-wrap">' + PetAdmin.escapeHtml(text(item.description, '--')) + '</td>',
+            '<td>' + photo + '</td>',
+            '</tr>'
+          ].join('');
+        }).join(''),
+        '</tbody></table></div>'
+      ].join('');
+    }
+
+    function renderCustomPricing(rules) {
+      const list = (rules && Array.isArray(rules.customPricing)) ? rules.customPricing : [];
+      if (!list.length) return '<div class="detail-empty-inline">未配置自定义收费项目</div>';
+
+      function renderPhoto(url, alt) {
+        if (!url) return '--';
+        return '<img class="detail-room-thumb" src="' + PetAdmin.escapeHtml(url)
+          + '" alt="' + PetAdmin.escapeHtml(alt || '项目照片')
+          + '" data-preview="' + PetAdmin.escapeHtml(url) + '" />';
+      }
+
+      const rows = [];
+      list.forEach(function (item) {
+        const children = Array.isArray(item.children) ? item.children.filter(Boolean) : [];
+        const hasChildren = children.length > 0;
+        rows.push([
+          '<tr>',
+          '<td><strong>' + PetAdmin.escapeHtml(text(item.name)) + '</strong>',
+          hasChildren ? '<div class="store-sub">含 ' + children.length + ' 个子项</div>' : '',
+          '</td>',
+          '<td>' + PetAdmin.escapeHtml(hasChildren ? '见子项' : formatMoney(item.price)) + '</td>',
+          '<td class="detail-cell-wrap">' + PetAdmin.escapeHtml(text(item.description, '--')) + '</td>',
+          '<td>' + renderPhoto(item.photo, text(item.name, '项目照片')) + '</td>',
+          '</tr>'
+        ].join(''));
+
+        children.forEach(function (child, index) {
+          rows.push([
+            '<tr class="detail-custom-child-row">',
+            '<td class="detail-custom-child-name">',
+            '<span class="detail-custom-child-mark">子项 ' + (index + 1) + '</span>',
+            PetAdmin.escapeHtml(text(child.name)),
+            '</td>',
+            '<td>' + PetAdmin.escapeHtml(formatMoney(child.price)) + '</td>',
+            '<td class="detail-cell-wrap">' + PetAdmin.escapeHtml(text(child.description, '--')) + '</td>',
+            '<td>' + renderPhoto(child.photo, text(child.name, '子项照片')) + '</td>',
+            '</tr>'
+          ].join(''));
+        });
+      });
+
+      return [
+        '<div class="store-table-wrap detail-inner-table">',
+        '<table class="store-table">',
+        '<thead><tr><th>项目</th><th>价格/天</th><th>描述</th><th>照片</th></tr></thead><tbody>',
+        rows.join(''),
+        '</tbody></table></div>'
+      ].join('');
+    }
+
+    function formatDepartureDayCharge(rules) {
+      const mode = (rules && rules.departureDayCharge) || 'full';
+      const label = DEPARTURE_DAY_CHARGE_LABELS[mode] || text(mode);
+      if (mode !== 'half') return label;
+      const cfg = (rules && rules.departureCharge) || {};
+      const parts = [
+        cfg.freeUntil ? (cfg.freeUntil + ' 前免费') : '',
+        cfg.halfUntil ? (cfg.halfUntil + ' 前半价') : '',
+        cfg.fullFrom ? (cfg.fullFrom + ' 起全价') : ''
+      ].filter(Boolean);
+      return parts.length ? (label + '（' + parts.join('，') + '）') : label;
+    }
+
+    function formatLongTermDiscount(rules) {
+      const ltd = (rules && rules.longTermDiscount) || {};
+      if (!ltd.enabled) return '关闭';
+      let tiers = Array.isArray(ltd.tiers) ? ltd.tiers : [];
+      if (!tiers.length && ltd.minDays && ltd.zhe) {
+        tiers = [{ minDays: ltd.minDays, zhe: ltd.zhe }];
+      }
+      if (!tiers.length) return '已开启（未配置档位）';
+      return '开启 · ' + tiers.map(function (tier) {
+        return (tier.minDays || '--') + '天 ' + (tier.zhe || '--') + '折';
+      }).join('；');
+    }
+
+    function renderHolidayPricing(rules) {
+      const hp = (rules && rules.holidayPricing) || {};
+      const amounts = (hp && hp.amounts && typeof hp.amounts === 'object') ? hp.amounts : {};
+      const rows = Object.keys(amounts)
+        .filter(function (date) {
+          const n = parseFloat(amounts[date]);
+          return Number.isFinite(n) && n > 0;
+        })
+        .sort()
+        .map(function (date) {
+          return '<tr><td>' + PetAdmin.escapeHtml(date) + '</td><td>' + PetAdmin.escapeHtml(formatMoney(amounts[date])) + '/天</td></tr>';
+        });
+      if (!rows.length) {
+        return '<div class="detail-empty-inline">默认不加价</div>';
+      }
+      return [
+        '<div class="store-table-wrap detail-inner-table">',
+        '<table class="store-table">',
+        '<thead><tr><th>日期</th><th>加价</th></tr></thead><tbody>',
+        rows.join(''),
+        '</tbody></table></div>'
+      ].join('');
+    }
+
+    function resolveValueAddedServices(store) {
+      const rules = store.billingRules || {};
+      if (Array.isArray(store.valueAddedServices) && store.valueAddedServices.length) {
+        return store.valueAddedServices;
+      }
+      if (Array.isArray(rules.valueAddedServices)) return rules.valueAddedServices;
+      return [];
+    }
+
+    function renderValueAddedSection(store) {
+      const list = resolveValueAddedServices(store).filter(Boolean);
+      if (!list.length) {
+        return sectionCard('增值服务', '<div class="detail-empty-inline">未配置增值服务</div>');
+      }
+      return sectionCard('增值服务', [
+        '<div class="store-table-wrap detail-inner-table">',
+        '<table class="store-table">',
+        '<thead><tr><th>服务</th><th>价格/次</th><th>描述</th><th>照片</th></tr></thead><tbody>',
+        list.map(function (item) {
+          const photo = item.photo
+            ? '<img class="detail-room-thumb" src="' + PetAdmin.escapeHtml(item.photo) + '" alt="服务照片" data-preview="' + PetAdmin.escapeHtml(item.photo) + '" />'
+            : '--';
+          return [
+            '<tr>',
+            '<td>' + PetAdmin.escapeHtml(text(item.name)) + '</td>',
+            '<td>' + PetAdmin.escapeHtml(formatMoney(item.price)) + '</td>',
+            '<td class="detail-cell-wrap">' + PetAdmin.escapeHtml(text(item.description, '--')) + '</td>',
+            '<td>' + photo + '</td>',
+            '</tr>'
+          ].join('');
+        }).join(''),
+        '</tbody></table></div>'
+      ].join(''));
+    }
+
+    function renderWashPricing(store) {
+      const list = Array.isArray(store.washPricing) ? store.washPricing : [];
+      if (!list.length) return '<div class="detail-empty-inline">未配置洗护价格</div>';
+      return [
+        '<div class="store-table-wrap detail-inner-table">',
+        '<table class="store-table">',
+        '<thead><tr><th>体重区间</th><th>价格/次</th></tr></thead><tbody>',
+        list.map(function (item) {
+          let label = item.label || '';
+          if (!label) {
+            const min = item.min != null ? item.min : '';
+            if (item.isAbove || item.max == null || Number(item.max) >= 999) {
+              label = min + 'kg以上';
+            } else {
+              label = min + '-' + item.max + 'kg';
+            }
+          }
+          return '<tr><td>' + PetAdmin.escapeHtml(label) + '</td><td>' + PetAdmin.escapeHtml(formatMoney(item.price)) + '</td></tr>';
+        }).join(''),
+        '</tbody></table></div>'
+      ].join('');
+    }
+
+    function renderWashSection(store) {
+      if (store.washService !== 'yes') {
+        return sectionCard('洗护设置', '<div class="detail-empty-inline">不提供洗护</div>');
+      }
+      const freeText = store.washFreeMinDays
+        ? ('住满 ' + store.washFreeMinDays + ' 天及以上免费')
+        : '不免费';
+      return sectionCard('洗护设置', [
+        '<div class="apply-detail">',
+        kvRow('是否提供', '有洗护'),
+        kvRow('满天免费洗护', freeText),
+        kvRow('洗护须知', text(store.washNotice)),
+        '</div>',
+        '<h3 class="detail-subtitle">公斤区间价格</h3>',
+        renderWashPricing(store),
+        '<h3 class="detail-subtitle">洗护须知图片</h3>',
+        renderPhotoGrid(store.washNoticePhotos, '暂无洗护须知图片')
+      ].join(''));
+    }
+
+    function renderBillingSection(store) {
+      const rules = store.billingRules || {};
+      const mode = rules.billingMode === 'room' || rules.billingMode === 'custom'
+        ? rules.billingMode
+        : 'weight';
+      const modeLabel = BILLING_MODE_LABELS[mode] || text(mode);
+      const multi = rules.multiPetDiscount || {};
+      const multiText = multi.enabled
+        ? ('开启，第二只起优惠 ' + (multi.percent != null ? multi.percent + '%' : '--'))
+        : '关闭';
+
+      let pricingHtml = renderWeightPricing(rules);
+      let pricingTitle = '体重区间价格';
+      if (mode === 'room') {
+        pricingHtml = renderRoomPricing(rules);
+        pricingTitle = '房间类型价格';
+      } else if (mode === 'custom') {
+        pricingHtml = renderCustomPricing(rules);
+        pricingTitle = '自定义收费项目';
+      }
+
+      return sectionCard('收费模式', [
+        '<div class="apply-detail">',
+        kvRow('计价方式', modeLabel),
+        kvRow('入住当天收费', CHECK_IN_CHARGE_LABELS[rules.checkInDayCharge] || text(rules.checkInDayCharge)),
+        kvRow('离店当天收费', formatDepartureDayCharge(rules)),
+        kvRow('多宠折扣', multiText),
+        kvRow('长期寄养折扣', formatLongTermDiscount(rules)),
+        '</div>',
+        '<h3 class="detail-subtitle">' + pricingTitle + '</h3>',
+        pricingHtml,
+        '<h3 class="detail-subtitle">休息日加价</h3>',
+        renderHolidayPricing(rules)
+      ].join(''));
+    }
+
+    function renderPickupSection(store) {
+      if (store.pickupService !== 'yes') {
+        return sectionCard('接送设置', '<div class="detail-empty-inline">无接送</div>');
+      }
+      const mode = store.pickupPricingMode === 'distance' ? '按距离收费' : '一口价（单程）';
+      const tiers = Array.isArray(store.pickupFreeTiers) ? store.pickupFreeTiers : [];
+      let freeText = '不免费';
+      if (tiers.length) {
+        freeText = tiers.map(function (tier) {
+          const days = tier && tier.minDays != null ? tier.minDays : '';
+          const km = tier && tier.maxKm != null ? tier.maxKm : '';
+          let cover = '单程';
+          if (tier && tier.tripType === 'roundTrip') {
+            cover = '往返';
+          } else if (tier && tier.tripType === 'oneWay') {
+            cover = '单程';
+          } else {
+            const out = !tier || tier.includeOutbound !== false;
+            const ret = !tier || tier.includeReturn !== false;
+            cover = out && ret ? '往返' : '单程';
+          }
+          return '满 ' + days + ' 天 / ' + km + ' 公里内免费' + cover;
+        }).join('；');
+      } else if (store.pickupFreeMinDays) {
+        const km = store.pickupFreeMaxKm || 200;
+        freeText = '住满 ' + store.pickupFreeMinDays + ' 天及以上，' + km + ' 公里内免费往返';
+      }
+      const rows = [
+        kvRow('是否提供', '有接送'),
+        kvRow('收费方式', mode)
+      ];
+      if (store.pickupPricingMode === 'distance') {
+        rows.push(kvRow('每公里价格', formatMoney(store.pickupPricePerKm)));
+      } else {
+        rows.push(kvRow('单程价格', formatMoney(store.pickupFlatPrice)));
+      }
+      rows.push(kvRow('满天免费接送', freeText));
+      rows.push(kvRow('接送须知', text(store.pickupNotice)));
+      return sectionCard('接送设置', '<div class="apply-detail">' + rows.join('') + '</div>');
+    }
+
+    function renderStore(store, insights, orderData) {
+      const status = store.merchantApplyStatus || '';
+      const statusLabel = STATUS_LABELS[status] || status || '--';
+      const statusClass = STATUS_CLASS[status] || '';
+      const logoHtml = store.logo
+        ? '<img class="detail-logo" src="' + PetAdmin.escapeHtml(store.logo) + '" alt="店铺头像" data-preview="' + PetAdmin.escapeHtml(store.logo) + '" />'
+        : '<div class="detail-logo detail-logo-empty">无头像</div>';
+
+      const coordText = (store.latitude != null && store.longitude != null)
+        ? (store.latitude + ', ' + store.longitude)
+        : '--';
+
+      const licenseHtml = store.businessLicense
+        ? [
+            '<div class="apply-license-box">',
+            '<img class="apply-license-img" src="' + PetAdmin.escapeHtml(store.businessLicense) + '" alt="营业执照" data-preview="' + PetAdmin.escapeHtml(store.businessLicense) + '" />',
+            '<button class="apply-license-link" type="button" data-preview="' + PetAdmin.escapeHtml(store.businessLicense) + '">点击查看大图</button>',
+            '</div>'
+          ].join('')
+        : '<div class="detail-empty-inline">未上传营业执照</div>';
+
+      const staffList = Array.isArray(store.staffOpenids) ? store.staffOpenids.filter(Boolean) : [];
+      const staffHtml = staffList.length
+        ? '<ul class="detail-staff-list">' + staffList.map(function (id) {
+            return '<li class="store-openid">' + PetAdmin.escapeHtml(id) + '</li>';
+          }).join('') + '</ul>'
+        : '<div class="detail-empty-inline">暂无员工</div>';
+
+      const note = status === 'disabled'
+        ? store.adminDisableReason
+        : (status === 'rejected' ? store.rejectReason : '');
+
+      pageTitleEl.textContent = store.name || '未命名店铺';
+      pageDescEl.textContent = [
+        store.displayNo || store.store_id || '',
+        statusLabel,
+        store.status || ''
+      ].filter(Boolean).join(' · ');
+
+      const quickActions = [
+        '<a class="btn btn-outline btn-sm" href="stores.html">返回列表</a>',
+        '<a class="btn btn-outline btn-sm" href="#detail-orders">查看订单</a>',
+        '<a class="btn btn-outline btn-sm" href="#detail-pets">查看宠物</a>'
+      ];
+      if (store.hasCoopContract) {
+        quickActions.push(
+          '<a class="btn btn-outline btn-sm" href="stores.html?view_contract=' + encodeURIComponent(store.store_id) + '">查看合作协议</a>'
+        );
+      }
+
+      contentEl.innerHTML = [
+        '<section class="card detail-hero">',
+        '<div class="detail-hero-main">',
+        logoHtml,
+        '<div class="detail-hero-meta">',
+        '<div class="detail-hero-title-row">',
+        '<h2>' + PetAdmin.escapeHtml(text(store.name, '未命名店铺')) + '</h2>',
+        '<span class="store-status ' + statusClass + '">' + PetAdmin.escapeHtml(statusLabel) + '</span>',
+        '<span class="detail-biz-status">' + PetAdmin.escapeHtml(text(store.status)) + '</span>',
+        '</div>',
+        '<p class="detail-hero-sub">' + PetAdmin.escapeHtml(text(store.displayNo || store.store_id)) + '</p>',
+        note ? '<p class="store-note">' + PetAdmin.escapeHtml(note) + '</p>' : '',
+        '<div class="detail-toolbar-actions">' + quickActions.join('') + '</div>',
+        '</div></div></section>',
+
+        renderStoreDashboard((insights && insights.dashboard) || {}),
+        renderStoreOrders((orderData && orderData.orders) || [], orderData && orderData.total),
+        renderStorePets((insights && insights.pets) || []),
+
+        sectionCard('基本信息', [
+          '<div class="apply-detail">',
+          kvRow('店铺名称', store.name),
+          kvRow('店铺编号', store.displayNo || store.store_id),
+          kvRow('微信号', store.wechatId),
+          kvRow('联系电话', store.contactPhone),
+          kvRow('负责人', store.legalName),
+          kvRow('营业状态', store.status),
+          '</div>'
+        ].join('')),
+
+        sectionCard('地址与营业时间', [
+          '<div class="apply-detail">',
+          kvRow('营业地址', store.address),
+          kvRow('地点名称', store.locationName),
+          kvRow('所在区域', store.addressRegion),
+          kvRow('地图坐标', coordText, { mono: true }),
+          kvRow('营业时间', formatBusinessHours(store)),
+          '</div>'
+        ].join('')),
+
+        sectionCard('店铺介绍', [
+          '<div class="detail-text-block">' + PetAdmin.escapeHtml(text(store.intro, '暂无介绍文字')) + '</div>',
+          '<h3 class="detail-subtitle">介绍图片</h3>',
+          renderPhotoGrid(store.introPhotos, '暂无介绍图片')
+        ].join('')),
+
+        sectionCard('接待范围与门店照片', [
+          '<div class="apply-detail">',
+          kvRow('接待范围', store.range || (Array.isArray(store.receptionRange) ? store.receptionRange.join('、') : '')),
+          '</div>',
+          '<h3 class="detail-subtitle">门店照片</h3>',
+          renderPhotoGrid(store.storePhotos, '暂无门店照片')
+        ].join('')),
+
+        renderBillingSection(store),
+        renderPickupSection(store),
+        renderWashSection(store),
+        renderValueAddedSection(store),
+
+        sectionCard('寄养须知', [
+          '<div class="detail-text-block">' + PetAdmin.escapeHtml(text(store.notice, '暂无须知')) + '</div>',
+          '<h3 class="detail-subtitle">须知图片</h3>',
+          renderPhotoGrid(store.noticePhotos, '暂无须知图片')
+        ].join('')),
+
+        sectionCard('寄养协议', [
+          '<pre class="detail-pre">' + PetAdmin.escapeHtml(text(store.boardingContractClauseText, '使用默认条款')) + '</pre>'
+        ].join('')),
+
+        sectionCard('押金设置', [
+          '<div class="apply-detail">',
+          kvRow('押金金额', formatMoney(store.deposit)),
+          kvRow('赔偿上限', store.compensationLimit == null || store.compensationLimit === ''
+            ? '未设置'
+            : formatMoney(store.compensationLimit)),
+          '</div>'
+        ].join('')),
+
+        sectionCard('入驻与平台信息', [
+          '<div class="apply-detail">',
+          kvRow('入驻状态', statusLabel),
+          kvRow('申请时间', store.applyTimeText),
+          kvRow('更新时间', store.updateTimeText),
+          kvRow('关闭时间', store.adminDisabledAtText || '--'),
+          kvRow('关闭/拒绝原因', note || '--'),
+          kvRow('合作协议', store.coopContractSigned
+            ? ('已签署' + (store.coopContractSignTime ? '（' + store.coopContractSignTime + '）' : ''))
+            : '未签署'),
+          kvRow('申请人姓名', store.applicantName),
+          kvRow('微信昵称', store.applicantNickName),
+          kvRow('联系电话（用户）', store.applicantPhone),
+          kvRow('店主 openid', store.ownerOpenid || store.applicantOpenid, { mono: true }),
+          kvRow('服务号 OA', store.ownerOaBound
+            ? ('已绑定 · ' + (store.ownerOaOpenid || ''))
+            : '未绑定', { mono: true }),
+          kvRow('员工数', String(store.staffCount || 0)),
+          '</div>',
+          '<h3 class="detail-subtitle">营业执照</h3>',
+          licenseHtml,
+          '<h3 class="detail-subtitle">员工 openid</h3>',
+          staffHtml
+        ].join(''))
+      ].join('');
+
+      contentEl.querySelectorAll('[data-preview]').forEach(function (el) {
+        el.addEventListener('click', function (event) {
+          event.preventDefault();
+          const url = el.getAttribute('data-preview');
+          if (!url) return;
+          previewModalTitleEl.textContent = '图片预览';
+          previewModalMetaEl.textContent = (store.name || '') + ' · 点击遮罩、图片或关闭按钮可退出';
+          previewModalImgEl.src = url;
+          previewModalEl.hidden = false;
+        });
+      });
+      contentEl.querySelectorAll('.detail-order-row').forEach(function (row) {
+        row.addEventListener('click', function (event) {
+          if (event.target && event.target.closest('a')) return;
+          const href = row.getAttribute('data-href');
+          if (href) window.location.href = href;
+        });
+      });
+    }
+
+    async function loadDetail() {
+      const storeId = getStoreId();
+      if (!storeId) {
+        contentEl.innerHTML = '<div class="card admin-empty"><strong>缺少店铺 ID</strong><span>请从店铺管理列表进入</span></div>';
+        return;
+      }
+
+      contentEl.innerHTML = '<div class="card admin-loading">加载中...</div>';
+      try {
+        const query = '?store_id=' + encodeURIComponent(storeId);
+        const results = await Promise.all([
+          PetAdmin.api('/api/admin/stores/detail' + query),
+          PetAdmin.api('/api/admin/stores/insights' + query),
+          PetAdmin.api('/api/admin/stores/orders' + query + '&limit=200')
+        ]);
+        const data = results[0] || {};
+        const insights = results[1] || {};
+        const orderData = results[2] || {};
+        if (!data.success) throw new Error(data.errMsg || '店铺资料加载失败');
+        if (!insights.success) throw new Error(insights.errMsg || '经营数据加载失败');
+        if (!orderData.success) throw new Error(orderData.errMsg || '订单加载失败');
+        renderStore(data.store || {}, insights, orderData);
+      } catch (err) {
+        contentEl.innerHTML = '<div class="card admin-empty"><strong>加载失败</strong><span>' + PetAdmin.escapeHtml(err.message) + '</span></div>';
+      }
+    }
+
+    loadDetail();
+  </script>
+</body>
+</html>

@@ -100,6 +100,34 @@
   color: #558B2F;
 }
 
+.today-focus-card {
+  width: 100%;
+  margin: 0 0 20rpx;
+  padding: 24rpx 26rpx 22rpx;
+  border-radius: 28rpx;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #fffdf9 0%, #fff4e9 100%);
+  border: 1rpx solid rgba(242, 222, 201, .9);
+  box-shadow: 0 12rpx 28rpx rgba(132, 90, 58, .08);
+}
+.promotion-card { margin: 20rpx 0; padding: 26rpx 28rpx; border-radius: 24rpx; background: linear-gradient(135deg, #fffaf5, #fff0e5); border: 1rpx solid #f5d8c4; box-shadow: 0 10rpx 26rpx rgba(185, 113, 72, .08); }
+.promotion-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
+.promotion-title { display: block; color: #3d2b1f; font-size: 30rpx; font-weight: 700; }
+.promotion-sub { display: block; margin-top: 6rpx; color: #a98972; font-size: 22rpx; }
+.promotion-link { color: #e98657; font-size: 23rpx; padding-top: 5rpx; }
+.promotion-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8rpx; margin-top: 22rpx; text-align: center; }
+.promotion-value { display: block; color: #e97845; font-size: 34rpx; font-weight: 700; }
+.promotion-label { display: block; margin-top: 5rpx; color: #9a8575; font-size: 21rpx; }
+.today-focus-head { display: flex; align-items: flex-start; justify-content: space-between; }
+.today-focus-title { display: block; color: #4e3729; font-size: 32rpx; font-weight: 800; }
+.today-focus-sub { display: block; margin-top: 4rpx; color: #a98972; font-size: 22rpx; }
+.today-focus-live { padding: 6rpx 14rpx; border-radius: 999rpx; background: #eaf5e8; color: #6b9a65; font-size: 20rpx; font-weight: 700; }
+.today-focus-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 20rpx; }
+.today-focus-item { padding: 16rpx 10rpx 14rpx; border-radius: 18rpx; background: rgba(255, 255, 255, .72); text-align: center; }
+.today-focus-item:active { opacity: .78; transform: scale(.98); }
+.today-focus-value { display: block; color: #e77e54; font-size: 38rpx; font-weight: 900; line-height: 1.1; }
+.today-focus-label { display: block; margin-top: 6rpx; color: #8c6a52; font-size: 21rpx; }
+
 .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; width: 100%; box-sizing: border-box; }
 
 .guest-invite-card {
@@ -358,6 +386,50 @@
   border: none;
 }
 .quick-icon-img { width: 72rpx; height: 72rpx; margin-bottom: 10rpx; display: block; }
+.insurance-promo-entry {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin: 0 0 20rpx;
+  padding: 24rpx 26rpx;
+  border-radius: 26rpx;
+  background: linear-gradient(135deg, #FFF9F3 0%, #FFF0E7 100%);
+  border: 1rpx solid #F4D1BB;
+  box-shadow: 0 10rpx 26rpx rgba(185, 91, 38, .09);
+}
+.insurance-promo-entry-hover { opacity: .84; transform: scale(.99); }
+.insurance-promo-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 132rpx;
+  height: 132rpx;
+  padding: 7rpx;
+  box-sizing: border-box;
+  border: 2rpx solid #F1A879;
+  border-radius: 50%;
+  background: rgba(255, 126, 49, .1);
+  box-shadow: 0 10rpx 22rpx rgba(185, 91, 38, .14), inset 0 0 0 4rpx rgba(255, 255, 255, .72);
+}
+.insurance-promo-logo-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 4rpx solid #FFE7D5;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+.insurance-promo-logo { width: 108rpx; height: 108rpx; }
+.insurance-promo-copy { flex: 1; min-width: 0; }
+.insurance-promo-title-row { display: flex; align-items: center; gap: 12rpx; }
+.insurance-promo-title { color: #4B3022; font-size: 28rpx; font-weight: 700; }
+.insurance-promo-badge { padding: 5rpx 11rpx; border-radius: 999rpx; color: #FFFFFF; background: #E85B18; font-size: 18rpx; font-weight: 700; }
+.insurance-promo-desc { display: block; margin-top: 8rpx; color: #967A68; font-size: 21rpx; line-height: 1.45; }
+.insurance-promo-arrow { flex-shrink: 0; color: #D77A47; font-size: 48rpx; line-height: 1; }
 .boarding-item { display: flex; justify-content: space-between; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #F2DEC9; gap: 16rpx; }
 .boarding-item:last-child { border-bottom: none; }
 .boarding-main { display: flex; align-items: center; gap: 20rpx; flex: 1; min-width: 0; }

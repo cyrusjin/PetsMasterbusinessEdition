@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>管理登录 · 熠森宠物 PetMaster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
+</head>
+<body class="admin-page">
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <main class="admin-main">
+    <div class="card admin-login-card">
+      <h1>管理后台登录</h1>
+      <p class="admin-login-desc">登录后可审核商家入驻申请</p>
+      <div id="error" class="admin-error" hidden></div>
+      <form id="login-form">
+        <div class="admin-field">
+          <label for="username">账号</label>
+          <input id="username" name="username" type="text" autocomplete="username" required />
+        </div>
+        <div class="admin-field">
+          <label for="password">密码</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <button class="btn btn-primary" type="submit" id="submit-btn" style="width:100%">登录</button>
+      </form>
+      <p style="margin-top:20px;text-align:center">
+        <a href="../index.html">返回官网首页</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="admin.js?v=20260811e"></script>
+  <script>
+    if (PetAdmin.getToken()) {
+      window.location.href = 'index.html';
+    }
+
+    const form = document.getElementById('login-form');
+    const errorEl = document.getElementById('error');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      errorEl.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = '登录中...';
+
+      try {
+        const res = await fetch(PetAdmin.getApiBase() + '/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.errMsg || '登录失败');
+        }
+        PetAdmin.setSession(data.token, data.username);
+        window.location.href = 'index.html';
+      } catch (err) {
+        errorEl.textContent = err.message || '登录失败';
+        errorEl.hidden = false;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '登录';
+      }
+    });
+  </script>
+</body>
+</html>

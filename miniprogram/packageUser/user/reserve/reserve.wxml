@@ -796,6 +796,12 @@
   bind:followed="onOaFollowSheetFollowed"
 />
 
+<pet-insurance-sheet
+  show="{{insuranceSheetVisible}}"
+  bind:close="onCloseInsuranceSheet"
+  bind:buy="onBuyInsuranceFromSheet"
+/>
+
 <view class="proxy-share-root" wx:if="{{proxyShareVisible}}">
   <view class="proxy-share-mask" catchtouchmove="onProxyShareTouchMove"></view>
   <view class="proxy-share-sheet" catchtap="onProxyShareTouchMove">

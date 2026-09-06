@@ -65,6 +65,7 @@
     <view class="order-action-row">
       <button wx:if="{{canCancel}}" class="order-action-btn order-action-cancel" bindtap="onCancel">取消订单</button>
       <button wx:if="{{canEdit}}" class="order-action-btn order-action-edit" bindtap="onEditOrder">修改订单</button>
+      <button wx:if="{{canRebook}}" class="order-action-btn order-action-rebook" bindtap="onRebook">再次预约</button>
     </view>
   </view>
 </view>

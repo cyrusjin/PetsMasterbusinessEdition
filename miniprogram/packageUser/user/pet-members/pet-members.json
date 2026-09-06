@@ -1,6 +1,5 @@
 {
   "navigationBarTitleText": "家庭成员",
-  "enableShareAppMessage": true,
   "usingComponents": {
     "cached-image": "/components/cached-image/cached-image"
   }
