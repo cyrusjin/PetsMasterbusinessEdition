@@ -5,6 +5,7 @@
     "pages/daily/daily",
     "pages/merchant/tab-daily/tab-daily",
     "pages/merchant/tab-statistics/tab-statistics",
+    "pages/merchant/tab-guide/tab-guide",
     "pages/merchant/tab-store/tab-store",
     "pages/share/store-landing/store-landing",
     "pages/merchant/apply/apply"

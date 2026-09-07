@@ -20,6 +20,7 @@ const { getPromotionStats } = require('../../../utils/growth');
 
 const STAFF_COUNT_TTL = 60 * 1000;
 const DAILY_POLL_MS = 60 * 1000;
+const merchantOnboarding = require('../../../utils/merchantOnboarding');
 
 function parseStaffInviteStoreId(options) {
   if (!options) return '';
@@ -53,7 +54,13 @@ Page({
     guestShareBtnText: '发送给客人预约',
     dailyUploadActive: false,
     dailyUploadText: ''
-    ,promotionStats: null
+    ,promotionStats: null,
+    onboardingVisible: false,
+    onboardingStep: 'choose',
+    onboardingMode: '',
+    onboardingTitle: '',
+    onboardingDesc: '',
+    onboardingTarget: { top: 0, left: 20, width: 335, height: 90 }
   },
 
   onLoad(options) {
@@ -119,6 +126,75 @@ Page({
       ...this._guestSharePatch(shop)
     });
     this._loadPromotionStats(shop);
+    this._maybeShowOnboarding();
+  },
+
+  _maybeShowOnboarding() {
+    const storeId = this.data.shop && this.data.shop.store_id;
+    if (!storeId || this.data.onboardingVisible || this._onboardingTimer) return;
+    if (!merchantOnboarding.pending(storeId)) return;
+    if (app.isMerchantDisabled() || app.isMerchantDemoMode()) return;
+    this._onboardingTimer = setTimeout(() => {
+      this._onboardingTimer = null;
+      if (this.data.shop.store_id !== storeId) return;
+      this.setData({ onboardingVisible: true, onboardingStep: 'choose' });
+    }, 280);
+  },
+
+  onGuideTouchMove() {},
+
+  onGuideChoose(e) {
+    const mode = e.currentTarget.dataset.mode === 'opening' ? 'opening' : 'existing';
+    const target = mode === 'opening' ? '#onboarding-customer-target' : '#onboarding-record-target';
+    this.setData({
+      onboardingStep: 'action',
+      onboardingMode: mode,
+      onboardingTitle: mode === 'opening' ? '先把第一批客人请进来' : '先把一次服务发给客人',
+      onboardingDesc: mode === 'opening'
+        ? '点击高亮区域，发送预约入口给客人。客人打开后就能直接预约。'
+        : '点击高亮区域，记录刚完成的服务并发给客人。客人之后可以直接再次预约。'
+    });
+    setTimeout(() => this._positionGuideTarget(target), 80);
+  },
+
+  _positionGuideTarget(selector) {
+    wx.pageScrollTo({
+      selector,
+      offsetTop: -150,
+      duration: 280,
+      complete: () => {
+        setTimeout(() => {
+          const query = wx.createSelectorQuery().in(this);
+          query.select(selector).boundingClientRect((rect) => {
+            if (!rect || !rect.width) return;
+            this.setData({
+              onboardingTarget: {
+                top: Math.max(12, rect.top - 8),
+                left: Math.max(8, rect.left - 8),
+                width: rect.width + 16,
+                height: rect.height + 16
+              }
+            });
+          }).exec();
+        }, 320);
+      }
+    });
+  },
+
+  onGuideTargetTap() {
+    const mode = this.data.onboardingMode;
+    this._finishOnboarding();
+    if (mode === 'opening') this.onShareToGuest();
+    else this.onServiceRecord();
+  },
+
+  onGuideShareTap() { this._finishOnboarding(); },
+
+  onGuideSkip() { this._finishOnboarding(); },
+
+  _finishOnboarding() {
+    merchantOnboarding.finish(this.data.shop && this.data.shop.store_id);
+    this.setData({ onboardingVisible: false });
   },
 
   _loadPromotionStats(shop) {
@@ -224,11 +300,15 @@ Page({
   },
 
   onHide() {
+    clearTimeout(this._onboardingTimer);
+    this._onboardingTimer = null;
     this._stopDailyUploadWatch();
     stopMerchantOrdersPoll(this);
   },
 
   onUnload() {
+    clearTimeout(this._onboardingTimer);
+    this._onboardingTimer = null;
     this._stopDailyUploadWatch();
     stopMerchantOrdersPoll(this);
   },

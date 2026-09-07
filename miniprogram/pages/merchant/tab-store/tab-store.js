@@ -46,10 +46,7 @@ const {
 } = require('../../../utils/storeShare');
 const { normalizePhone, validateMobilePhone } = require('../../../utils/phone');
 
-const {
-  markForceOpenSuccessPromo,
-  isForceOpenSuccessStore
-} = require('../../../utils/openSuccessPromo');
+const merchantOnboarding = require('../../../utils/merchantOnboarding');
 const {
   normalizeReceptionRange,
   formatReceptionRangeText,
@@ -843,27 +840,8 @@ Page({
             app.globalData.storeSettingsTab = '';
             this.setData({ settingsTab: 'boarding', moduleSubTab: 'advanced', activeServiceTab: 'boarding' });
           }
-          this._maybeForceOpenSuccessSheet();
         });
     });
-  },
-
-  _maybeForceOpenSuccessSheet() {
-    if (!isForceOpenSuccessStore(this.data.shop || app.getShop())) return;
-    const tryShow = () => {
-      const bar = this.selectComponent('#merchantTabBar');
-      if (bar && typeof bar.showOpenSuccessPromo === 'function') {
-        bar.showOpenSuccessPromo({ force: true, allowRepeat: true });
-        return true;
-      }
-      return false;
-    };
-    if (!tryShow()) {
-      markForceOpenSuccessPromo(app);
-      setTimeout(() => {
-        tryShow();
-      }, 80);
-    }
   },
 
   _syncTabBar() {},
@@ -4022,23 +4000,12 @@ Page({
           showValidationAlert(openServiceGuide, '请完善信息', {
             onConfirm: () => this._guideToBoardingService()
           });
-        } else if (openedNow) {
+        } else if (openedNow || merchantOnboarding.isLocalTest()) {
           enableStoreShareMenu();
           this._syncApplyShellChrome();
           this._syncBasicSaveText();
-          const tryShow = () => {
-            const bar = this.selectComponent('#merchantTabBar');
-            if (bar && typeof bar.showOpenSuccessPromo === 'function') {
-              bar.showOpenSuccessPromo({ force: true });
-              return true;
-            }
-            return false;
-          };
-          if (!tryShow()) {
-            markForceOpenSuccessPromo(app);
-            setTimeout(() => {
-              tryShow();
-            }, 80);
+          if (merchantOnboarding.request(saved.store_id, { repeatForLocalTest: true })) {
+            wx.redirectTo({ url: '/pages/merchant/tab-daily/tab-daily' });
           }
         } else {
           this._syncApplyShellChrome();

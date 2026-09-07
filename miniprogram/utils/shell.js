@@ -15,6 +15,7 @@ const USER_TAB_ROUTES = [
 const MERCHANT_TAB_ROUTES = [
   'pages/merchant/tab-daily/tab-daily',
   'pages/merchant/tab-statistics/tab-statistics',
+  'pages/merchant/tab-guide/tab-guide',
   'pages/merchant/tab-store/tab-store'
 ];
 

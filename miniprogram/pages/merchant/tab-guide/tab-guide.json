@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "使用指南",
+  "usingComponents": {
+    "merchant-tab-bar": "/components/merchant-tab-bar/merchant-tab-bar",
+    "cs-contact": "/components/cs-contact/cs-contact"
+  }
+}

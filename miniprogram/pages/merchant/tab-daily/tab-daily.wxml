@@ -113,15 +113,16 @@
       <text class="insurance-promo-arrow">›</text>
     </view>
 
-    <view class="guest-invite-card">
+    <view id="guestInviteCard" class="guest-invite-card">
       <view class="guest-invite-frame" aria-hidden="true"></view>
       <text class="guest-invite-title">发给客人</text>
       <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
       <text class="guest-invite-desc">{{guestShareDesc}}</text>
       <view class="guest-invite-actions">
-        <view class="guest-invite-action guest-invite-action-record" hover-class="guest-invite-action-hover" bindtap="onServiceRecord">发服务记录</view>
+        <view id="onboarding-record-target" class="guest-invite-action guest-invite-action-record" hover-class="guest-invite-action-hover" bindtap="onServiceRecord">发服务记录</view>
         <button
           wx:if="{{!guestShareMulti}}"
+          id="onboarding-customer-target"
           class="guest-invite-action"
           open-type="share"
           data-share-type="customer"
@@ -129,6 +130,7 @@
         >发送给客人预约</button>
         <view
           wx:else
+          id="onboarding-customer-target"
           class="guest-invite-action"
           hover-class="guest-invite-action-hover"
           bindtap="onShareToGuest"
@@ -194,3 +196,56 @@
 </view>
 <merchant-tab-bar active="daily" isDemoMode="{{isDemoMode}}" />
 <hidden-admin-entry id="hiddenAdminEntry" />
+
+<view wx:if="{{onboardingVisible}}" class="onboarding-root" catchtouchmove="onGuideTouchMove">
+  <view class="onboarding-dim {{onboardingStep === 'action' ? 'onboarding-dim-action' : ''}}"></view>
+  <view
+    wx:if="{{onboardingStep === 'action'}}"
+    class="onboarding-spotlight"
+    style="top: {{onboardingTarget.top}}px; left: {{onboardingTarget.left}}px; width: {{onboardingTarget.width}}px; height: {{onboardingTarget.height}}px;"
+  ></view>
+  <view
+    wx:if="{{onboardingStep === 'action' && onboardingMode === 'existing'}}"
+    class="onboarding-hotspot"
+    style="top: {{onboardingTarget.top}}px; left: {{onboardingTarget.left}}px; width: {{onboardingTarget.width}}px; height: {{onboardingTarget.height}}px;"
+    bindtap="onGuideTargetTap"
+  ></view>
+  <view
+    wx:elif="{{onboardingStep === 'action' && onboardingMode === 'opening' && guestShareMulti}}"
+    class="onboarding-hotspot"
+    style="top: {{onboardingTarget.top}}px; left: {{onboardingTarget.left}}px; width: {{onboardingTarget.width}}px; height: {{onboardingTarget.height}}px;"
+    bindtap="onGuideTargetTap"
+  ></view>
+  <button
+    wx:elif="{{onboardingStep === 'action' && onboardingMode === 'opening'}}"
+    class="onboarding-hotspot onboarding-share-hotspot"
+    style="top: {{onboardingTarget.top}}px; left: {{onboardingTarget.left}}px; width: {{onboardingTarget.width}}px; height: {{onboardingTarget.height}}px;"
+    open-type="share"
+    data-share-type="customer"
+    bindtap="onGuideShareTap"
+    hover-class="none"
+  ></button>
+  <view class="onboarding-panel" wx:if="{{onboardingStep === 'choose'}}">
+    <text class="onboarding-kicker">开始使用</text>
+    <text class="onboarding-title">先告诉我你的店铺状态</text>
+    <text class="onboarding-desc">我们会按你的情况安排第一步，不需要先学完整套系统。</text>
+    <view class="onboarding-choice" bindtap="onGuideChoose" data-mode="existing">
+      <view class="onboarding-choice-icon">店</view>
+      <view class="onboarding-choice-copy"><text class="onboarding-choice-title">已有店铺，正在营业</text><text class="onboarding-choice-desc">把刚完成的服务发给顾客</text></view>
+      <text class="onboarding-arrow">›</text>
+    </view>
+    <view class="onboarding-choice" bindtap="onGuideChoose" data-mode="opening">
+      <view class="onboarding-choice-icon onboarding-choice-icon-new">新</view>
+      <view class="onboarding-choice-copy"><text class="onboarding-choice-title">待开业，正在准备中</text><text class="onboarding-choice-desc">先发一个预约入口给客人</text></view>
+      <text class="onboarding-arrow">›</text>
+    </view>
+    <text class="onboarding-skip" bindtap="onGuideSkip">跳过引导</text>
+  </view>
+  <view class="onboarding-tip" wx:elif="{{onboardingStep === 'action'}}">
+    <text class="onboarding-kicker">第一步</text>
+    <text class="onboarding-title">{{onboardingTitle}}</text>
+    <text class="onboarding-desc">{{onboardingDesc}}</text>
+    <text class="onboarding-hint">点击上方高亮区域继续</text>
+    <text class="onboarding-skip" bindtap="onGuideSkip">跳过引导</text>
+  </view>
+</view>

@@ -1,0 +1,33 @@
+<view class="container guide-page has-tab-bar" wx:if="{{ready}}">
+  <view class="card guide-hero">
+    <text class="guide-eyebrow">门店使用指南</text>
+    <text class="guide-title">遇到问题，来这里找答案</text>
+    <text class="guide-description">从第一笔预约到看懂营收，一步一步带你操作。</text>
+    <view class="guide-shortcuts">
+      <button class="guide-shortcut" data-action="record" bindtap="onAction">老店 · 发服务记录 ›</button>
+      <button class="guide-shortcut" data-action="invite" bindtap="onAction">新店 · 邀请客人 ›</button>
+    </view>
+  </view>
+  <view class="guide-search">
+    <input class="form-input" placeholder="搜索问题，如：营收、下单、回访" value="{{keyword}}" bindinput="onSearch" confirm-type="search" maxlength="80" />
+    <button wx:if="{{keyword}}" class="guide-clear" bindtap="onClear">清除</button>
+  </view>
+  <scroll-view scroll-x class="guide-categories">
+    <button wx:for="{{categories}}" wx:key="id" class="guide-category {{category === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="onCategory">{{item.name}}</button>
+  </scroll-view>
+  <view class="guide-list-heading"><text>常见问题</text><text class="guide-count">{{items.length}} 个问题</text></view>
+  <view class="card guide-question" wx:for="{{items}}" wx:key="id">
+    <view class="guide-question-head" bindtap="onToggle" data-id="{{item.id}}" role="button" aria-label="{{item.title}}">
+      <view class="guide-question-copy"><text class="guide-question-title">{{item.title}}</text><text class="guide-summary">{{item.summary}}</text></view>
+      <text class="guide-expand">{{expandedId === item.id ? '−' : '+'}}</text>
+    </view>
+    <view wx:if="{{expandedId === item.id}}" class="guide-answer">
+      <view class="guide-step" wx:for="{{item.steps}}" wx:for-item="step" wx:for-index="stepIndex" wx:key="*this"><text class="guide-step-number">{{stepIndex + 1}}</text><text class="guide-step-copy">{{step}}</text></view>
+      <button class="btn-primary guide-action" data-action="{{item.action}}" bindtap="onAction">{{item.actionLabel}} ›</button>
+    </view>
+  </view>
+  <view wx:if="{{!items.length}}" class="card guide-empty"><text>没有找到相关问题</text><text class="guide-summary">试试其他关键词，或联系系统客服。</text><button class="btn-outline" bindtap="onClear">查看全部问题</button></view>
+  <view class="card guide-feedback"><text class="guide-question-title">还有没解决的问题？</text><text class="guide-summary">联系系统客服，告诉我们你卡在哪一步，也欢迎提出希望补充的教程。</text><button class="btn-outline" bindtap="onFeedback">反馈问题 / 联系客服</button></view>
+</view>
+<cs-contact id="guideContact" showEntry="{{false}}" />
+<merchant-tab-bar active="guide" />
