@@ -119,6 +119,7 @@
       <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
       <text class="guest-invite-desc">{{guestShareDesc}}</text>
       <view class="guest-invite-actions">
+        <view class="guest-invite-action guest-invite-action-record" hover-class="guest-invite-action-hover" bindtap="onServiceRecord">发服务记录</view>
         <button
           wx:if="{{!guestShareMulti}}"
           class="guest-invite-action"

@@ -617,6 +617,11 @@ Page({
     openProxyGuestPicker();
   },
 
+  onServiceRecord() {
+    if (!this._guardMerchantFeature()) return;
+    wx.navigateTo({ url: '/packageBiz/service-record/service-record' });
+  },
+
   onShareTimeline() {
     if (this.data.isDemoMode) {
       return { title: '萌宠寄养体验' };

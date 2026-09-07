@@ -1,0 +1,25 @@
+<view class="container service-record-page">
+  <view class="card intro-card"><text class="card-title intro-title">发服务记录给顾客</text><text class="page-desc">服务完成后快速生成记录，顾客打开即可查看并再次预约。</text></view>
+  <view class="card form-card">
+    <view class="form-group"><view class="form-label"><text class="required-star">*</text>宠物名字</view>
+    <input class="form-input" placeholder="例如：豆豆" data-field="petName" value="{{petName}}" bindinput="onInput" />
+    </view>
+    <view class="form-group"><view class="form-label">宠物类型</view>
+    <picker mode="selector" range="{{['狗','猫','其他']}}" value="{{petType === '猫' ? 1 : (petType === '其他' ? 2 : 0)}}" bindchange="onPetTypeChange"><view class="picker-value">{{petType}}<text class="picker-arrow">›</text></view></picker>
+    </view>
+    <view class="form-group"><view class="form-label">本次服务</view>
+    <picker mode="selector" range="{{serviceNames}}" value="{{serviceIndex}}" bindchange="onServiceChange"><view class="picker-value">{{serviceNames[serviceIndex] || '请选择服务'}}<text class="picker-arrow">›</text></view></picker>
+    </view>
+    <view class="form-group"><view class="form-label">顾客称呼 <text class="optional">选填</text></view>
+    <input class="form-input" placeholder="例如：王女士" data-field="contactName" value="{{contactName}}" bindinput="onInput" />
+    </view>
+    <view class="form-group"><view class="form-label">服务备注 <text class="optional">选填</text></view>
+    <view class="note-suggestions" wx:if="{{recommendedNotes.length}}">
+      <view class="note-suggestion" wx:for="{{recommendedNotes}}" wx:key="*this" data-index="{{index}}" bindtap="onPickNote">{{item}}</view>
+    </view>
+    <textarea class="form-textarea" placeholder="例如：回家后保持毛发干燥" data-field="note" value="{{note}}" maxlength="200" bindinput="onInput" />
+    </view>
+    <button wx:if="{{!formReady}}" class="btn-primary submit-disabled" bindtap="onValidate">完成并发送给顾客</button>
+    <button wx:else class="btn-primary" loading="{{submitting}}" open-type="share" bindtap="onSubmitAndShare" hover-class="none">{{submitting ? '正在生成记录' : '完成并发送给顾客'}}</button>
+  </view>
+</view>

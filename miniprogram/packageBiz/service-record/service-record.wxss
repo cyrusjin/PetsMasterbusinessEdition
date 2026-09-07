@@ -1,0 +1,73 @@
+.service-record-page {
+  padding-top: 20rpx;
+  padding-bottom: 48rpx;
+}
+
+.intro-card {
+  background: linear-gradient(145deg, var(--color-bg-card), var(--color-bg-subtle));
+}
+
+.intro-title {
+  margin-bottom: 14rpx;
+}
+
+.page-desc {
+  display: block;
+  padding-left: 25rpx;
+  color: var(--color-text-secondary);
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.form-group:last-of-type {
+  margin-bottom: 32rpx;
+}
+
+.optional {
+  margin-left: 8rpx;
+  color: var(--color-text-muted);
+  font-size: 22rpx;
+  font-weight: 400;
+}
+
+.note-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-bottom: 14rpx;
+}
+
+.note-suggestion {
+  padding: 18rpx 20rpx;
+  border: 1rpx solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.picker-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 88rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  background: var(--color-bg-input);
+  color: var(--color-text-primary);
+  font-size: 28rpx;
+}
+
+.picker-arrow {
+  color: var(--color-text-tertiary);
+  font-size: 36rpx;
+}
+
+.submit-disabled {
+  box-shadow: none;
+  opacity: .48;
+}

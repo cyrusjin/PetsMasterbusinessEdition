@@ -443,6 +443,7 @@ function validateOrderReceptionRange(order, store) {
 function validateCreatePayload(order) {
   if (!order || !order.store_id) return '缺少店铺信息';
   if (!(order.petName || '').trim()) return '缺少宠物信息';
+  if (order.serviceRecord) return '';
   const line = String(order.serviceLine || '').trim();
   if (!order.startDate || !order.endDate) {
     if (line === 'wash') return '请选择到店时间';
@@ -590,7 +591,15 @@ async function createOrder(event, openid) {
   }
 
   const orderData = buildOrderData(
-    payload,
+    payload.serviceRecord ? {
+      ...payload,
+      startDate: payload.startDate || new Date().toISOString().slice(0, 10),
+      endDate: payload.endDate || payload.startDate || new Date().toISOString().slice(0, 10),
+      startTime: payload.startTime || '00:00',
+      endTime: payload.endTime || '23:59',
+      status: 'completed',
+      placedByMerchant: true
+    } : payload,
     openid,
     merchantOpenid,
     event.userProfile || {},

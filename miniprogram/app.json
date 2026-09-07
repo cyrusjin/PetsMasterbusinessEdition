@@ -51,7 +51,8 @@
         "pickup-manage/pickup-manage",
         "holiday-pricing/holiday-pricing",
         "insurance-promotion/insurance-promotion",
-        "share-guest/share-guest"
+        "share-guest/share-guest",
+        "service-record/service-record"
       ]
     },
     {
