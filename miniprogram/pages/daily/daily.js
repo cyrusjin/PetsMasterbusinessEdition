@@ -35,7 +35,7 @@ Page({
   },
 
   onShow() {
-    this._syncUserTabBar(2);
+    this._syncUserTabBar(3);
     if (guardUserTabPage()) return;
     applyUserBannerAdPadding(this);
     const gen = (this._showGen || 0) + 1;

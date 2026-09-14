@@ -4,9 +4,10 @@ const BADGE_KEYS = {
   USER_DAILY_SEEN_AT: 'pet_badge_user_daily_seen_at'
 };
 
+// 与 app.json tabBar.list 下标一致：首页 0、管家 1、订单 2、动态 3
 const USER_TAB = {
-  ORDERS: 1,
-  DAILY: 2
+  ORDERS: 2,
+  DAILY: 3
 };
 
 const { isDailyCheckableOrder } = require('./dailyCheckable');

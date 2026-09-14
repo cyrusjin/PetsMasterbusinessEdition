@@ -114,14 +114,14 @@ function buildDailyCheckOrderOptions(orders, logs, options = {}) {
     const petGender = order.petGender || snapshot.gender || '--';
     const petBreed = order.petBreed || snapshot.breed || '--';
     return {
-      id: order.id,
+      id: orderKey,
       petName: order.petName,
       startDate: order.startDate,
       endDate: order.endDate,
       petGender,
       petBreed,
       todayCheckCount,
-      selected: selectedSet.has(order.id),
+      selected: selectedSet.has(orderKey),
       serviceKind: getOrderServiceKind(order),
       serviceLabel: getOrderServiceLabel(order)
     };

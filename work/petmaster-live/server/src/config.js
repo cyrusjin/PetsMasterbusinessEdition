@@ -207,6 +207,19 @@ const config = {
     apiPublicBaseUrl: required('API_PUBLIC_BASE_URL', 'https://api.petmaster.me'),
     publicBaseUrl: required('MEDIA_PUBLIC_BASE_URL', 'https://api.petmaster.me/media')
   },
+  orderPayments: {
+    enabled: required('ORDER_PAY_ENABLED', 'false') === 'true',
+    appId: required('WX_MERCHANT_APPID', ''),
+    wechatPay: {
+      mchId: required('WECHAT_PARTNER_MCH_ID', ''),
+      certSerial: required('WECHAT_PARTNER_CERT_SERIAL', ''),
+      privateKeyPath: required('WECHAT_PARTNER_PRIVATE_KEY_PATH', ''),
+      apiV3KeyPath: required('WECHAT_PARTNER_API_V3_KEY_PATH', ''),
+      publicKeyId: required('WECHAT_PARTNER_PUBLIC_KEY_ID', ''),
+      publicKeyPath: required('WECHAT_PARTNER_PUBLIC_KEY_PATH', ''),
+      notifyUrl: required('WECHAT_PARTNER_NOTIFY_URL', '')
+    }
+  },
   membership: {
     enabled: String(required('MEMBERSHIP_ENABLED', 'true')).toLowerCase() !== 'false',
     monthlyPriceFen: Math.max(1, Number(required('MEMBERSHIP_MONTHLY_PRICE_FEN', '1990')) || 1990),

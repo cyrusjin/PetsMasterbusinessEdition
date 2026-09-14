@@ -3,9 +3,14 @@ const fs = require('fs');
 const https = require('https');
 const config = require('../config');
 
-function payConfig() {
-  return config.membership.wechatPay || {};
-}
+function createClient(options) {
+  function payConfig() {
+    return options ? options.wechatPay : (config.membership.wechatPay || {});
+  }
+
+  function paymentAppId() {
+    return options ? options.appId : config.wxApps.merchant.appId;
+  }
 
 function readRequiredFile(filePath, label) {
   if (!filePath) throw new Error(`${label}路径未配置`);
@@ -19,12 +24,14 @@ function credentialsReady() {
   return !!(
     cfg.mchId && cfg.certSerial && cfg.privateKeyPath && cfg.apiV3KeyPath
     && cfg.publicKeyId && cfg.publicKeyPath && cfg.notifyUrl
-    && config.wxApps && config.wxApps.merchant && config.wxApps.merchant.appId
+    && fs.existsSync(cfg.privateKeyPath) && fs.existsSync(cfg.apiV3KeyPath)
+    && fs.existsSync(cfg.publicKeyPath)
+    && paymentAppId()
   );
 }
 
 function assertEnabled() {
-  if (!config.membership.payEnabled || !credentialsReady()) {
+  if (!(options ? options.enabled : config.membership.payEnabled) || !credentialsReady()) {
     const err = new Error('微信支付配置尚未完成');
     err.code = 'PAY_NOT_CONFIGURED';
     throw err;
@@ -94,6 +101,7 @@ function request(method, requestPath, body) {
         Accept: 'application/json',
         'Content-Type': 'application/json',
         'User-Agent': 'PetMaster/1.0',
+        'Wechatpay-Serial': payConfig().publicKeyId,
         ...(rawBody ? { 'Content-Length': Buffer.byteLength(rawBody) } : {})
       }
     }, (res) => {
@@ -128,7 +136,7 @@ function request(method, requestPath, body) {
 async function createJsapiOrder(input) {
   const cfg = payConfig();
   return request('POST', '/v3/pay/transactions/jsapi', {
-    appid: config.wxApps.merchant.appId,
+    appid: paymentAppId(),
     mchid: cfg.mchId,
     description: input.description,
     out_trade_no: input.orderId,
@@ -154,7 +162,7 @@ async function closeTransaction(orderId) {
 
 function buildMiniProgramPayment(prepayId) {
   assertEnabled();
-  const appId = config.wxApps.merchant.appId;
+  const appId = paymentAppId();
   const timeStamp = String(Math.floor(Date.now() / 1000));
   const nonceStr = randomNonce();
   const packageValue = `prepay_id=${prepayId}`;
@@ -187,7 +195,8 @@ function parseNotification(rawBody, headers) {
   return { envelope, transaction: decryptNotification(envelope.resource) };
 }
 
-module.exports = {
+return {
+  request,
   credentialsReady,
   createJsapiOrder,
   queryTransaction,
@@ -196,3 +205,6 @@ module.exports = {
   parseNotification,
   verifyWechatSignature
 };
+}
+
+module.exports = { ...createClient(), createClient };

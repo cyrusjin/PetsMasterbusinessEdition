@@ -1,3 +1,4 @@
+const orderPayment = require('../../utils/orderPayment');
 const app = getApp();
 const badgeUtil = require('../../../utils/badge');
 const { normalizeOrderFees } = require('../../../utils/orderFees');
@@ -76,9 +77,10 @@ Page({
     const canRebook = status === 'completed' || status === 'cancelled';
     this.setData({
       order,
+      paymentLabel: orderPayment.paymentLabel(order),
       statusLabel: formatServiceStatus(order),
       canCancel: canUserCancelOrder(status),
-      canEdit: canUserEditOrder(status, order),
+      canEdit: canUserEditOrder(status, order) && !(order.paymentMode === 'online' && ['paid', 'refunding', 'refunded', 'partial_refunded', 'refund_failed'].includes(order.payment.status)),
       canRebook,
       // 已完成/已取消订单通常没有“修改/取消”操作，但必须保留再次预约入口。
       showActions: canShowUserOrderActions(status, order) || canRebook,
@@ -100,6 +102,31 @@ Page({
     });
   },
 
+  async onPay() {
+    if (this.data.paying) return;
+    this.setData({ paying: true });
+    try {
+      await orderPayment.pay(this.orderId);
+      wx.showToast({ title: '付款已确认', icon: 'success' });
+    } catch (err) { wx.showModal({ title: '支付提示', content: err.message || '支付未完成', showCancel: false }); }
+    finally { this.setData({ paying: false }); await this._refreshOrder({ force: true }); }
+  },
+  async onRefreshPayment() {
+    if (this.data.paying) return;
+    this.setData({ paying: true });
+    try { await orderPayment.query(this.orderId); }
+    catch (err) { wx.showToast({ title: err.message || '查询失败', icon: 'none' }); }
+    finally { this.setData({ paying: false }); await this._refreshOrder({ force: true }); }
+  },
+  onRequestRefund() {
+    wx.showModal({ title: '申请退款', content: '退款申请将交由门店处理，提交申请不会立即到账。请与门店协商取消服务及退款事宜。', success: async r => {
+      if (!r.confirm || this.data.paying) return;
+      this.setData({ paying: true });
+      try { await orderPayment.requestRefund(this.orderId); wx.showToast({ title: '已申请退款', icon: 'success' }); }
+      catch (err) { wx.showToast({ title: err.message || '申请失败', icon: 'none' }); }
+      finally { this.setData({ paying: false }); await this._refreshOrder({ force: true }); }
+    } });
+  },
   onConfirmPrice() {
     const { order } = this.data;
     if (!order.id) return;
@@ -123,6 +150,7 @@ Page({
   },
 
   onCancel() {
+    if (this.data.order.paymentMode === 'online' && this.data.order.payment.status === 'paid') return this.onRequestRefund();
     wx.showModal({
       title: '取消订单',
       content: '确定取消此订单吗？',

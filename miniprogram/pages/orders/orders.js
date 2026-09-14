@@ -25,7 +25,7 @@ Page({
   },
 
   onShow() {
-    this._syncUserTabBar(1);
+    this._syncUserTabBar(2);
     if (guardUserTabPage()) return;
     applyUserBannerAdPadding(this);
     const gen = (this._showGen || 0) + 1;
@@ -91,7 +91,10 @@ Page({
       o.createTime || 0,
       o.petPhoto || '',
       o.serviceTimeText || '',
-      o.statusLabel || ''
+      o.statusLabel || '',
+      (o.payment || {}).status || '',
+      (o.payment || {}).canPay ? 1 : 0,
+      (o.payment || {}).refundRequested ? 1 : 0
     ].join(':')).join('|');
     if (sig !== this._ordersSig) {
       this._ordersSig = sig;
@@ -110,6 +113,7 @@ Page({
     const { activeTab, orders } = this.data;
     let filtered = orders;
     if (activeTab === 'pending') filtered = orders.filter((o) => o.status === 'pending' || o.status === 'confirmed');
+    else if (activeTab === 'payment') filtered = orders.filter((o) => (o.payment || {}).canPay || o.status === 'toPay');
     else if (activeTab === 'awaiting_arrival') filtered = orders.filter((o) => o.status === 'awaiting_arrival');
     else if (activeTab === 'boarding') filtered = orders.filter((o) => o.status === 'boarding');
     else if (activeTab === 'completed') filtered = orders.filter((o) => o.status === 'completed' || o.status === 'cancelled');

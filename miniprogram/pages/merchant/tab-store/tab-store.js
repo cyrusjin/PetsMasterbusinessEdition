@@ -508,6 +508,11 @@ Page({
     if (storeId && redirectGuestShareToReserve(storeId, options && options.serviceLine)) {
       return;
     }
+    const tab = String((options && options.tab) || '').trim();
+    const sub = String((options && options.sub) || '').trim();
+    if (tab === 'shop' || tab === 'boarding' || tab === 'wash' || tab === 'homeFeeding') {
+      this._pendingSettingsTab = { tab, sub };
+    }
     if (app.globalData && app.globalData.storeSettingsTab === 'advanced') {
       app.globalData.storeSettingsTab = '';
       this.setData({ settingsTab: 'boarding', moduleSubTab: 'advanced', activeServiceTab: 'boarding' });
@@ -836,7 +841,11 @@ Page({
           this._syncTabBar();
           this._syncBasicSaveText();
           this._refreshHolidayPricingSummary();
-          if (app.globalData && app.globalData.storeSettingsTab === 'advanced') {
+          if (this._pendingSettingsTab) {
+            const pending = this._pendingSettingsTab;
+            this._pendingSettingsTab = null;
+            this._applyPendingSettingsTab(pending);
+          } else if (app.globalData && app.globalData.storeSettingsTab === 'advanced') {
             app.globalData.storeSettingsTab = '';
             this.setData({ settingsTab: 'boarding', moduleSubTab: 'advanced', activeServiceTab: 'boarding' });
           }
@@ -1457,11 +1466,11 @@ Page({
           merchantStoreId: store.store_id,
           merchantStatus: 'pending',
           isMerchant: false,
-          role: 'user'
+          role: 'merchant'
         };
         app.globalData.userInfo = user;
         app.globalData.isMerchant = false;
-        app.globalData.role = 'user';
+        app.globalData.role = 'merchant';
         app.setData(STORAGE_KEYS.USER, user);
         app.saveShop(store);
         if (app._bindOwnStoreAsVisit) {
@@ -1685,6 +1694,14 @@ Page({
     this._syncBasicSaveText();
   },
 
+  onGoCollectionSettings() {
+    if (app.globalData.merchantAccessRole && app.globalData.merchantAccessRole !== 'owner') {
+      wx.showToast({ title: '仅店主可以管理收款设置', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: '/packageExtra/collection-settings/collection-settings' });
+  },
+
   onGoMembership() {
     wx.navigateTo({ url: '/packageExtra/membership/membership' });
   },
@@ -1831,6 +1848,21 @@ Page({
         )
       }
     });
+  },
+
+  _applyPendingSettingsTab(pending) {
+    const tab = pending && pending.tab;
+    if (tab === 'boarding' || tab === 'wash' || tab === 'homeFeeding') {
+      this._syncServiceLineView({
+        settingsTab: tab,
+        moduleSubTab: tab === 'boarding' && pending.sub === 'advanced' ? 'advanced' : 'basic',
+        activeServiceTab: tab
+      });
+      return;
+    }
+    if (tab === 'shop') {
+      this.setData({ settingsTab: 'shop' });
+    }
   },
 
   onSettingsTab(e) {

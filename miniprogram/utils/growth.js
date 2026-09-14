@@ -2,6 +2,27 @@ const { callApiService } = require('./api');
 
 const CONTEXT_KEY = 'petmaster_promotion_context';
 const CONTEXT_TTL = 30 * 24 * 60 * 60 * 1000;
+const OFFLINE_TABLE_CARD_PREFIX = 'ot_';
+const OFFLINE_TABLE_CARD_SOURCE = 'offline_table_card';
+
+function decodeScene(scene) {
+  try {
+    return decodeURIComponent(String(scene || '')).trim();
+  } catch (err) {
+    return String(scene || '').trim();
+  }
+}
+
+function parseOfflineTableCardScene(scene) {
+  const decoded = decodeScene(scene);
+  const isStoreId = (value) => /^store_[a-zA-Z0-9_-]+$/.test(value);
+  if (isStoreId(decoded)) return decoded;
+  if (decoded.startsWith(OFFLINE_TABLE_CARD_PREFIX)) {
+    const storeId = decoded.slice(OFFLINE_TABLE_CARD_PREFIX.length).trim();
+    return isStoreId(storeId) ? storeId : '';
+  }
+  return '';
+}
 
 function getStoreId() {
   try {
@@ -28,9 +49,10 @@ function readPromotionContext() {
 }
 
 function capturePromotionEntry(options = {}) {
-  const storeId = String(options.store_id || options.storeId || '').trim();
+  const offlineStoreId = parseOfflineTableCardScene(options.scene);
+  const storeId = String(options.store_id || options.storeId || offlineStoreId || '').trim();
   const shareCode = String(options.shareCode || '').trim();
-  const source = String(options.source || '').trim();
+  const source = String(options.source || (offlineStoreId ? OFFLINE_TABLE_CARD_SOURCE : '')).trim();
   if (!storeId || (!shareCode && !source)) return readPromotionContext();
   const context = { store_id: storeId, shareCode: shareCode.slice(0, 80), source: source.slice(0, 40), at: Date.now() };
   try { wx.setStorageSync(CONTEXT_KEY, context); } catch (err) {}
@@ -60,6 +82,9 @@ function updateCustomerTags(storeId, customerKey, tags, note = '') {
 
 module.exports = {
   CONTEXT_KEY,
+  OFFLINE_TABLE_CARD_PREFIX,
+  OFFLINE_TABLE_CARD_SOURCE,
+  parseOfflineTableCardScene,
   createShareCode,
   capturePromotionEntry,
   getPromotionContext,

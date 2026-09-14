@@ -88,6 +88,7 @@
         <text wx:if="{{item.pendingEditTotalFee != null}}" style="display:block;margin-top:6rpx;">确认后费用 ¥{{item.pendingEditTotalFee}}</text>
       </view>
       <view class="price-pending-tip" wx:elif="{{item.pricePendingConfirm}}">价格待用户确认，暂不可操作订单</view>
+      <view wx:if="{{item.payment.refundRequested}}" class="text-gray">顾客申请退款，请进入详情处理</view>
       <view class="order-actions">
         <button wx:if="{{item.editPendingConfirm}}" class="btn-sm btn-green" bindtap="onConfirmUserEdit" data-id="{{item.id}}">确认改单</button>
         <button wx:if="{{item.editPendingConfirm}}" class="btn-sm btn-danger-outline" bindtap="onRejectUserEdit" data-id="{{item.id}}">拒绝改单</button>

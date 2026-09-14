@@ -89,11 +89,11 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 430rpx;
-  height: 430rpx;
+  width: 180rpx;
+  height: 180rpx;
   max-width: 100%;
   margin: 0 auto;
-  padding: 16rpx;
+  padding: 8rpx;
   box-sizing: border-box;
   border: 2rpx solid rgba(108, 73, 51, .08);
   border-radius: 26rpx;
@@ -103,36 +103,7 @@ page {
 .insurance-qr { width: 100%; height: 100%; }
 .insurance-qr-hint { display: block; margin-top: 14rpx; color: #A08D80; font-size: 22rpx; }
 
-.insurance-guide-step {
-  display: flex;
-  gap: 22rpx;
-  margin-top: 18rpx;
-  padding: 25rpx 24rpx;
-  border: 2rpx solid rgba(108, 73, 51, .09);
-  border-radius: 26rpx;
-  background: #FFFAF6;
-  text-align: left;
-}
-
-.insurance-guide-step-num {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  color: #D96F43;
-  background: #FFE8D9;
-  font-size: 24rpx;
-  font-weight: 700;
-}
-
-.insurance-guide-step-content { flex: 1; min-width: 0; }
-.insurance-guide-step-title { display: block; color: #3D2B1F; font-size: 27rpx; font-weight: 700; }
-.insurance-guide-step-desc { display: block; margin-top: 7rpx; color: #887568; font-size: 23rpx; line-height: 1.6; }
-
-.insurance-copy-btn {
+.insurance-buy-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -147,8 +118,8 @@ page {
   font-weight: 700;
 }
 
-.insurance-copy-btn::after { border: none; }
-.insurance-copy-btn:active { transform: scale(.985); }
+.insurance-buy-btn::after { border: none; }
+.insurance-buy-btn:active { transform: scale(.985); }
 
 .insurance-guide-provider {
   display: block;
@@ -157,3 +128,16 @@ page {
   font-size: 20rpx;
   line-height: 1.7;
 }
+
+.insurance-backup-hint { margin: 36rpx 0 18rpx; line-height: 1.6; }
+.insurance-copy-btn {
+  margin: 18rpx auto 0;
+  padding: 8rpx 20rpx;
+  width: auto;
+  display: inline-block;
+  background: transparent;
+  color: #927B6C;
+  font-size: 23rpx;
+  line-height: 1.6;
+}
+.insurance-copy-btn::after { border: none; }

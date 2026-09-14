@@ -43,6 +43,8 @@ async function main() {
   } catch (err) {
     console.warn('[membership] init database failed', (err && err.message) || err);
   }
+  await require('./services/orderPaymentService').initialize();
+  await require('./services/collectionOnboardingService').initialize();
   startDailyScheduleWorker();
   startMembershipPaymentReconcileWorker();
   // 入驻无订单引导推送已关闭（原 startMerchantNoOrderRemindWorker）
@@ -82,6 +84,7 @@ async function main() {
   app.use('/api/config', configRouter);
   app.use('/api/user', authRouter);
   app.use('/api/store', storeRouter);
+  app.use('/api/collection', require('./routes/collection'));
   app.use('/api/order', orderRouter);
   app.use('/api/pet', petRouter);
   app.use('/api/daily', dailyRouter);

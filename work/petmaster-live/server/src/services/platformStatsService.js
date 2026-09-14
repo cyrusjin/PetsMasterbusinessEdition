@@ -941,6 +941,7 @@ async function getPlatformDashboard() {
   const ordersCol = db.collection('orders');
   const usersCol = db.collection('users');
   const dailyCol = db.collection('daily_logs');
+  const promotionEventsCol = db.collection('promotion_events');
   const insuranceEventsCol = db.collection('insurance_events');
   const membershipPayOrdersCol = db.collection('membership_pay_orders');
   const membershipEntitlementsCol = db.collection('membership_entitlements');
@@ -977,6 +978,7 @@ async function getPlatformDashboard() {
     boardingWithLog,
     petReport,
     storeRevenueReport,
+    offlineScanStats,
     insuranceEventStats,
     membershipPayStats,
     activePaidVipRows
@@ -1210,6 +1212,40 @@ async function getPlatformDashboard() {
     buildPetReport(now),
     // storeRevenueReport 依赖 stores，先占位，下面再算
     Promise.resolve(null),
+    promotionEventsCol
+      .aggregate([
+        {
+          $match: {
+            type: 'open',
+            source: 'offline_table_card',
+            viewerKey: { $nin: ['', null] },
+            ...excludedStoreIdMatch()
+          }
+        },
+        {
+          $facet: {
+            total: [
+              { $group: { _id: '$viewerKey' } },
+              { $count: 'count' }
+            ],
+            d7: [
+              { $match: { createTime: { $gte: d7 } } },
+              { $group: { _id: '$viewerKey' } },
+              { $count: 'count' }
+            ],
+            d30: [
+              { $match: { createTime: { $gte: d30 } } },
+              { $group: { _id: '$viewerKey' } },
+              { $count: 'count' }
+            ],
+            byStore: [
+              { $group: { _id: { store_id: '$store_id', viewerKey: '$viewerKey' } } },
+              { $group: { _id: '$_id.store_id', count: { $sum: 1 } } }
+            ]
+          }
+        }
+      ])
+      .toArray(),
     insuranceEventsCol
       .aggregate([
         {
@@ -1292,6 +1328,13 @@ async function getPlatformDashboard() {
   ]);
 
   const membershipPayFacet = (membershipPayStats && membershipPayStats[0]) || {};
+  const offlineScanFacet = (offlineScanStats && offlineScanStats[0]) || {};
+  const offlineScanCount = (rows) => Number(rows && rows[0] && rows[0].count) || 0;
+  const offlineScanByStore = new Map(
+    (offlineScanFacet.byStore || [])
+      .filter((row) => row && row._id)
+      .map((row) => [row._id, Number(row.count) || 0])
+  );
   const membershipPayTotal = (membershipPayFacet.total && membershipPayFacet.total[0]) || {};
   const membershipPay30d = (membershipPayFacet.d30 && membershipPayFacet.d30[0]) || {};
   const subscriptionRevenue = {
@@ -1466,6 +1509,7 @@ async function getPlatformDashboard() {
       completedOrderCount: orderStats.completed,
       cancelledOrderCount: orderStats.cancelled,
       gmv: orderStats.completedGmv || 0,
+      offlineScanUserCount: offlineScanByStore.get(doc.store_id) || 0,
       completeRate: pct(
         orderStats.completed,
         Math.max(orderStats.total - orderStats.cancelled, 0)
@@ -1709,6 +1753,9 @@ async function getPlatformDashboard() {
         merchantOwnerCount: (userAudience && userAudience.merchantOwnerCount) || 0,
         merchantStaffCount: (userAudience && userAudience.merchantStaffCount) || 0,
         guestUserCount: (userAudience && userAudience.guestUserCount) || 0,
+        offlineScanUsers: offlineScanCount(offlineScanFacet.total),
+        offlineScanUsers7d: offlineScanCount(offlineScanFacet.d7),
+        offlineScanUsers30d: offlineScanCount(offlineScanFacet.d30),
         orderedUserCount,
         orderUserRate: pct(orderedUserCount, userTotal || 0)
       }

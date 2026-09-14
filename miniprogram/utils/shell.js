@@ -8,6 +8,7 @@ const { isBasicStoreComplete } = require('./storeForm');
 
 const USER_TAB_ROUTES = [
   'pages/index/index',
+  'pages/butler/butler',
   'pages/orders/orders',
   'pages/daily/daily'
 ];
@@ -103,12 +104,22 @@ function redirectToUserIfMerchantUiBlocked() {
   try {
     const route = getCurrentRoute();
     if (!route || route.indexOf('pages/merchant/') !== 0) return false;
+    const app = typeof getApp === 'function' ? getApp() : null;
     if (isMerchantUiBlocked()) {
+      if (app && app._enterUserClientMode) {
+        app._enterUserClientMode('', { persist: true, applyShell: false });
+      }
       wx.switchTab({ url: USER_HOME });
       return true;
     }
-    const app = typeof getApp === 'function' ? getApp() : null;
-    if (app && app.globalData && app.globalData.merchantSwitchEnabled === false) {
+    if (
+      app
+      && app.globalData
+      && app.globalData.merchantSwitchEnabled === false
+    ) {
+      if (app._enterUserClientMode) {
+        app._enterUserClientMode('', { persist: true, applyShell: false });
+      }
       wx.switchTab({ url: USER_HOME });
       return true;
     }
@@ -165,6 +176,9 @@ function ensureMerchantPageAllowed() {
     applyMerchantSwitchToApp(app, enabled);
     if (!enabled || isMerchantUiBlocked()) {
       try {
+        if (app && app._enterUserClientMode) {
+          app._enterUserClientMode('', { persist: true, applyShell: false });
+        }
         wx.switchTab({ url: USER_HOME });
       } catch (err) {
         // ignore
@@ -227,7 +241,8 @@ function guardUserTabPage() {
     if (!app) return false;
     if (app.isUserClientMode && app.isUserClientMode()) return false;
     if (app.canAccessMerchantBackend && app.canAccessMerchantBackend() && !(app.isUserClientMode && app.isUserClientMode())) {
-      return false;
+      wx.reLaunch({ url: getMerchantLandingUrl() });
+      return true;
     }
   } catch (err) {
     // ignore

@@ -1,4 +1,4 @@
-const QRCODE_PATH = '/images/insurance/pet-insurance-qr.png';
+const QRCODE_PATH = '/images/insurance/pet-insurance-mp-code.png';
 
 Component({
   properties: {

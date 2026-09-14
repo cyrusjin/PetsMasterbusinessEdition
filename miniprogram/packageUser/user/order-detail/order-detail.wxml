@@ -49,6 +49,16 @@
     <text wx:if="{{pendingEditTotalFee != null}}" class="fee-highlight" style="display:block;margin-top:8rpx;">确认后费用 ¥{{pendingEditTotalFee}}</text>
   </view>
 
+  <view class="card" wx:if="{{order.paymentMode === 'online'}}">
+    <view class="card-title">微信在线支付 · {{paymentLabel}}</view>
+    <text class="text-gray" style="display:block;line-height:1.8;margin-bottom:16rpx;">收款门店：{{order.storeName}}。商家确认后按本订单费用明细全额付款，不另重复收取押金。请先核对服务内容、时间和金额。</text>
+    <text wx:if="{{order.editPendingConfirm || order.pricePendingConfirm}}" class="text-gray">订单修改待确认，暂不可付款。</text>
+    <button wx:if="{{order.payment.canPay}}" class="btn-primary" bindtap="onPay" loading="{{paying}}" disabled="{{paying}}">微信支付 ¥{{feeSummary.totalFee}}</button>
+    <button class="btn-outline" bindtap="onRefreshPayment" disabled="{{paying}}">刷新支付状态</button>
+    <button wx:if="{{order.payment.status === 'paid' && !order.payment.refundRequested}}" class="btn-outline" bindtap="onRequestRefund" disabled="{{paying}}">申请退款</button>
+    <text wx:if="{{order.payment.refundRequested}}" class="text-gray" style="display:block;margin-top:16rpx;">退款进度以微信支付处理结果为准，可联系门店跟进。</text>
+  </view>
+
   <view class="card">
     <view class="card-title">费用明细</view>
     <order-fee-detail detail="{{feeDetail}}" />

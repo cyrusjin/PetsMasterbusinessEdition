@@ -1,0 +1,112 @@
+<page-meta page-style="{{showAgreement ? 'overflow: hidden;' : ''}}" />
+<view class="container">
+  <view class="card hero">
+    <view class="card-title">门店收款</view><view class="headline">订单零抽佣，收款到本店</view>
+    <text class="hint">在线支付自愿开通，系统订阅费单独收取。微信支付手续费以本店实际签约费率为准。</text>
+  </view>
+  <view wx:if="{{loading}}" class="card hint">正在加载收款设置…</view>
+  <view wx:if="{{error}}" class="card error">{{error}}<button size="mini" bindtap="onRefresh">重新加载</button></view>
+  <block wx:if="{{!loading && agreement.version}}">
+    <view class="card">
+      <view class="card-title">选择收款方式</view>
+      <radio-group bindchange="onMode">
+        <label class="choice"><radio value="offline" checked="{{mode === 'offline'}}" color="#E98657" /><view><view>商家自行收款</view><text class="hint">在小程序预约，付款由门店与顾客按原方式约定。</text></view></label>
+        <label class="choice"><radio value="online" checked="{{mode === 'online'}}" disabled="{{!collection.canEnable}}" color="#E98657" /><view><view>微信在线支付</view><text class="hint">商家确认订单和金额 → 顾客付款 → 门店提供服务。</text></view></label>
+      </radio-group>
+      <text class="hint">保存后仅影响新预约。既有订单仍按原收款方式处理。</text>
+      <button class="btn-primary" bindtap="onSaveMode" loading="{{busy}}" disabled="{{busy}}">保存收款方式</button>
+    </view>
+    <view class="card">
+      <view class="card-title">开通进度 · {{collection.stateText}}</view>
+      <text wx:if="{{!collection.configured}}" class="notice">自动开户暂未就绪，请稍后再试。原收款方式可继续使用。</text>
+      <text wx:if="{{collection.applymentId}}" class="hint">微信申请单号：{{collection.applymentId}}</text>
+      <text wx:if="{{collection.subMchId}}" class="hint">本店收款商户号：{{collection.subMchId}}</text>
+      <text wx:if="{{collection.reviewMessage}}" class="review-message">{{collection.reviewMessage}}</text>
+      <view class="steps"><text>1</text><view>提交个体工商户申请</view><text>2</text><view>系统自动提交微信，获取申请单号</view><text>3</text><view>微信审核，经营者完成核验与签约</view><text>4</text><view>回到本页开启在线支付</view></view>
+      <button wx:if="{{collection.signUrl}}" class="btn-outline" bindtap="onCopySign">复制微信官方签约链接</button>
+      <button class="btn-outline" bindtap="onRefresh" disabled="{{busy}}">刷新开通状态</button>
+    </view>
+    <view class="card">
+      <view class="card-title">个体工商户资料</view>
+      <text class="hint">请按营业执照填写。带 <text class="required-star">*</text> 的项目为微信支付开户必填项。</text>
+      <view wx:if="{{collection.applicationLocked}}" class="secure-note">资料正在提交或审核，当前仅可查看。微信驳回后可在此修改并重新提交。</view>
+      <view class="form-group"><text class="form-label">执照主体名称 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.licenseName}}" maxlength="100" placeholder="营业执照上的名称" data-field="licenseName" bindinput="onField" /></view>
+      <view class="form-group"><text class="form-label">统一社会信用代码/注册号 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.licenseNumber}}" maxlength="18" placeholder="15至18位代码" data-field="licenseNumber" bindinput="onField" /></view>
+      <view class="form-group"><text class="form-label">经营者姓名 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.operatorName}}" maxlength="40" placeholder="须与营业执照一致" data-field="operatorName" bindinput="onField" /></view>
+      <view class="form-group"><text class="form-label">商户简称 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.merchantShortName}}" maxlength="64" placeholder="支付凭证中展示的门店名称" data-field="merchantShortName" bindinput="onField" /></view>
+      <view class="form-group"><text class="form-label">经营地址 <text class="required-star">*</text></text><textarea class="form-textarea" disabled="{{collection.applicationLocked}}" value="{{application.businessAddress}}" maxlength="200" placeholder="省市区及详细门牌号" data-field="businessAddress" bindinput="onField" /></view>
+      <view class="form-group"><text class="form-label">客服电话 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.servicePhone}}" maxlength="20" placeholder="手机号或带区号的固定电话" data-field="servicePhone" bindinput="onField" /></view>
+      <view class="form-group"><text class="form-label">实际经营行业 <text class="required-star">*</text></text><picker disabled="{{collection.applicationLocked}}" range="{{industries}}" value="{{industryIndex}}" bindchange="onIndustry"><view class="form-input picker-value">{{application.industry}}<text>›</text></view></picker><text class="field-tip">洗护、美容、寄养等选居民生活服务；宠物用品销售选零售；诊疗服务选宠物医院并上传动物诊疗许可证。</text></view>
+    </view>
+    <view class="card">
+      <view class="card-title">经营者身份与联系信息</view>
+      <view class="secure-note">由营业执照经营者本人担任超级管理员，并完成微信核验和签约。当前支持中国大陆居民身份证。身份证号码与完整结算账号提交后不回显，补件时请重新填写。</view>
+      <view class="form-group"><text class="form-label">经营者身份证号码 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.idNumber}}" maxlength="18" placeholder="18位身份证号码" data-field="idNumber" bindinput="onField" /></view>
+      <view class="form-group"><text class="form-label">身份证有效期开始 <text class="required-star">*</text></text>
+        <view class="date-input-row">
+          <input class="form-input date-part date-year" type="number" disabled="{{collection.applicationLocked}}" value="{{dateParts.idStart.year}}" maxlength="4" placeholder="YYYY" aria-label="身份证有效期开始年" data-field="idStart" data-part="year" bindinput="onDatePart"/><text>年</text>
+          <input class="form-input date-part date-month" type="number" disabled="{{collection.applicationLocked}}" value="{{dateParts.idStart.month}}" maxlength="2" placeholder="MM" aria-label="身份证有效期开始月" data-field="idStart" data-part="month" bindinput="onDatePart"/><text>月</text>
+          <input class="form-input date-part date-day" type="number" disabled="{{collection.applicationLocked}}" value="{{dateParts.idStart.day}}" maxlength="2" placeholder="DD" aria-label="身份证有效期开始日" data-field="idStart" data-part="day" bindinput="onDatePart"/><text>日</text>
+        </view>
+      </view>
+      <view class="form-group"><text class="form-label">身份证有效期结束 <text class="required-star">*</text></text>
+        <checkbox-group bindchange="onLongTerm"><label class="date-long-term"><checkbox value="longTerm" checked="{{idLongTerm}}" disabled="{{collection.applicationLocked}}" color="#E98657"/><text>长期有效</text></label></checkbox-group>
+        <view class="date-input-row" wx:if="{{!idLongTerm}}">
+          <input class="form-input date-part date-year" type="number" disabled="{{collection.applicationLocked}}" value="{{dateParts.idEnd.year}}" maxlength="4" placeholder="YYYY" aria-label="身份证有效期结束年" data-field="idEnd" data-part="year" bindinput="onDatePart"/><text>年</text>
+          <input class="form-input date-part date-month" type="number" disabled="{{collection.applicationLocked}}" value="{{dateParts.idEnd.month}}" maxlength="2" placeholder="MM" aria-label="身份证有效期结束月" data-field="idEnd" data-part="month" bindinput="onDatePart"/><text>月</text>
+          <input class="form-input date-part date-day" type="number" disabled="{{collection.applicationLocked}}" value="{{dateParts.idEnd.day}}" maxlength="2" placeholder="DD" aria-label="身份证有效期结束日" data-field="idEnd" data-part="day" bindinput="onDatePart"/><text>日</text>
+        </view>
+      </view>
+      <view class="form-group"><text class="form-label">经营者手机号 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.contactPhone}}" maxlength="11" placeholder="用于接收微信核验与签约通知" data-field="contactPhone" bindinput="onField" type="number"/></view>
+      <view class="form-group"><text class="form-label">经营者邮箱 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.contactEmail}}" maxlength="100" placeholder="用于微信支付开户通知" data-field="contactEmail" bindinput="onField" /></view>
+    </view>
+    <view class="card">
+      <view class="card-title">结算账户</view>
+      <view class="form-group"><text class="form-label">结算账户类型 <text class="required-star">*</text></text><picker disabled="{{collection.applicationLocked}}" range="{{accountTypeLabels}}" value="{{accountTypeIndex}}" bindchange="onAccountType"><view class="form-input picker-value">{{accountTypeLabels[accountTypeIndex]}}<text>›</text></view></picker></view>
+      <view class="form-group"><text class="form-label">账户户名</text><view class="form-input">{{application.accountType === 'business' ? application.licenseName : application.operatorName}}</view><text class="field-tip">个人账户绑定经营者本人，对公账户绑定执照主体。</text></view>
+      <view class="form-group"><text class="form-label">开户银行 <text class="required-star">*</text></text><picker disabled="{{collection.applicationLocked || bankLoading}}" range="{{bankLabels}}" value="{{bankIndex >= 0 ? bankIndex : 0}}" bindchange="onBank"><view class="form-input picker-value">{{application.accountBank || (bankLoading ? '正在加载银行…' : '请选择开户银行')}}<text>›</text></view></picker><button wx:if="{{!collection.applicationLocked}}" class="upload-btn" bindtap="loadBanks" disabled="{{bankLoading}}">重试银行列表</button></view>
+<block wx:if="{{needBranch || application.bankName}}">      <view class="form-group"><text class="form-label">开户银行完整支行名称 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.bankName}}" maxlength="128" placeholder="例如 XX银行XX市XX支行" data-field="bankName" bindinput="onField" /></view>
+</block>      <view class="form-group"><text class="form-label">结算银行卡号/对公账号 <text class="required-star">*</text></text><input class="form-input" disabled="{{collection.applicationLocked}}" value="{{application.accountNumber}}" maxlength="32" placeholder="仅限本经营者或本主体账户" data-field="accountNumber" bindinput="onField" type="number"/></view>
+    </view>
+    <view class="card">
+      <view class="card-title">开户照片与资料授权</view>
+      <view class="secure-note">证件照片仅供开户使用，加密保存最多30天，不生成公开图片链接。请选择清晰完整的原件照片，大图会自动压缩处理，无需手动调整大小。</view>
+      <view class="agreement-link" data-kind="sensitive" bindtap="onReadAgreement">阅读《开户敏感个人信息处理授权》</view>
+      <checkbox-group bindchange="onSensitiveAccept"><label class="choice agreement-choice"><checkbox value="sensitive" checked="{{sensitiveAccepted}}" color="#E98657"/><text class="hint">我作为经营者本人，单独同意平台为开户处理我的身份证、金融账户及联系信息，并向财付通（微信支付）提供必要资料用于审核、核验、签约和结算；已知悉用途、保存期限、安全风险及权利行使方式。不授权仍可使用原收款流程。</text></label></checkbox-group>
+      <view class="form-group"><text class="form-label">营业执照 <text class="required-star">*</text></text><view wx:if="{{selectedPreviews.license}}"><image class="private-preview" src="{{selectedPreviews.license}}" mode="aspectFit"/><text class="field-tip">{{uploadingKind === 'license' ? uploadStage : '这张照片尚未上传成功，请重试'}}</text></view><image wx:if="{{previews.license}}" class="private-preview" src="{{previews.license}}" mode="aspectFit" data-kind="license" bindtap="onPreview"/><text wx:if="{{application.license}}" class="field-tip">已安全上传营业执照</text><button class="upload-btn" data-kind="license" bindtap="onUpload" loading="{{uploading && uploadingKind === 'license'}}" disabled="{{uploading || collection.applicationLocked}}">{{uploadingKind === 'license' ? uploadStage : (application.license ? '重新上传' : '上传营业执照')}}</button></view>
+      <view class="form-group"><text class="form-label">身份证人像面 <text class="required-star">*</text></text><view wx:if="{{selectedPreviews.idFront}}"><image class="private-preview" src="{{selectedPreviews.idFront}}" mode="aspectFit"/><text class="field-tip">{{uploadingKind === 'idFront' ? uploadStage : '这张照片尚未上传成功，请重试'}}</text></view><image wx:if="{{previews.idFront}}" class="private-preview" src="{{previews.idFront}}" mode="aspectFit" data-kind="idFront" bindtap="onPreview"/><text wx:if="{{application.idFront}}" class="field-tip">已安全上传身份证人像面</text><button class="upload-btn" data-kind="idFront" bindtap="onUpload" loading="{{uploading && uploadingKind === 'idFront'}}" disabled="{{uploading || collection.applicationLocked}}">{{uploadingKind === 'idFront' ? uploadStage : (application.idFront ? '重新上传' : '上传身份证人像面')}}</button></view>
+      <view class="form-group"><text class="form-label">身份证国徽面 <text class="required-star">*</text></text><view wx:if="{{selectedPreviews.idBack}}"><image class="private-preview" src="{{selectedPreviews.idBack}}" mode="aspectFit"/><text class="field-tip">{{uploadingKind === 'idBack' ? uploadStage : '这张照片尚未上传成功，请重试'}}</text></view><image wx:if="{{previews.idBack}}" class="private-preview" src="{{previews.idBack}}" mode="aspectFit" data-kind="idBack" bindtap="onPreview"/><text wx:if="{{application.idBack}}" class="field-tip">已安全上传身份证国徽面</text><button class="upload-btn" data-kind="idBack" bindtap="onUpload" loading="{{uploading && uploadingKind === 'idBack'}}" disabled="{{uploading || collection.applicationLocked}}">{{uploadingKind === 'idBack' ? uploadStage : (application.idBack ? '重新上传' : '上传身份证国徽面')}}</button></view>
+      <view class="form-group" wx:if="{{application.industry === '宠物医院'}}"><text class="form-label">动物诊疗许可证 <text class="required-star">*</text></text><view wx:if="{{selectedPreviews.qualification}}"><image class="private-preview" src="{{selectedPreviews.qualification}}" mode="aspectFit"/><text class="field-tip">{{uploadingKind === 'qualification' ? uploadStage : '这张照片尚未上传成功，请重试'}}</text></view><image wx:if="{{previews.qualification}}" class="private-preview" src="{{previews.qualification}}" mode="aspectFit" data-kind="qualification" bindtap="onPreview"/><text wx:if="{{application.qualification}}" class="field-tip">已安全上传动物诊疗许可证</text><button class="upload-btn" data-kind="qualification" bindtap="onUpload" loading="{{uploading && uploadingKind === 'qualification'}}" disabled="{{uploading || collection.applicationLocked}}">{{uploadingKind === 'qualification' ? uploadStage : (application.qualification ? '重新上传' : '上传动物诊疗许可证')}}</button></view>
+    </view>
+    <view class="card">
+      <view class="card-title">申请确认与协议</view>
+      <view class="agreement-link" bindtap="onReadAgreement">阅读《{{agreement.title}}》</view>
+      <checkbox-group bindchange="onAccept"><label class="choice agreement-choice"><checkbox value="accepted" checked="{{accepted}}" color="#E98657" /><text class="hint">我有权代表本店申请，确认资料真实有效，并已阅读同意上述协议。</text></label></checkbox-group>
+      <view class="application-actions">
+        <button wx:if="{{!collection.applicationLocked}}" class="btn-primary" disabled="{{busy || uploading || !accepted || !sensitiveAccepted || !collection.configured}}" loading="{{busy}}" bindtap="onApply">{{collection.state === 'none' ? '提交微信开户申请' : '补充资料并提交微信'}}</button>
+        <button class="btn-outline" open-type="contact">联系平台客服</button>
+      </view>
+    </view>
+  </block>
+</view>
+<view wx:if="{{showAgreement}}" class="agreement-dialog-layer">
+  <view class="agreement-dialog-mask" bindtap="onCloseAgreement" catchtouchmove="onPreventTouchMove"></view>
+  <view class="agreement-dialog" role="dialog" aria-label="{{agreementDialogTitle}}">
+    <view class="agreement-dialog-header" catchtouchmove="onPreventTouchMove">
+      <view class="agreement-dialog-title">{{agreementDialogTitle}}</view>
+      <text class="agreement-dialog-close" role="button" aria-label="关闭协议" bindtap="onCloseAgreement">×</text>
+    </view>
+    <scroll-view class="agreement-dialog-body" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
+      <view class="agreement-dialog-content">
+        <text class="hint">版本：{{agreement.version}}</text>
+        <view wx:for="{{agreementDialogSections}}" wx:key="title" class="section">
+          <view class="section-title">{{item.title}}</view>
+          <text selectable="{{true}}">{{item.content}}</text>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="agreement-dialog-footer">
+      <button class="btn-primary" bindtap="onCloseAgreement">返回填写</button>
+    </view>
+  </view>
+</view>

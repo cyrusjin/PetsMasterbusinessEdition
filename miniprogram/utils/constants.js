@@ -14,6 +14,7 @@ const STORAGE_KEYS = {
   STORE_ID: 'pet_store_id',
   CURRENT_STORE: 'pet_current_store',
   USER_CLIENT_MODE: 'pet_user_client_mode',
+  USER_CLIENT_MODE_EXPLICIT: 'pet_user_client_mode_explicit',
   MERCHANT_SHELL_MODE: 'pet_merchant_shell_mode',
   SAVED_USER_VISIT_STORE_ID: 'pet_saved_user_visit_store_id',
   BILLING_RULES: 'pet_billing_rules',

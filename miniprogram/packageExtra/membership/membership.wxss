@@ -10,7 +10,7 @@ page { background: #f7f2e8; }
 .hero-orbit { position:absolute; border:1rpx solid rgba(99,63,14,.1); border-radius:50%; }
 .orbit-one { top:-170rpx; right:-100rpx; width:480rpx; height:480rpx; }
 .orbit-two { top:-90rpx; right:-20rpx; width:320rpx; height:320rpx; }
-.hero-pets { position:absolute; right:-50rpx; bottom:8rpx; width:390rpx; height:270rpx; filter:drop-shadow(0 14rpx 16rpx rgba(91,55,9,.2)); }
+.hero-pets { position:absolute; right:-50rpx; bottom:8rpx; width:390rpx; height:270rpx; }
 .hero-bar { position:relative; z-index:3; display:flex; align-items:center; justify-content:space-between; padding:24rpx 24rpx 0; }
 .brand-lockup { display:flex; align-items:center; gap:12rpx; }
 .brand-mark { display:flex; align-items:center; justify-content:center; width:46rpx; height:46rpx; border:1rpx solid rgba(105,64,11,.2); border-radius:15rpx; background:rgba(255,253,245,.62); color:#714712; font-size:23rpx; font-weight:800; }

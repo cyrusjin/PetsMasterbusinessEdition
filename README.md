@@ -50,3 +50,21 @@ pages/index/index?store_id={store_id}
 
 1. request / uploadFile / downloadFile 合法域名：`https://api.petmaster.me`
 2. 服务端 `.env` 配置 `WX_MERCHANT_APPID` / `WX_MERCHANT_SECRET`
+
+## 门店在线收款（可选）
+
+店主可在「店铺 → 门店收款设置」提交微信支付入驻申请。不开通或关闭在线支付时，所有订单继续沿用原结算方式；开启后，仅新创建的普通用户订单进入在线支付流程，且必须由商家确认订单和金额后才能付款。平台不抽取订单佣金。
+
+本功能使用微信支付普通服务商模式，各店铺以特约商户身份收款。服务商账号开通后，在服务端设置：
+
+- `ORDER_PAY_ENABLED=true`
+- `WECHAT_PARTNER_MCH_ID`：服务商商户号
+- `WECHAT_PARTNER_CERT_SERIAL`：服务商 API 证书序列号
+- `WECHAT_PARTNER_PRIVATE_KEY_PATH`：服务商商户私钥路径
+- `WECHAT_PARTNER_API_V3_KEY_PATH`：服务商 APIv3 密钥文件路径
+- `WECHAT_PARTNER_PUBLIC_KEY_ID` / `WECHAT_PARTNER_PUBLIC_KEY_PATH`：微信支付公钥 ID 与文件路径
+- `WECHAT_PARTNER_NOTIFY_URL=https://api.petmaster.me/api/wechatpay/orders/notify`
+
+门店可在“店铺设置 → 门店收款设置”提交个体工商户初审资料，包括营业执照信息、营业执照照片、经营场所照片、结算账户类型/户名及超级管理员联系方式。页面暂不采集身份证号码、身份证照片和完整银行卡号；这些高敏感资料须在服务商 API 加密进件或微信支付官方受控流程接通后补充。
+
+后台管理页 `website/admin/collections.html` 用于将微信支付服务商后台产生的开户申请单号关联到对应门店，并同步审核、签约和特约商户号。商户号与审核结果只接受微信支付验签接口返回，不接受小程序客户端填写。

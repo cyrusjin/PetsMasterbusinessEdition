@@ -8,6 +8,8 @@
     <text class="insurance-sheet-title">给爱宠多一份安心</text>
     <text class="insurance-sheet-desc">平安宠无忧 · 爱宠保障卡 2.0 版</text>
 
+    <button class="insurance-buy-btn" bindtap="onBuy">查看保险方案</button>
+
     <view class="insurance-qr-card" bindtap="onPreviewQrcode">
       <image
         class="insurance-qrcode"
@@ -16,9 +18,8 @@
         show-menu-by-longpress="{{true}}"
       />
     </view>
-    <text class="insurance-sheet-hint">长按识别二维码，或点击下方按钮查看保障方案</text>
+    <text class="insurance-sheet-hint">备用入口：点击小程序码放大后长按识别</text>
 
-    <button class="insurance-buy-btn" bindtap="onBuy">购买宠物保险</button>
     <text class="insurance-sheet-note">保险产品及投保服务由中国平安提供，投保前请仔细阅读保障范围、免责条款及投保须知。</text>
   </view>
 </view>

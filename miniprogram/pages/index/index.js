@@ -16,7 +16,6 @@ const { copyText } = require('../../utils/clipboard');
 const { hideHomeButton, getCustomNavMetrics } = require('../../utils/navBar');
 const { openPetInsurance } = require('../../utils/petInsurance');
 const petApi = require('../../utils/pet');
-const butler = require('../../utils/petButler');
 const { claimProxyOrdersForGuest, extractProxyClaimToken } = require('../../utils/proxyOrder');
 const {
   getMiniProgramMeta,
@@ -53,10 +52,6 @@ Page({
     previewPets: [],
     petsMoreCount: 0,
     petPreviewSize: 'single',
-    butlerDueCount: 0,
-    butlerTitle: '宠物管家',
-    butlerSubText: '提醒 · 指南 · 小工具',
-    butlerFootText: '点开看看',
     showMerchantSwitch: false,
     auditMode: true,
     introExpandable: false,
@@ -202,8 +197,7 @@ Page({
     // 与商家开关同源：false 去 AI 字样，true 展示 AI
     const auditMode = isAuditMode(app);
     this.setData({
-      auditMode,
-      butlerTitle: auditMode ? '宠物管家' : 'AI 宠物管家'
+      auditMode
     });
     return auditMode;
   },
@@ -230,7 +224,7 @@ Page({
       applyRemoteConfigToApp(app, cfg);
       this.setData({ showMerchantSwitch: !!cfg.merchantSwitchEnabled });
       this._applyAuditUi();
-      // 开关会影响管家标题/副文案，重新铺一遍缓存数据
+      // 开关变化后按最新审核态刷新首页文案
       this._refreshPageFromCache();
       return cfg.merchantSwitchEnabled;
     });
@@ -250,7 +244,7 @@ Page({
     }
 
     const sceneStoreId = options.scene ? decodeURIComponent(String(options.scene)) : '';
-    const storeId = options.store_id || (sceneStoreId.startsWith('store_') ? sceneStoreId : '');
+    const storeId = app.extractStoreIdFromOptions(options || {});
 
     storeDebug.log('首页 onLoad 解析 store_id', {
       fromQuery: options.store_id || '',
@@ -457,33 +451,13 @@ Page({
       };
     });
 
-    const upcoming = butler.collectUpcoming(list, 7);
-    const dueCount = upcoming.length;
     const auditMode = isAuditMode(app);
-    let butlerSubText = auditMode ? '提醒 · 指南 · 小工具' : 'AI 问诊 · 提醒 · 小工具';
-    let butlerFootText = '点开看看';
-    if (list.length === 0) {
-      butlerSubText = auditMode ? '提醒 · 指南 · 趣味工具' : 'AI 问诊 · 指南 · 趣味工具';
-      butlerFootText = '养宠小帮手';
-    } else if (dueCount > 0) {
-      butlerSubText = `${dueCount} 项近期待办`;
-      butlerFootText = upcoming[0].status === 'overdue' ? '有逾期事项' : '记得打卡哦';
-    } else {
-      butlerSubText = auditMode
-        ? `${list.length} 只宝贝的管家`
-        : `${list.length} 只宝贝的 AI 管家`;
-      butlerFootText = '一切安好';
-    }
 
     return {
       petsCount: list.length,
       previewPets,
       petsMoreCount: Math.max(0, list.length - maxShow),
       petPreviewSize: sizeMap[count] || 'triple',
-      butlerDueCount: dueCount,
-      butlerTitle: auditMode ? '宠物管家' : 'AI 宠物管家',
-      butlerSubText,
-      butlerFootText,
       auditMode
     };
   },
@@ -527,12 +501,6 @@ Page({
       previewPets: payload.previewPets || [],
       petsMoreCount: payload.petsMoreCount || 0,
       petPreviewSize: payload.petPreviewSize || 'single',
-      butlerDueCount: payload.butlerDueCount || 0,
-      butlerTitle: payload.butlerTitle || (isAuditMode(app) ? '宠物管家' : 'AI 宠物管家'),
-      butlerSubText:
-        payload.butlerSubText ||
-        (isAuditMode(app) ? '提醒 · 指南 · 小工具' : 'AI 问诊 · 提醒 · 小工具'),
-      butlerFootText: payload.butlerFootText || '点开看看',
       auditMode: typeof payload.auditMode === 'boolean' ? payload.auditMode : isAuditMode(app),
       introExpandable: isIntroExpandable(currentStore && currentStore.intro),
       homeServiceCards,
@@ -793,7 +761,6 @@ Page({
     this._navigateToReserve(line);
   },
   onGoPets() { wx.navigateTo({ url: '/packageUser/user/pets/pets' }); },
-  onGoPetButler() { wx.navigateTo({ url: '/packageUser/user/pet-butler/pet-butler' }); },
   onGoOrders() { wx.switchTab({ url: '/pages/orders/orders' }); },
   onGoDaily(e) { wx.navigateTo({ url: '/packageUser/user/pet-daily/pet-daily?id=' + e.currentTarget.dataset.id }); },
 

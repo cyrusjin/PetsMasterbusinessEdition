@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="stylesheet" href="admin.css?v=20260913membership" />
   <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
 </head>
 <body class="admin-page admin-page-fluid">
@@ -39,6 +39,7 @@
       <a class="admin-nav-link" href="versions.html">版本管理</a>
       <a class="admin-nav-link" href="announcements.html">公告管理</a>
       <a class="admin-nav-link" href="memberships.html">会员与推广</a>
+      <a class="admin-nav-link" href="collections.html">收款申请</a>
     </div>
   </nav>
 
@@ -204,6 +205,17 @@
       merchant: '商家',
       user: '用户',
       admin: '管理员'
+    };
+
+    const MEMBERSHIP_PAYMENT_LABELS = {
+      purchase: '购买',
+      redemption: '兑换',
+      promotion: '推广赠送',
+      migration: '老店赠送',
+      trial: '免费试用',
+      other: '其他',
+      disabled: '无需会员',
+      none: '--'
     };
 
     const contentEl = document.getElementById('content');
@@ -506,6 +518,8 @@
         '<th>联系电话</th>',
         '<th>入驻状态</th>',
         '<th>营业状态</th>',
+        '<th>会员状态</th>',
+        '<th>开通方式</th>',
         '<th>更新时间</th>',
         '<th>操作</th>',
         '</tr></thead>',
@@ -606,6 +620,11 @@
       const oaOpenid = item.ownerOaOpenid || '';
       const oaStatusClass = oaBound ? 'status-approved' : 'status-rejected';
       const oaStatusLabel = oaBound ? '已绑定' : '未绑定';
+      const membership = item.membership || {};
+      const isMember = !!membership.active && membership.accessType !== 'disabled';
+      const membershipStatusLabel = membership.accessType === 'disabled' ? '会员功能关闭' : (isMember ? '会员中' : '非会员');
+      const membershipStatusClass = isMember ? 'status-approved' : 'status-disabled';
+      const paymentLabel = MEMBERSHIP_PAYMENT_LABELS[membership.paymentMethod] || '--';
 
       return [
         '<article class="card store-mobile-card">',
@@ -624,6 +643,8 @@
         '<div><dt>负责人</dt><dd>' + PetAdmin.escapeHtml(item.legalName || '--') + '</dd></div>',
         '<div><dt>微信昵称</dt><dd>' + PetAdmin.escapeHtml(item.applicantNickName || item.applicantName || '--') + '</dd></div>',
         '<div><dt>联系电话</dt><dd>' + PetAdmin.escapeHtml(item.contactPhone || item.applicantPhone || '--') + '</dd></div>',
+        '<div><dt>会员状态</dt><dd><span class="store-status ' + membershipStatusClass + '">' + PetAdmin.escapeHtml(membershipStatusLabel) + '</span>' + (membership.expireAtText ? '<div class="store-sub">有效至 ' + PetAdmin.escapeHtml(membership.expireAtText) + '</div>' : '') + '</dd></div>',
+        '<div><dt>开通方式</dt><dd>' + PetAdmin.escapeHtml(paymentLabel) + '</dd></div>',
         '<div><dt>更新时间</dt><dd>' + PetAdmin.escapeHtml(item.updateTimeText || '--') + '</dd></div>',
         '<div class="store-mobile-meta-full"><dt>微信 openid</dt><dd class="store-openid">' + PetAdmin.escapeHtml(item.applicantOpenid || '--') + '</dd></div>',
         '<div class="store-mobile-meta-full"><dt>openids.oa</dt><dd>',
@@ -648,6 +669,11 @@
       const oaOpenid = item.ownerOaOpenid || '';
       const oaStatusClass = oaBound ? 'status-approved' : 'status-rejected';
       const oaStatusLabel = oaBound ? '已绑定' : '未绑定';
+      const membership = item.membership || {};
+      const isMember = !!membership.active && membership.accessType !== 'disabled';
+      const membershipStatusLabel = membership.accessType === 'disabled' ? '会员功能关闭' : (isMember ? '会员中' : '非会员');
+      const membershipStatusClass = isMember ? 'status-approved' : 'status-disabled';
+      const paymentLabel = MEMBERSHIP_PAYMENT_LABELS[membership.paymentMethod] || '--';
       const actionsHtml = buildStoreActionsHtml(item);
 
       return [
@@ -666,6 +692,8 @@
         '<td>' + PetAdmin.escapeHtml(item.contactPhone || item.applicantPhone || '--') + '</td>',
         '<td><span class="store-status ' + statusClass + '">' + PetAdmin.escapeHtml(statusLabel) + '</span></td>',
         '<td>' + PetAdmin.escapeHtml(item.businessStatus || '--') + '</td>',
+        '<td><span class="store-status ' + membershipStatusClass + '">' + PetAdmin.escapeHtml(membershipStatusLabel) + '</span>' + (membership.expireAtText ? '<div class="store-sub">有效至 ' + PetAdmin.escapeHtml(membership.expireAtText) + '</div>' : '') + '</td>',
+        '<td>' + PetAdmin.escapeHtml(paymentLabel) + '</td>',
         '<td>' + PetAdmin.escapeHtml(item.updateTimeText || '--') + '</td>',
         '<td class="store-actions">' + actionsHtml + '</td>',
         '</tr>'

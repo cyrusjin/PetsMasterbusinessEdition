@@ -71,6 +71,7 @@ function isSameDayServiceKind(kind) {
 
 function isDailyCheckableOrder(order) {
   if (!order) return false;
+  if (order.paymentMode === 'online' && Number(order.totalFee) > 0 && ((order.payment || {}).status !== 'paid' || order.payment.refundRequested)) return false;
   const status = order.status;
   if (status === 'boarding') return true;
   if (status !== 'awaiting_arrival' && status !== 'confirmed') return false;
@@ -85,6 +86,11 @@ function formatServiceStatus(order) {
   if (!order) return '--';
   const kind = getOrderServiceKind(order);
   const status = order.status;
+  if (order.paymentMode === 'online' && status !== 'cancelled' && status !== 'pending') {
+    const payment = order.payment || {};
+    if (['refunding', 'refund_failed', 'partial_refunded'].includes(payment.status)) return '退款处理中';
+    if (payment.status !== 'paid' && Number(order.totalFee) > 0) return '待支付';
+  }
   if (status === 'boarding') {
     if (kind === 'wash') return '洗护中';
     if (kind === 'homeFeeding') return '上门中';
@@ -101,6 +107,7 @@ function formatServiceStatus(order) {
 }
 
 function getAcceptServiceCopy(order) {
+  if (order && order.paymentMode === 'online') return { title: '确认订单并开放付款', content: `请确认服务及订单金额 ¥${order.totalFee}。确认后顾客即可微信支付，付款成功后再提供服务。` };
   const kind = getOrderServiceKind(order);
   if (kind === 'wash') {
     return { title: '确认接单', content: '确认接收此洗护预约吗？' };

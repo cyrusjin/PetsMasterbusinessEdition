@@ -20,7 +20,12 @@
       >
         <view class="bubble {{item.pending ? 'pending' : ''}}">
           <text class="ai-bubble-tag" wx:if="{{bubbleTag && item.role === 'ai' && !item.pending}}">{{bubbleTag}}</text>
-          <text class="bubble-text" user-select="{{true}}">{{item.content}}</text>
+          <view class="thinking-dots" wx:if="{{item.pending}}">
+            <view class="thinking-dot"></view>
+            <view class="thinking-dot"></view>
+            <view class="thinking-dot"></view>
+          </view>
+          <text class="bubble-text" wx:else user-select="{{true}}">{{item.content}}</text>
         </view>
         <text class="msg-meta" wx:if="{{!item.pending}}">{{item.time}}{{item.metaSuffix || ''}}</text>
       </view>
@@ -54,7 +59,7 @@
     <view class="send-btn {{sending || !inputText ? 'disabled' : ''}}" bindtap="onSend">发送</view>
   </view>
   <view class="safe-tip-row">
-    <text class="safe-tip">{{safeTip}}</text>
+    <text class="safe-tip" wx:if="{{safeTip}}">{{safeTip}}</text>
     <text class="clear-link" wx:if="{{hasHistory}}" bindtap="onClearHistory">清空记录</text>
   </view>
 </view>

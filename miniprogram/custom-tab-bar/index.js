@@ -8,6 +8,12 @@ const USER_TABS = [
     selectedIconPath: '/images/tab/tab-home-active.png'
   },
   {
+    pagePath: '/pages/butler/butler',
+    text: '宠物管家',
+    iconPath: '/images/tab/tab-butler.png',
+    selectedIconPath: '/images/tab/tab-butler-active.png'
+  },
+  {
     pagePath: '/pages/orders/orders',
     text: '订单',
     iconPath: '/images/tab/tab-order.png',
@@ -20,6 +26,16 @@ const USER_TABS = [
     selectedIconPath: '/images/tab/tab-daily-active.png'
   }
 ];
+
+function buildUserTabs(auditMode) {
+  const butlerText = auditMode ? '宠物管家' : 'AI管家';
+  const tabs = USER_TABS.map((item) => (
+    item.pagePath === '/pages/butler/butler'
+      ? { ...item, text: butlerText }
+      : item
+  ));
+  return auditMode ? tabs.slice(0, 3) : tabs;
+}
 
 function getCurrentAuditMode() {
   try {
@@ -39,8 +55,8 @@ Component({
   data: {
     selected: 0,
     hidden: false,
-    // 审核状态未确认前按审核态处理，避免首屏短暂闪出“动态”。
-    list: USER_TABS.slice(0, 2)
+    // 审核状态未确认前按审核态处理，避免首屏短暂闪出“动态 / AI”。
+    list: buildUserTabs(true)
   },
 
   lifetimes: {
@@ -57,9 +73,12 @@ Component({
 
   methods: {
     syncAuditMode(auditMode) {
-      const nextList = auditMode ? USER_TABS.slice(0, 2) : USER_TABS;
+      const nextList = buildUserTabs(!!auditMode);
       const currentList = this.data.list || [];
-      if (currentList.length === nextList.length) return;
+      const same = currentList.length === nextList.length
+        && currentList.every((item, index) => item.text === nextList[index].text
+          && item.pagePath === nextList[index].pagePath);
+      if (same) return;
       this.setData({ list: nextList });
     },
 

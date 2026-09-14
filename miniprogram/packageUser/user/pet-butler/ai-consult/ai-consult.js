@@ -7,8 +7,8 @@ const {
   clearChatHistory
 } = require('../../../utils/aiConsult');
 const {
-  fetchMerchantSwitchEnabled,
-  applyMerchantSwitchToApp,
+  fetchRemoteAppConfig,
+  applyRemoteConfigToApp,
   isAiConsultVisible
 } = require('../../../utils/merchantSwitch');
 
@@ -19,8 +19,25 @@ function nextId() {
   return `m${Date.now()}_${msgSeq}`;
 }
 
+const DEFAULT_NAV_TITLE = '咨询';
+const DEFAULT_WELCOME = '你好，有什么养宠问题可以问我。';
+
 const SAFE_HOSPITAL_REPLY =
   '我这边暂时没能给出更细的判断，但为了毛孩子安全，建议尽快去宠物医院做一次全面检查，让医生当面评估。\n\n路上保持安静，记下症状开始时间、饮食与大小便情况，方便医生问诊。\n\n线上问答不能替代面诊。';
+
+function buildLockedCopy() {
+  return {
+    bannerVisible: false,
+    bannerBadge: '',
+    bannerText: '',
+    bubbleTag: '',
+    metaRemote: '',
+    metaLocal: '',
+    safeTip: '',
+    navTitle: DEFAULT_NAV_TITLE,
+    welcomeText: DEFAULT_WELCOME
+  };
+}
 
 /** 非审核态才写入的文案（勿放进 wxml/json，避免静态扫包） */
 function buildUnlockedCopy() {
@@ -36,6 +53,13 @@ function buildUnlockedCopy() {
     welcomeText:
       '你好，我是 AI 养宠助手。以下回复均由人工智能生成，仅供日常参考，不能替代专业诊疗。\n\n可以问饮食、护理、常见不适等日常问题。紧急情况（呼吸困难、持续抽搐、大量出血等）请立刻线下就医。'
   };
+}
+
+function looksLikeWelcome(content) {
+  const text = String(content || '');
+  if (!text) return true;
+  if (text === DEFAULT_WELCOME) return true;
+  return /人工智能|AI\s*养宠助手|AI\s*生成/.test(text);
 }
 
 function withMetaSuffix(messages, copy) {
@@ -71,11 +95,14 @@ Page({
     metaRemote: '',
     metaLocal: '',
     safeTip: '',
-    welcomeText: '你好，有什么养宠问题可以问我。'
+    welcomeText: DEFAULT_WELCOME
   },
 
   onLoad(query) {
     const app = getApp();
+    this._copy = buildLockedCopy();
+    this._applyCopy(this._copy);
+
     const blockAndBack = () => {
       wx.showToast({ title: '功能暂未开放', icon: 'none' });
       setTimeout(() => {
@@ -88,31 +115,35 @@ Page({
       }, 400);
     };
 
-    const boot = () => {
-      this._boot();
+    const runPrefill = () => {
+      if (this._prefillDone) return;
       const prefill = query && query.q ? decodeURIComponent(query.q) : '';
-      if (prefill) {
-        this.setData({ inputText: prefill.slice(0, 200) }, () => {
-          setTimeout(() => this.onSend(), 200);
-        });
-      }
+      if (!prefill) return;
+      this._prefillDone = true;
+      this.setData({ inputText: prefill.slice(0, 200) }, () => {
+        setTimeout(() => this.onSend(), 200);
+      });
     };
 
-    // 商家开关明确为 false 时立刻拦截；否则先拉远程配置再决定
-    if (app && app.globalData && app.globalData.merchantSwitchEnabled === false) {
-      blockAndBack();
-      return;
-    }
-
-    fetchMerchantSwitchEnabled({ force: true }).then((enabled) => {
-      applyMerchantSwitchToApp(app, enabled);
-      if (!enabled || !isAiConsultVisible(app)) {
+    const finish = () => {
+      if (!isAiConsultVisible(app)) {
         blockAndBack();
         return;
       }
-      // 确认非审核后，再写入 AI 相关文案
-      this._unlockCopy();
-      boot();
+      this._applyCopy(buildUnlockedCopy());
+      this._boot();
+      runPrefill();
+    };
+
+    // 审核态直接拦截；未确认前不展示 AI 文案
+    if (app && app.globalData && app.globalData.merchantSwitchEnabled === false) {
+      finish();
+      return;
+    }
+
+    fetchRemoteAppConfig({ force: true }).then((cfg) => {
+      applyRemoteConfigToApp(app, cfg);
+      finish();
     });
   },
 
@@ -120,8 +151,24 @@ Page({
     // 从其它页返回时，若本地有更新则以本地为准（通常本页独占）
   },
 
-  _unlockCopy() {
-    const copy = buildUnlockedCopy();
+  onUnload() {
+    this._sendSeq = (this._sendSeq || 0) + 1;
+    this._clearThinkTimer();
+  },
+
+  _clearThinkTimer() {
+    if (this._thinkTimer) {
+      clearTimeout(this._thinkTimer);
+      this._thinkTimer = null;
+    }
+  },
+
+  _thinkDelay(text) {
+    const len = String(text || '').length;
+    return Math.min(1800, 900 + Math.min(len, 60) * 8 + Math.floor(Math.random() * 350));
+  },
+
+  _applyCopy(copy) {
     this._copy = copy;
     this.setData({
       bannerVisible: copy.bannerVisible,
@@ -136,21 +183,34 @@ Page({
     wx.setNavigationBarTitle({ title: copy.navTitle });
   },
 
+  _syncWelcomeMessage(messages, welcomeText) {
+    const list = Array.isArray(messages) ? messages.slice() : [];
+    if (!list.length) {
+      return [
+        {
+          id: nextId(),
+          role: 'ai',
+          content: welcomeText,
+          time: this._timeStr(),
+          source: 'local'
+        }
+      ];
+    }
+    const first = list[0];
+    if (first && first.role === 'ai' && !first.pending && looksLikeWelcome(first.content) && first.content !== welcomeText) {
+      list[0] = { ...first, content: welcomeText, source: 'local' };
+    }
+    return list;
+  },
+
   _boot() {
-    const welcomeText = this.data.welcomeText;
+    const copy = this._copy || buildLockedCopy();
+    const welcomeText = copy.welcomeText || DEFAULT_WELCOME;
     const stored = loadChatHistory();
-    let messages =
-      stored.messages && stored.messages.length
-        ? stored.messages
-        : [
-            {
-              id: nextId(),
-              role: 'ai',
-              content: welcomeText,
-              time: this._timeStr(),
-              source: 'local'
-            }
-          ];
+    let messages = this._syncWelcomeMessage(
+      stored.messages && stored.messages.length ? stored.messages : [],
+      welcomeText
+    );
 
     // 同步序号，避免 id 碰撞
     messages.forEach((m) => {
@@ -158,7 +218,7 @@ Page({
       if (n > msgSeq) msgSeq = n;
     });
 
-    messages = withMetaSuffix(messages, this._copy || this.data);
+    messages = withMetaSuffix(messages, copy);
 
     this.setData(
       {
@@ -264,11 +324,14 @@ Page({
     const thinking = {
       id: placeholderId,
       role: 'ai',
-      content: '正在分析…',
+      content: '',
       pending: true,
       time: this._timeStr(),
       metaSuffix: ''
     };
+    const sendSeq = (this._sendSeq = (this._sendSeq || 0) + 1);
+    const startedAt = Date.now();
+    const thinkMs = this._thinkDelay(text);
 
     const messages = this.data.messages.concat([userMsg, thinking]);
     this.setData(
@@ -280,60 +343,48 @@ Page({
       () => this._scrollToBottom()
     );
 
+    const reveal = (res, content) => {
+      if (sendSeq !== this._sendSeq) return;
+      const reply = {
+        id: placeholderId,
+        role: 'ai',
+        content,
+        pending: false,
+        source: (res && res.source) || 'local',
+        time: this._timeStr()
+      };
+      const next = withMetaSuffix(
+        this.data.messages.map((m) => (m.id === placeholderId ? reply : m)),
+        this._copy || this.data
+      );
+      const conversationId = (res && res.conversationId) || this.data.conversationId;
+      this.setData(
+        {
+          messages: next,
+          sending: false,
+          conversationId
+        },
+        () => {
+          this._persist(next, conversationId);
+          this._scrollToBottom();
+        }
+      );
+    };
+
     askPetAi({
       msg: text,
       conversationId: this.data.conversationId
     })
       .then((res) => {
         const content = ensureReply((res && res.reply) || '', text) || SAFE_HOSPITAL_REPLY;
-        const reply = {
-          id: placeholderId,
-          role: 'ai',
-          content,
-          pending: false,
-          source: (res && res.source) || 'local',
-          time: this._timeStr()
-        };
-        const next = withMetaSuffix(
-          this.data.messages.map((m) => (m.id === placeholderId ? reply : m)),
-          this._copy || this.data
-        );
-        const conversationId = (res && res.conversationId) || this.data.conversationId;
-        this.setData(
-          {
-            messages: next,
-            sending: false,
-            conversationId
-          },
-          () => {
-            this._persist(next, conversationId);
-            this._scrollToBottom();
-          }
-        );
+        const remain = Math.max(0, thinkMs - (Date.now() - startedAt));
+        this._clearThinkTimer();
+        this._thinkTimer = setTimeout(() => reveal(res, content), remain);
       })
       .catch(() => {
-        const reply = {
-          id: placeholderId,
-          role: 'ai',
-          content: SAFE_HOSPITAL_REPLY,
-          pending: false,
-          source: 'local',
-          time: this._timeStr()
-        };
-        const next = withMetaSuffix(
-          this.data.messages.map((m) => (m.id === placeholderId ? reply : m)),
-          this._copy || this.data
-        );
-        this.setData(
-          {
-            messages: next,
-            sending: false
-          },
-          () => {
-            this._persist(next);
-            this._scrollToBottom();
-          }
-        );
+        const remain = Math.max(0, thinkMs - (Date.now() - startedAt));
+        this._clearThinkTimer();
+        this._thinkTimer = setTimeout(() => reveal(null, SAFE_HOSPITAL_REPLY), remain);
       });
   }
 });

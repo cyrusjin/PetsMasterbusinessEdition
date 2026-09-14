@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>门店收款申请 · 熠森宠物</title><link rel="stylesheet" href="admin.css"></head>
+<body class="admin-page"><main class="admin-main"><div class="container admin-panel admin-panel-wide">
+<a href="stores.html">← 店铺管理</a><h1>门店收款申请</h1>
+<p>商家在小程序填写完整资料并授权后，系统自动提交微信、获取申请单号并同步审核状态，无需平台人工初审或关联。驳回后商家可自行补件；经营者本人完成核验和签约后，在小程序主动开启在线收款。</p>
+<p><a href="https://pay.weixin.qq.com/" target="_blank" rel="noopener">打开微信支付官方平台</a> · 首批显示最近 200 条申请</p>
+<button id="refresh" class="btn btn-outline">刷新列表</button><p id="message" role="status"></p><div id="list"></div>
+</div></main><script src="admin.js"></script><script>
+if (!PetAdmin.requireAuth()) throw new Error('未登录');
+const list = document.getElementById('list');
+const message = document.getElementById('message');
+function el(tag, text) { const node = document.createElement(tag); if (text != null) node.textContent = text; return node; }
+function documentLink(label, url) {
+  const node = el('a', label);
+  if (/^https:\/\//i.test(url || '')) { node.href = url; node.target = '_blank'; node.rel = 'noopener'; }
+  else node.textContent = label + '（未上传）';
+  return node;
+}
+async function load() {
+  message.textContent = '加载中…'; list.replaceChildren();
+  try {
+    const r = await PetAdmin.api('/api/admin/collection');
+    if (!r.success) throw new Error(r.errMsg);
+    (r.stores || []).forEach(store => {
+      const card = el('section'); card.className = 'card';
+      const application = store.application || {};
+      card.append(el('h2', store.name || store.store_id), el('p', '店铺编号：' + store.store_id),
+        el('p', '状态：' + store.stateText + ' · 当前方式：' + (store.mode === 'online' ? '在线支付' : '原流程')),
+        el('p', '联系人：' + (application.contactName || store.contactName || '') + ' / ' + (application.contactPhone || store.contactPhone || '')),
+        el('p', '协议版本：' + store.agreementVersion + ' · 收款商户号：' + (store.subMchId || '尚未生成')));
+      if (application.licenseName) {
+        const details = el('div'); details.className = 'collection-application';
+        details.append(el('h3', '个体工商户申请资料'),
+          el('p', '执照主体：' + application.licenseName + ' · 代码：' + application.licenseNumber),
+          el('p', '经营者：' + application.operatorName + ' · 商户简称：' + application.merchantShortName),
+          el('p', '经营地址：' + application.businessAddress),
+          el('p', '客服电话：' + application.servicePhone + ' · 结算账户：' + (application.accountType === 'business' ? '对公账户' : '经营者个人银行卡') + ' / ' + application.accountName));
+        const docs = el('p'); if (application.businessLicenseUrl) docs.append(documentLink('查看营业执照', application.businessLicenseUrl)); else docs.textContent = application.license ? '开户证件已通过加密通道上传，不提供公开链接' : '待商家补充完整开户资料';
+        (application.storefrontPhotos || []).forEach((url, index) => { docs.append(document.createTextNode(' · '), documentLink('经营场所照片' + (index + 1), url)); });
+        details.append(docs); card.append(details);
+      }
+      const input = el('input'); input.placeholder = '微信受理后自动生成申请单号'; input.value = store.applymentId || ''; input.maxLength = 32;
+      input.setAttribute('aria-label', '微信支付开户申请单号'); input.readOnly = true;
+      const button = el('button', '同步微信审核状态'); button.className = 'btn btn-primary';
+      const status = el('p', store.reviewMessage || ''); status.setAttribute('role', 'status');
+      button.onclick = async () => {
+        button.disabled = true; status.textContent = '查询微信审核状态…';
+        try {
+          const r = await PetAdmin.api('/api/admin/collection', { method: 'POST', body: JSON.stringify({ store_id: store.store_id, refresh: true }) });
+          if (!r.success) throw new Error(r.errMsg);
+          status.textContent = r.collection.stateText + '：' + (r.collection.reviewMessage || '');
+          input.value = r.collection.applymentId || ''; store.applymentId = input.value; button.textContent = '同步微信审核状态';
+        } catch (err) { status.textContent = err.message || '处理失败'; }
+        finally { button.disabled = false; }
+      };
+      card.append(input, button, status); list.append(card);
+    });
+    message.textContent = r.stores.length ? '已加载 ' + r.stores.length + ' 条申请' : '暂无收款申请';
+  } catch (err) { message.textContent = err.message || '加载失败'; }
+}
+document.getElementById('refresh').onclick = load;
+load();
+</script></body></html>

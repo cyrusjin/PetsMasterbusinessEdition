@@ -143,6 +143,9 @@
 .admin-panel-wide {
   max-width: 1120px;
 }
+.collection-application { margin: 14px 0 18px; padding: 16px 18px; border: 1px solid #ead8ca; border-radius: 14px; background: #fffaf6; }
+.collection-application h3 { margin: 0 0 10px; font-size: 1rem; color: var(--color-text-heading); }
+.collection-application p { margin: 6px 0; line-height: 1.6; }
 
 /* 店铺管理等宽表页：比官网 1120px 更宽，但不过度撑满超宽屏 */
 .admin-page-fluid {
@@ -249,7 +252,7 @@
 .store-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1180px;
+  min-width: 1380px;
 }
 
 .store-table th,
@@ -281,30 +284,34 @@
 }
 
 /* 仅店铺列表固定列宽；订单/推送弹窗表格不套用 */
-.store-table:not(.orders-table) {
+.store-list-desktop .store-table {
   table-layout: fixed;
 }
 
-.store-table:not(.orders-table) th:nth-child(1),
-.store-table:not(.orders-table) td:nth-child(1) { width: 16%; }
-.store-table:not(.orders-table) th:nth-child(2),
-.store-table:not(.orders-table) td:nth-child(2) { width: 7%; }
-.store-table:not(.orders-table) th:nth-child(3),
-.store-table:not(.orders-table) td:nth-child(3) { width: 8%; }
-.store-table:not(.orders-table) th:nth-child(4),
-.store-table:not(.orders-table) td:nth-child(4) { width: 12%; }
-.store-table:not(.orders-table) th:nth-child(5),
-.store-table:not(.orders-table) td:nth-child(5) { width: 13%; }
-.store-table:not(.orders-table) th:nth-child(6),
-.store-table:not(.orders-table) td:nth-child(6) { width: 9%; }
-.store-table:not(.orders-table) th:nth-child(7),
-.store-table:not(.orders-table) td:nth-child(7) { width: 7%; }
-.store-table:not(.orders-table) th:nth-child(8),
-.store-table:not(.orders-table) td:nth-child(8) { width: 7%; }
-.store-table:not(.orders-table) th:nth-child(9),
-.store-table:not(.orders-table) td:nth-child(9) { width: 10%; }
-.store-table:not(.orders-table) th:nth-child(10),
-.store-table:not(.orders-table) td:nth-child(10) { width: 11%; }
+.store-list-desktop .store-table th:nth-child(1),
+.store-list-desktop .store-table td:nth-child(1) { width: 14%; }
+.store-list-desktop .store-table th:nth-child(2),
+.store-list-desktop .store-table td:nth-child(2) { width: 6%; }
+.store-list-desktop .store-table th:nth-child(3),
+.store-list-desktop .store-table td:nth-child(3) { width: 7%; }
+.store-list-desktop .store-table th:nth-child(4),
+.store-list-desktop .store-table td:nth-child(4) { width: 10%; }
+.store-list-desktop .store-table th:nth-child(5),
+.store-list-desktop .store-table td:nth-child(5) { width: 10%; }
+.store-list-desktop .store-table th:nth-child(6),
+.store-list-desktop .store-table td:nth-child(6) { width: 8%; }
+.store-list-desktop .store-table th:nth-child(7),
+.store-list-desktop .store-table td:nth-child(7) { width: 6%; }
+.store-list-desktop .store-table th:nth-child(8),
+.store-list-desktop .store-table td:nth-child(8) { width: 6%; }
+.store-list-desktop .store-table th:nth-child(9),
+.store-list-desktop .store-table td:nth-child(9) { width: 8%; }
+.store-list-desktop .store-table th:nth-child(10),
+.store-list-desktop .store-table td:nth-child(10) { width: 7%; }
+.store-list-desktop .store-table th:nth-child(11),
+.store-list-desktop .store-table td:nth-child(11) { width: 8%; }
+.store-list-desktop .store-table th:nth-child(12),
+.store-list-desktop .store-table td:nth-child(12) { width: 10%; }
 
 .store-openid {
   max-width: none;

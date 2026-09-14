@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/butler/butler",
     "pages/orders/orders",
     "pages/daily/daily",
     "pages/merchant/tab-daily/tab-daily",
@@ -72,6 +73,7 @@
       "pages": [
         "chat/chat",
         "settings/settings",
+        "collection-settings/collection-settings",
         "staff-manage/staff-manage",
         "statistics/statistics",
         "merchant-auth/merchant-auth",
@@ -117,6 +119,12 @@
         "text": "首页",
         "iconPath": "images/tab/tab-home.png",
         "selectedIconPath": "images/tab/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/butler/butler",
+        "text": "宠物管家",
+        "iconPath": "images/tab/tab-butler.png",
+        "selectedIconPath": "images/tab/tab-butler-active.png"
       },
       {
         "pagePath": "pages/orders/orders",

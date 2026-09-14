@@ -412,7 +412,7 @@ App({
       }
       return;
     }
-    if (this.getData(STORAGE_KEYS.USER_CLIENT_MODE)) {
+    if (this.isUserClientMode()) {
       this._storeVisitEntry = true;
       this.globalData.role = 'user';
       this.globalData.isMerchant = hasMerchantCapability(user);
@@ -444,11 +444,15 @@ App({
       || String(this.globalData.pendingStaffInviteStoreId || '').trim();
     if (staffStoreId) return;
     const storeId = this._extractStoreId(options);
-    if (storeId && this._isUserEntryPath(options)) return;
+    if (storeId && this._isUserEntryPath(options) && this.isUserClientMode()) return;
     // 打卡分享落地动态页：保持用户壳，勿踢回商家主页
     const sharedLogId = this._extractDailyLogId(options)
       || String(this.globalData.pendingSharedDailyLogId || '').trim();
-    if (sharedLogId && (route === 'pages/daily/daily' || this._isUserEntryPath(options))) {
+    if (
+      sharedLogId
+      && this.isUserClientMode()
+      && (route === 'pages/daily/daily' || this._isUserEntryPath(options))
+    ) {
       return;
     }
 
@@ -494,7 +498,10 @@ App({
     // chooseMedia 从相机/相册返回会触发 App.onShow，若按非 merchant Tab 一律 reLaunch，
     // 会把 packageBiz/daily-check 等业务页直接踢回商家主页。
     if (this._hasMerchantWorkspace() && !this.isUserClientMode()) {
-      if (!isUserTabRoute(route)) return;
+      const isUserRoute = isUserTabRoute(route)
+        || route.indexOf('packageUser/') === 0
+        || route.indexOf('pages/share/') === 0;
+      if (!isUserRoute) return;
       if (this._defaultLandingScheduled) return;
       this._defaultLandingScheduled = true;
       wx.reLaunch({
@@ -599,6 +606,7 @@ App({
 
     if (query.scene) {
       const sceneParam = decodeURIComponent(String(query.scene));
+      if (sceneParam.startsWith('ot_store_')) return sceneParam.slice(3);
       if (sceneParam.includes('store_id=')) {
         return sceneParam.split('store_id=')[1].split('&')[0];
       }
@@ -608,6 +616,7 @@ App({
     const scene = options.scene;
     if (scene && scene !== 1001 && scene !== 1089) {
       const decoded = decodeURIComponent(String(scene));
+      if (decoded.startsWith('ot_store_')) return decoded.slice(3);
       if (decoded.includes('store_id=')) {
         return decoded.split('store_id=')[1].split('&')[0];
       }
@@ -630,6 +639,7 @@ App({
     const path = options.path || '';
     if (
       path.includes('pages/index/index')
+      || path.includes('pages/butler/butler')
       || path.includes('pages/orders/orders')
       || path.includes('pages/daily/daily')
       || path.includes('pages/user/')
@@ -642,33 +652,66 @@ App({
   },
 
   isUserClientMode() {
-    return !!(this._storeVisitEntry || this.getData(STORAGE_KEYS.USER_CLIENT_MODE));
+    const active = !!(this._storeVisitEntry || this.getData(STORAGE_KEYS.USER_CLIENT_MODE));
+    if (!active) return false;
+    // 商家历史上可能被分享/绑定流程误写入用户版缓存；没有明确操作标记时不再生效。
+    if (this._hasMerchantIdentity() && !this.getData(STORAGE_KEYS.USER_CLIENT_MODE_EXPLICIT)) {
+      return false;
+    }
+    return true;
+  },
+
+  _hasMerchantIdentity(user) {
+    // 审核环境或当前版本开关关闭时，必须进入用户端，不保留商家壳。
+    if (isMerchantUiBlocked() || this.globalData.merchantSwitchEnabled === false) return false;
+    const current = user || this.globalData.userInfo || {};
+    return !!(
+      this.globalData.role === 'merchant'
+      || this.getData(STORAGE_KEYS.MERCHANT_SHELL_MODE)
+      || isMerchantApproved(current)
+      || isMerchantPending(current)
+      || isMerchantRejected(current)
+      || isMerchantDisabled(current)
+    );
+  },
+
+  shouldKeepMerchantMode() {
+    return this._hasMerchantIdentity()
+      && !this.getData(STORAGE_KEYS.USER_CLIENT_MODE_EXPLICIT);
   },
 
   _exitUserClientMode() {
     this._storeVisitEntry = false;
     this.globalData[STORAGE_KEYS.USER_CLIENT_MODE] = null;
+    this.globalData[STORAGE_KEYS.USER_CLIENT_MODE_EXPLICIT] = null;
     try {
       wx.removeStorageSync(STORAGE_KEYS.USER_CLIENT_MODE);
+      wx.removeStorageSync(STORAGE_KEYS.USER_CLIENT_MODE_EXPLICIT);
     } catch (err) {
       // ignore
     }
   },
 
   _enterUserClientMode(storeId, options = {}) {
-    const { persist = true, applyShell = true } = options;
+    const { persist = true, applyShell = true, explicit = false } = options;
+    const explicitIntent = explicit || !!this.getData(STORAGE_KEYS.USER_CLIENT_MODE_EXPLICIT);
     if (this.shouldIgnoreShareEntry()) {
-      return;
+      return false;
+    }
+    if (!explicitIntent && this.shouldKeepMerchantMode()) {
+      storeDebug.log('阻止自动切换用户版：保持商家身份', { storeId: storeId || '' });
+      return false;
     }
     if (storeId && this.isStaffForStore(storeId)) {
       this._keepStaffMerchantMode();
-      return;
+      return false;
     }
     this._exitMerchantShellMode();
     this._storeVisitEntry = true;
     this.globalData.role = 'user';
     if (persist) {
       this.setData(STORAGE_KEYS.USER_CLIENT_MODE, true);
+      this.setData(STORAGE_KEYS.USER_CLIENT_MODE_EXPLICIT, explicitIntent);
     }
     if (storeId) {
       this.globalData.pendingEntryStoreId = storeId;
@@ -678,6 +721,7 @@ App({
     if (applyShell) {
       applyTabShell();
     }
+    return true;
   },
 
   enterMerchantMode() {
@@ -808,7 +852,7 @@ App({
           shopId: shop && shop.store_id
         });
 
-        this._enterUserClientMode(modeStoreId);
+        this._enterUserClientMode(modeStoreId, { explicit: true });
         this._resetOrdersFetchState();
 
         // 仅当恢复目标就是自家店时，才用商家店铺缓存铺屏
@@ -848,7 +892,7 @@ App({
       .catch((err) => {
         console.error('enterUserMode failed', err);
         const fallbackId = savedVisitId || hintId;
-        this._enterUserClientMode(fallbackId);
+        this._enterUserClientMode(fallbackId, { explicit: true });
         this._resetOrdersFetchState();
         applyTabShell();
         wx.switchTab({ url: getUserLandingUrl() });
@@ -873,7 +917,12 @@ App({
           this._keepStaffMerchantMode();
           return null;
         }
-        this._enterUserClientMode(id);
+        const enteredUserMode = this._enterUserClientMode(id);
+        if (!enteredUserMode) {
+          this.globalData.pendingEntryStoreId = '';
+          this._ensureDefaultLanding({});
+          return null;
+        }
         return this.bindStore(id, { syncUser: true, force: true })
           .then(() => this._flushPendingStoreBinding())
           .then(() => this.getCurrentStore());

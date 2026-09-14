@@ -1,5 +1,5 @@
 const app = getApp();
-const { categories, articles, filterArticles } = require('./content');
+const { categories, filterArticles, groupArticles } = require('./content');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { ensureMerchantPageAllowed, redirectToStoreAuthIfNeeded } = require('../../../utils/shell');
 const { openProxyGuestPicker } = require('../../../utils/proxyOrder');
@@ -8,11 +8,34 @@ const destinations = {
   invite: '/packageBiz/share-guest/share-guest',
   orders: '/packageBiz/orders/orders',
   daily: '/packageBiz/daily-check/daily-check',
+  dailyLogs: '/packageBiz/daily-logs/daily-logs',
+  pickup: '/packageBiz/pickup-manage/pickup-manage',
+  customers: '/packageExtra/customers/customers',
   stats: '/pages/merchant/tab-statistics/tab-statistics',
-  ledger: '/packageExtra/ledger/ledger'
+  ledger: '/packageExtra/ledger/ledger',
+  store: '/pages/merchant/tab-store/tab-store',
+  storeBoarding: '/pages/merchant/tab-store/tab-store?tab=boarding',
+  storeBoardingAdvanced: '/pages/merchant/tab-store/tab-store?tab=boarding&sub=advanced',
+  storeWash: '/pages/merchant/tab-store/tab-store?tab=wash',
+  storeHome: '/pages/merchant/tab-store/tab-store?tab=homeFeeding',
+  staff: '/packageExtra/staff-manage/staff-manage',
+  membership: '/packageExtra/membership/membership',
+  insurance: '/packageBiz/insurance-promotion/insurance-promotion',
+  holiday: '/packageBiz/holiday-pricing/holiday-pricing?serviceLine=boarding',
+  announcements: '/packageExtra/announcements/announcements',
+  promotion: '/packageExtra/promotion-tasks/promotion-tasks',
+  dailyHome: '/pages/merchant/tab-daily/tab-daily'
 };
+function buildView(category, keyword, extra) {
+  const items = filterArticles(category, keyword);
+  return Object.assign({
+    category,
+    keyword,
+    groups: groupArticles(items)
+  }, extra || {});
+}
 Page({
-  data: { categories, category: 'all', keyword: '', items: articles, expandedId: '', ready: false },
+  data: Object.assign({ categories, expandedId: '', ready: false }, buildView('all', '')),
   onShow() {
     hideHomeButton();
     ensureMerchantPageAllowed().then(blocked => {
@@ -27,14 +50,14 @@ Page({
   },
   onSearch(e) {
     const keyword = e.detail.value || '';
-    this.setData({ keyword, items: filterArticles(this.data.category, keyword), expandedId: '' });
+    this.setData(buildView(this.data.category, keyword, { expandedId: '' }));
   },
   onCategory(e) {
     const category = e.currentTarget.dataset.id;
     if (!categories.some(item => item.id === category)) return;
-    this.setData({ category, items: filterArticles(category, this.data.keyword), expandedId: '' });
+    this.setData(buildView(category, this.data.keyword, { expandedId: '' }));
   },
-  onClear() { this.setData({ keyword: '', category: 'all', items: articles, expandedId: '' }); },
+  onClear() { this.setData(buildView('all', '', { expandedId: '' })); },
   onToggle(e) {
     const id = e.currentTarget.dataset.id;
     this.setData({ expandedId: this.data.expandedId === id ? '' : id });

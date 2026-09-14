@@ -1,10 +1,11 @@
 const {
   PET_INSURANCE_URL,
   PET_INSURANCE_LINK_HOURS,
-  validatePetInsuranceShare
+  validatePetInsuranceShare,
+  navigateToPetInsurance
 } = require('../../../utils/petInsurance');
 
-const INSURANCE_QR_PATH = '/images/insurance/pet-insurance-qr.png';
+const INSURANCE_QR_PATH = '/images/insurance/pet-insurance-mp-code.png';
 
 Page({
   data: {
@@ -85,7 +86,22 @@ Page({
     });
   },
 
+  _canUseInsurance() {
+    if (this.data.loading || this.data.expired || !this.data.insuranceUrl) return false;
+    if (this._shareToken && Number(this.data.expireAt) <= Date.now()) {
+      this._showExpired('链接已过期');
+      return false;
+    }
+    return true;
+  },
+
+  onBuyInsurance() {
+    if (!this._canUseInsurance()) return;
+    navigateToPetInsurance();
+  },
+
   onCopyInsuranceLink() {
+    if (!this._canUseInsurance()) return;
     const url = String(this.data.insuranceUrl || '').trim();
     if (!url) return;
     wx.setClipboardData({
@@ -93,7 +109,7 @@ Page({
       success: () => {
         wx.showModal({
           title: '购买链接已复制',
-          content: '请打开手机浏览器，在地址栏粘贴链接并访问平安官方购买页面。',
+          content: '请将链接粘贴发送到微信聊天（如文件传输助手），再点击消息中的链接打开平安好车主小程序。',
           showCancel: false,
           confirmText: '知道了'
         });
@@ -103,6 +119,7 @@ Page({
   },
 
   onPreviewInsuranceQr() {
+    if (!this._canUseInsurance()) return;
     wx.previewImage({
       current: INSURANCE_QR_PATH,
       urls: [INSURANCE_QR_PATH]

@@ -94,7 +94,34 @@
 }
 
 .bubble.pending {
-  opacity: 0.75;
+  min-width: 108rpx;
+  padding-top: 26rpx;
+  padding-bottom: 26rpx;
+}
+
+.thinking-dots {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  height: 28rpx;
+  padding: 0 8rpx;
+}
+
+.thinking-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #C4A792;
+  opacity: 0.35;
+  animation: thinking-bounce 1.05s ease-in-out infinite;
+}
+
+.thinking-dot:nth-child(2) { animation-delay: 0.16s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes thinking-bounce {
+  0%, 70%, 100% { transform: translateY(0); opacity: 0.32; }
+  35% { transform: translateY(-7rpx); opacity: 1; }
 }
 
 .bubble-text {
@@ -181,7 +208,7 @@
 .safe-tip-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16rpx;
   padding: 4rpx 20rpx calc(10rpx + env(safe-area-inset-bottom));
   background: #FFFDF8;

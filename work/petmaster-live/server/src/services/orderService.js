@@ -1,3 +1,4 @@
+const orderPayment = require('./orderPaymentService');
 const db = require('../db');
 const identity = require('./identity');
 const userFields = require('./userFields');
@@ -345,10 +346,13 @@ function formatOrder(doc, petDoc) {
     isGroupPrimary: !!doc.isGroupPrimary,
     status: doc.status || 'pending',
     placedByMerchant: !!doc.placedByMerchant,
+    serviceRecord: !!doc.serviceRecord,
     proxyClaimed: !!doc.proxyClaimed,
     proxyOwnerPending: !!doc.proxyOwnerPending,
     proxyClaimToken: doc.proxyClaimToken || '',
     proxyClaimedAt: doc.proxyClaimedAt || 0,
+    paymentMode: doc.paymentMode || 'offline',
+    payment: orderPayment.publicPayment(doc),
     pricePendingConfirm: !!doc.pricePendingConfirm,
     priceConfirmedAt: doc.priceConfirmedAt || 0,
     editPendingConfirm: !!doc.editPendingConfirm,
@@ -546,6 +550,7 @@ function buildOrderData(order, userOpenid, merchantOpenid, userProfile, storeDis
       ? (ORDER_STATUSES.includes(order.status) ? order.status : 'awaiting_arrival')
       : 'pending',
     placedByMerchant: !!order.placedByMerchant,
+    serviceRecord: !!order.serviceRecord,
     proxyClaimed: !!order.proxyClaimed,
     proxyOwnerPending: !!(order.placedByMerchant && !order.proxyClaimed),
     proxyClaimToken: String(order.proxyClaimToken || '').trim(),
@@ -572,9 +577,9 @@ async function createOrder(event, openid) {
 
   const store = await getStoreById(payload.store_id);
   if (!store) return { success: false, errMsg: '店铺不存在，请确认商家已保存店铺设置' };
-  if (isStoreClosed(store)) return { success: false, errMsg: '店铺已闭店，暂不可预约' };
+  if (!payload.serviceRecord && isStoreClosed(store)) return { success: false, errMsg: '店铺已闭店，暂不可预约' };
 
-  const receptionErr = validateOrderReceptionRange(payload, store);
+  const receptionErr = payload.serviceRecord ? '' : validateOrderReceptionRange(payload, store);
   if (receptionErr) return { success: false, errMsg: receptionErr };
 
   await db.ensureCollections(['orders']);
@@ -605,6 +610,16 @@ async function createOrder(event, openid) {
     event.userProfile || {},
     resolveStoreDisplayNo(store)
   );
+  if ((payload.placedByMerchant || payload.serviceRecord) && !await isMerchantUser(openid, payload.store_id)) {
+    return { success: false, errMsg: '仅商家可创建代下单或服务记录' };
+  }
+  const collection = store.collection || {};
+  orderData.paymentMode = collection.mode === 'online' && collection.state === 'ready' && collection.subMchId && !orderData.placedByMerchant ? 'online' : 'offline';
+  if (orderData.paymentMode === 'online') {
+    orderData.paymentSubMchId = collection.subMchId;
+    orderData.paymentConfirmedAt = 0;
+    orderData.payment = { status: 'unpaid' };
+  }
   await db.insertOne('orders', orderData);
 
   if (orderData.promotion) {
@@ -962,6 +977,7 @@ async function updateOrder(event, openid) {
     }
   }
 
+  await orderPayment.guardUpdate(existing, patch, isMerchant && !treatAsUserEdit);
   await db.updateById('orders', existing._id, patch);
   let petDoc = null;
   if (existing.petId) {
@@ -1595,8 +1611,13 @@ async function handle(event, openid) {
       return listMerchantOrders(event, openid);
     case 'listStoreCustomerPushStatus':
       return listStoreCustomerPushStatus(event, openid);
+    case 'createOrderPayment':
+    case 'queryOrderPayment':
+    case 'requestOrderRefund':
+    case 'refundOrderPayment':
+      return orderPayment.handle(event, openid);
     case 'updateOrder':
-      return updateOrder(event, openid);
+      return orderPayment.withOrderLock(event.order_id || event.id, () => updateOrder(event, openid));
     case 'getProxyOrderClaim':
       return getProxyOrderClaim(event, openid);
     case 'claimProxyOrders':

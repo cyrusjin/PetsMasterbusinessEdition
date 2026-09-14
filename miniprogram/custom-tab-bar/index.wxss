@@ -36,11 +36,12 @@
 }
 
 .tab-bar-text {
-  font-size: 22rpx;
+  font-size: 20rpx;
   margin-top: 6rpx;
   font-weight: 500;
   color: #B9A89B;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .tab-bar-text.active {

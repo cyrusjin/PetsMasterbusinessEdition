@@ -36,6 +36,15 @@ adminRouter.post('/login', (req, res) => {
   });
 });
 
+adminRouter.get('/collection', adminRequired, async (req, res) => {
+  try { res.json(await require('../services/collectionService').adminList()); }
+  catch (err) { res.status(500).json({ success: false, errMsg: err.message }); }
+});
+adminRouter.post('/collection', adminRequired, async (req, res) => {
+  try { res.json(await require('../services/collectionService').adminHandle(req.body || {}, req.admin.username)); }
+  catch (err) { res.status(400).json({ success: false, errMsg: err.message }); }
+});
+
 adminRouter.get('/me', adminRequired, (req, res) => {
   return res.json({
     success: true,

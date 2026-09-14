@@ -435,6 +435,13 @@
           hint: '微信正式版累计 ' + money(ops.userTotal || 0) + ' · 下过单 ' + money(ops.orderedUserCount || 0)
         },
         {
+          key: 'offline-scan-users',
+          label: '线下扫码用户',
+          value: ops.offlineScanUsers || 0,
+          unit: '人',
+          hint: '近 7 日 ' + (ops.offlineScanUsers7d || 0) + ' · 近 30 日 ' + (ops.offlineScanUsers30d || 0)
+        },
+        {
           key: 'gmv',
           label: '累计帮门店增收',
           value: '¥' + money(ops.totalGmv),
@@ -670,6 +677,7 @@
         ['7 日打卡 / 异常', (ops.publishedLogs7d || 0) + ' / ' + (ops.abnormalLogs7d || 0)],
         ['注册用户 / 下过单', (ops.userTotal || 0) + ' / ' + (ops.orderedUserCount || 0)],
         ['商家用户 / 客人用户', (ops.merchantUserCount || 0) + ' / ' + (ops.guestUserCount || 0)],
+        ['线下扫码用户（累计 / 7 日 / 30 日）', (ops.offlineScanUsers || 0) + ' / ' + (ops.offlineScanUsers7d || 0) + ' / ' + (ops.offlineScanUsers30d || 0)],
         ['7 日新用户', ops.newUsers7d || 0],
         ['访店绑定宠主', ops.visitBoundUsers || 0]
       ];

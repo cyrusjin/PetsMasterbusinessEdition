@@ -68,6 +68,7 @@ function formatStore(doc) {
   const contactPhone = firstStoreText(doc.contactPhone, partyA && partyA.phone);
   return {
     store_id: doc.store_id,
+    collectionMode: doc.collection && doc.collection.mode === 'online' ? 'online' : 'offline',
     displayNo: resolveStoreDisplayNo(doc),
     name,
     logo: doc.logo || '',
@@ -1789,8 +1790,11 @@ async function listAdminStores(query = {}) {
   const items = [];
   for (let i = 0; i < (stores || []).length; i += 1) {
     const storeDoc = stores[i];
-    const applicant = await findStoreApplicant(storeDoc);
-    const store = await resolveStoreMediaUrls(formatStore(storeDoc));
+    const [applicant, membership, store] = await Promise.all([
+      findStoreApplicant(storeDoc),
+      membershipService.buildMembership(storeDoc.store_id),
+      resolveStoreMediaUrls(formatStore(storeDoc))
+    ]);
     const oaBind = await resolveOwnerOaBind(storeDoc.ownerOpenid || applicant.applicantOpenid || '');
     items.push({
       store_id: store.store_id,
@@ -1819,7 +1823,15 @@ async function listAdminStores(query = {}) {
       coopContractSignTime: storeDoc.coopContractSignTime || '',
       hasCoopContract: !!(storeDoc.coopContractSnapshot && storeDoc.coopContractSigned),
       businessLicense: store.businessLicense || '',
-      hasBusinessLicense: !!(store.businessLicense)
+      hasBusinessLicense: !!(store.businessLicense),
+      membership: {
+        active: !!membership.active,
+        statusType: membership.statusType || 'expired',
+        accessType: membership.accessType || 'expired',
+        paymentMethod: membership.paymentMethod || 'none',
+        expireAt: membership.expireAt || null,
+        expireAtText: membership.expireAtText || ''
+      }
     });
   }
 
@@ -2320,6 +2332,10 @@ async function getStoreOaShareLink(event, openid) {
 
 async function handle(event, openid) {
   switch (event.action) {
+    case 'getCollectionSettings':
+    case 'applyCollection':
+    case 'setCollectionMode':
+      return require('./collectionService').handle(event, openid);
     case 'getStore':
       return getStore(event);
     case 'getMyStore':

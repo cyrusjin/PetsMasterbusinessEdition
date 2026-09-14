@@ -2,6 +2,7 @@ const app = getApp();
 const auth = require('../../../utils/auth');
 const { resolveImageUrl } = require('../../../utils/imageCache');
 const { OA_DISPLAY_NAME, DEFAULT_OA_QRCODE, openOfficialAccountProfile } = require('../../../utils/officialAccount');
+const { getMerchantLandingUrl } = require('../../../utils/shell');
 
 Page({
   data: {
@@ -57,6 +58,10 @@ Page({
         return app.bindStore(storeId, { syncUser: true, force: true });
       })
       .finally(() => {
+        if (app.shouldKeepMerchantMode && app.shouldKeepMerchantMode()) {
+          wx.reLaunch({ url: getMerchantLandingUrl() });
+          return;
+        }
         wx.reLaunch({
           url: `/packageUser/user/reserve/reserve?store_id=${encodeURIComponent(storeId)}`
         });

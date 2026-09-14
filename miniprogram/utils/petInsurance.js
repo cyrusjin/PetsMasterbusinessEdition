@@ -1,16 +1,39 @@
 const { callApiService } = require('./api');
 
-// 第三方保险页无法作为未验证业务域名直接嵌入；仅用于复制后在微信聊天中打开。
-const PET_INSURANCE_URL = 'https://emcs.pa18.com/v2/product/p_pet/index.html?appType=01&key=120260618157662108057987395&productName=%E5%B9%B3%E5%AE%89%E5%AE%A0%E6%97%A0%E5%BF%A7%C2%B7%E7%88%B1%E5%AE%A0%E4%BF%9D%E9%9A%9C%E5%8D%A12.0%E7%89%88(%E7%BA%BF%E4%B8%8B%E7%89%88)';
+// 平安好车主小程序分享链接，支持按钮跳转及复制备用。
+const PET_INSURANCE_URL = '#小程序://平安好车主/qxDPjgUdWuiVzqc';
 const PET_INSURANCE_SHARE_PATH = 'packageUser/user/pet-insurance/pet-insurance';
 const PET_INSURANCE_SHARE_IMAGE = '/images/insurance/pingan-logo.png';
 const PET_INSURANCE_LINK_HOURS = 6;
 
+// 首页和购买弹窗统一先进入保险二级页面。
 function openPetInsurance(callbacks = {}) {
   wx.navigateTo({
     url: '/packageUser/user/pet-insurance/pet-insurance',
     success: callbacks.success,
-    fail: callbacks.fail
+    fail: (err) => {
+      wx.showToast({ title: '打开失败，请稍后重试', icon: 'none' });
+      if (callbacks.fail) callbacks.fail(err);
+    }
+  });
+}
+
+// 仅由保险二级页面的购买按钮触发外部小程序跳转。
+function navigateToPetInsurance(callbacks = {}) {
+  const onFail = (err) => {
+    if (!/cancel/i.test(String((err && err.errMsg) || ''))) {
+      wx.showToast({ title: '暂时无法跳转，请使用下方小程序码', icon: 'none' });
+    }
+    if (callbacks.fail) callbacks.fail(err);
+  };
+  if (typeof wx.navigateToMiniProgram !== 'function') {
+    onFail({ errMsg: 'navigateToMiniProgram:fail unsupported' });
+    return;
+  }
+  wx.navigateToMiniProgram({
+    shortLink: PET_INSURANCE_URL,
+    success: callbacks.success,
+    fail: onFail
   });
 }
 
@@ -58,6 +81,7 @@ module.exports = {
   PET_INSURANCE_SHARE_IMAGE,
   PET_INSURANCE_LINK_HOURS,
   openPetInsurance,
+  navigateToPetInsurance,
   recordPetInsuranceEvent,
   createPetInsuranceShare,
   validatePetInsuranceShare,

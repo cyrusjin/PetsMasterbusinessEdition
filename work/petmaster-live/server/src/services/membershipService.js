@@ -145,6 +145,17 @@ function formatDate(timestamp) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+function paymentMethodForMembership(accessType, source) {
+  const normalizedSource = String(source || '').trim();
+  if (normalizedSource === 'wechat_pay') return 'purchase';
+  if (normalizedSource === 'redeem_code') return 'redemption';
+  if (accessType === 'promotion') return 'promotion';
+  if (accessType === 'migration') return 'migration';
+  if (accessType === 'trial') return 'trial';
+  if (accessType === 'subscription') return 'other';
+  return 'none';
+}
+
 async function getStore(storeId) {
   if (!storeId) return null;
   const rows = await db.findMany('stores', { store_id: storeId }, { limit: 1 });
@@ -246,7 +257,8 @@ async function buildMembership(storeId) {
       trialDaysRemaining: 0,
       enabled: false,
       payConfigured: false,
-      canPurchase: false
+      canPurchase: false,
+      paymentMethod: 'disabled'
     };
   }
   const subscriptionExpireAt = Number(subscription && subscription.expireAt) || 0;
@@ -265,6 +277,18 @@ async function buildMembership(storeId) {
   const active = subscriptionActive || promotionActive || migrationActive || trialActive;
   const expireAt = Math.max(subscriptionExpireAt, ...entitlements.map((item) => Number(item.expireAt) || 0));
   const accessType = subscriptionActive ? 'subscription' : (promotionActive ? 'promotion' : (migrationActive ? 'migration' : (trialActive ? 'trial' : 'expired')));
+  const sourceType = accessType === 'subscription' ? 'subscription' : accessType;
+  const sourceEntitlement = currentEntitlements
+    .filter((item) => {
+      if (sourceType === 'subscription') {
+        return !['promotion', 'migration', 'trial'].includes(item.sourceType);
+      }
+      return item.sourceType === sourceType;
+    })
+    .sort((a, b) => Number(b.startAt || 0) - Number(a.startAt || 0))[0];
+  const activeSource = (sourceEntitlement && sourceEntitlement.source)
+    || (legacyAggregateActive ? (subscription && subscription.lastSource) : '')
+    || '';
   return {
     active,
     accessActive: active,
@@ -273,6 +297,7 @@ async function buildMembership(storeId) {
     trialActive,
     promotionActive,
     accessType,
+    paymentMethod: paymentMethodForMembership(accessType, activeSource),
     statusType: subscriptionActive ? 'subscribed' : (promotionActive || migrationActive ? 'granted' : (trialActive ? 'trial' : 'expired')),
     expireAt: active ? expireAt : null,
     expireAtText: active ? formatDate(expireAt) : '',
@@ -1370,6 +1395,7 @@ async function voidRedeemCode(id, adminUsername) {
 module.exports = {
   PLANS,
   buildMembership,
+  paymentMethodForMembership,
   getMembershipStatus,
   redeemMembershipCode,
   createMembershipPay,

@@ -1,4 +1,12 @@
 <view class="container">
+  <view class="card" wx:if="{{order.paymentMode === 'online'}}">
+    <view class="card-title">在线收款 · {{paymentLabel}}</view>
+    <text class="text-gray" style="display:block;line-height:1.8;">确认接单前请核对订单金额。平台零抽佣，手续费与到账以微信支付实际处理为准。</text>
+    <text wx:if="{{order.payment.refundRequested}}" style="display:block;color:#b04c35;margin-top:16rpx;">顾客已申请退款，请及时联系并处理。</text>
+    <button class="btn-outline" bindtap="onRefreshPayment" disabled="{{refunding}}">刷新支付 / 退款状态</button>
+    <button wx:if="{{order.payment.status === 'paid'}}" class="btn-outline" bindtap="onRefundPayment" loading="{{refunding}}" disabled="{{refunding}}">整单原路退款（店主）</button>
+    <text wx:if="{{order.payment.refundError}}" class="text-gray">{{order.payment.refundError}}</text>
+  </view>
   <view class="card">
     <view class="flex-between mb-20">
       <text class="card-title" style="border:none;padding:0;margin:0;">订单详情</text>

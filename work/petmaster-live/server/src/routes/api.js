@@ -39,6 +39,9 @@ function guardedExceptActions(allowedActions, handler) {
 
 const storeRouter = express.Router();
 storeRouter.post('/', authRequired, guardedExceptActions([
+  'getCollectionSettings',
+  'applyCollection',
+  'setCollectionMode',
   'getMyStore',
   'submitMerchantApply',
   'acceptStaffInvite',
@@ -51,7 +54,14 @@ storeRouter.post('/', authRequired, guardedExceptActions([
 ], (event, openid) => storeService.handle(event, openid)));
 
 const orderRouter = express.Router();
-orderRouter.post('/', authRequired, guardedAction('*', (event, openid) => orderService.handle(event, openid)));
+// 支付、查单、退款不能被订阅过期拦截；业务接口内部仍校验订单归属。
+orderRouter.post('/', authRequired, (req, res, next) => {
+  const action = (req.body || {}).action;
+  if (['createOrderPayment', 'queryOrderPayment', 'requestOrderRefund', 'refundOrderPayment'].includes(action)) {
+    return wrapAction((event, openid) => orderService.handle(event, openid))(req, res, next);
+  }
+  return guardedAction('*', (event, openid) => orderService.handle(event, openid))(req, res, next);
+});
 
 const petRouter = express.Router();
 petRouter.post('/', authRequired, guardedAction('*', (event, openid) => petService.handle(event, openid)));

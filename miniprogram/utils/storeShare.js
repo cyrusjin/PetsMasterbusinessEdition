@@ -291,6 +291,8 @@ function redirectGuestShareToReserve(storeId, serviceLine) {
   if (!app) return false;
   if (app.shouldIgnoreShareEntry && app.shouldIgnoreShareEntry()) return false;
   if (app.isStaffForStore && app.isStaffForStore(id)) return false;
+  // 商家打开自己或他人的分享入口时保持商家端；只有主动点“切换用户版”才进入预约页。
+  if (app.shouldKeepMerchantMode && app.shouldKeepMerchantMode()) return false;
   const enter = app.enterUserStore
     ? app.enterUserStore(id, { forceData: true })
     : Promise.resolve();

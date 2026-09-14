@@ -19,7 +19,7 @@
     <view class="tab-hit" hover-class="none" catchtap="onTabStatistics" />
   </view>
   <view class="tab-item {{active === 'guide' ? 'active' : ''}}">
-    <view class="guide-book-icon"><text>?</text></view>
+    <image class="tab-icon-img" src="{{active === 'guide' ? '/images/tab/tab-guide-active.png' : '/images/tab/tab-guide.png'}}" mode="aspectFit" />
     <view class="tab-text">使用指南</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabGuide" />
   </view>

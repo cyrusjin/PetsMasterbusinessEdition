@@ -78,11 +78,11 @@
 }
 
 .insurance-qr-card {
-  width: 356rpx;
-  height: 356rpx;
+  width: 160rpx;
+  height: 160rpx;
   box-sizing: border-box;
   margin: 18rpx auto 0;
-  padding: 12rpx;
+  padding: 8rpx;
   border: 1rpx solid #f2dfd1;
   border-radius: 24rpx;
   background: #ffffff;
@@ -91,8 +91,8 @@
 
 .insurance-qrcode {
   display: block;
-  width: 332rpx;
-  height: 332rpx;
+  width: 100%;
+  height: 100%;
   border-radius: 14rpx;
 }
 
@@ -109,7 +109,7 @@
   justify-content: center;
   width: 100%;
   min-height: 86rpx;
-  margin: 0;
+  margin: 26rpx 0 0;
   padding: 18rpx 28rpx;
   box-sizing: border-box;
   border: none;

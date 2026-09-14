@@ -3,6 +3,7 @@
   <view class="order-tabs">
     <view class="order-tab {{activeTab === 'all' ? 'active' : ''}}" bindtap="onTab" data-tab="all">全部</view>
     <view class="order-tab {{activeTab === 'pending' ? 'active' : ''}}" bindtap="onTab" data-tab="pending">待确认</view>
+    <view class="order-tab {{activeTab === 'payment' ? 'active' : ''}}" bindtap="onTab" data-tab="payment">待支付</view>
     <view class="order-tab {{activeTab === 'awaiting_arrival' ? 'active' : ''}}" bindtap="onTab" data-tab="awaiting_arrival">待到店</view>
     <view class="order-tab {{activeTab === 'boarding' ? 'active' : ''}}" bindtap="onTab" data-tab="boarding">进行中</view>
     <view class="order-tab {{activeTab === 'completed' ? 'active' : ''}}" bindtap="onTab" data-tab="completed">已完成</view>
@@ -40,6 +41,8 @@
         </view>
         <text class="fee-highlight" style="font-size:28rpx;">¥{{item.totalFee}}</text>
       </view>
+      <view class="order-actions" wx:if="{{item.payment.canPay}}"><button class="btn-sm btn-orange" catchtap="onDetail" data-id="{{item.id}}">查看并支付</button></view>
+      <view wx:if="{{item.payment.refundRequested}}" class="text-gray">已申请退款，请查看订单进度</view>
       <view class="order-actions" wx:if="{{item.pricePendingConfirm}}">
         <button class="btn-sm btn-orange" catchtap="onConfirmPrice" data-id="{{item.id}}">待确认</button>
       </view>

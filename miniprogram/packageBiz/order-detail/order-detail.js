@@ -1,3 +1,4 @@
+const orderPayment = require('../utils/orderPayment');
 const app = getApp();
 const { normalizeOrderFees } = require('../../utils/orderFees');
 const { buildPetDetailView } = require('../../utils/petSnapshot');
@@ -83,6 +84,7 @@ Page({
     });
     this.setData({
       order,
+      paymentLabel: orderPayment.paymentLabel(order),
       petView,
       statusLabel,
       canDailyCheck: isDailyCheckableOrder(order),
@@ -193,6 +195,23 @@ Page({
     });
   },
 
+  async onRefreshPayment() {
+    if (this.data.refunding) return;
+    this.setData({ refunding: true });
+    try { await orderPayment.query(this.orderId); }
+    catch (err) { wx.showToast({ title: err.message || '查询失败', icon: 'none' }); }
+    finally { this.setData({ refunding: false }); await this._refreshOrder({ force: true }); }
+  },
+  onRefundPayment() {
+    if (this.data.refunding) return;
+    wx.showModal({ title: '确认整单原路退款', content: `将本订单已付金额 ¥${((this.data.order.payment.amountFen || 0) / 100).toFixed(2)} 全额退回顾客；退款成功后订单取消。请先与顾客确认。仅店主可操作。`, success: async r => {
+      if (!r.confirm || this.data.refunding) return;
+      this.setData({ refunding: true });
+      try { const result = await orderPayment.refund(this.orderId); wx.showToast({ title: result.payment.status === 'refunded' ? '退款成功' : '退款处理中', icon: 'none' }); }
+      catch (err) { wx.showModal({ title: '退款提示', content: err.message || '请刷新核对退款结果', showCancel: false }); }
+      finally { this.setData({ refunding: false }); await this._refreshOrder({ force: true }); }
+    } });
+  },
   onComplete() {
     const order = this.data.order;
     if (!order || !order.id) return;

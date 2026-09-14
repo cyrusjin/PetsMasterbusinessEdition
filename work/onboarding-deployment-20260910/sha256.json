@@ -1,0 +1,9 @@
+{
+  "collections.html": "a9b6d5a823240ee2ac6f62b657b31b37ba53711cbcddb7818792fced40d2bdb5",
+  "src/app.js": "df9b789b937e2ac1d0976566dfa3610de096d34df6848f5d0356b68067750ae4",
+  "src/routes/collection.js": "f1034f8df7bf866593ef5fc9bed9bfb8c46f533131eca932ab825d97aaad3508",
+  "src/services/collectionAgreement.js": "33c982009bfdd169009aa1bd5df7e01786e23613c86b75ca7753550f168aff78",
+  "src/services/collectionOnboardingService.js": "a7eae84bb1704847319f1b384e48bf6cba44569d4ccd3ce49d37db323ef1006c",
+  "src/services/collectionService.js": "d2627d035be8d7f917a2fcd3abbfb45abe1e0bcce7149e55b8c77fb041daef9d",
+  "src/services/partnerPayClient.js": "78f79358826a387720505e6f3a80807cf305c0b76bb9c6267e094998c96af15a"
+}

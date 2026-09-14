@@ -200,7 +200,6 @@
   bottom: -8rpx;
   width: 292rpx;
   height: 198rpx;
-  filter: drop-shadow(0 12rpx 16rpx rgba(18,8,2,.32));
 }
 
 .store-luxury-topline {

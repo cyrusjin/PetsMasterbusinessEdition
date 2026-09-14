@@ -78,6 +78,7 @@ function getOrderServiceLine(order) {
 /** 寄养中均可打卡；洗护/上门接单后即可打卡，无需先确认到店 */
 function canDailyCheckOrder(order) {
   if (!order) return false;
+  if (order.paymentMode === 'online' && Number(order.totalFee) > 0 && ((order.payment || {}).status !== 'paid' || order.payment.refundRequested)) return false;
   const status = order.status;
   if (status === 'boarding') return true;
   if (status !== 'awaiting_arrival' && status !== 'confirmed') return false;

@@ -264,7 +264,7 @@ Page({
   _buildCheckItems(allCheckableOrders) {
     const ids = new Set(this._selectedOrderIds);
     const selected = (allCheckableOrders || filterDailyCheckableOrders(app.getOrders()))
-      .filter((order) => ids.has(order.id));
+      .filter((order) => ids.has(order.id || order.order_id));
     return getDailyCheckItemsForOrders(selected, this.data.checkItems);
   },
 
@@ -288,7 +288,7 @@ Page({
     }).then(() => {
       if (!app.canAccessMerchantBackend()) return;
       const checkableOrders = filterDailyCheckableOrders(app.getOrders());
-      const orderIds = checkableOrders.map((o) => o.id).filter(Boolean);
+      const orderIds = checkableOrders.map((o) => o.id || o.order_id).filter(Boolean);
 
       if (app.isMerchantDemoMode()) {
         this._applyFromCache(merchantDemo.getDemoDailyLogs());
@@ -310,8 +310,29 @@ Page({
   },
 
   getSelectedOrders() {
-    const ids = new Set(this._selectedOrderIds);
-    return app.getOrders().filter((order) => ids.has(order.id));
+    // 以界面上的勾选状态为准，避免私有 selectedIds 与 setData 展示状态短暂不同步。
+    // 订单缓存可能在页面停留期间刷新或切换上下文；此时保留选项快照也足够提交打卡。
+    const selectedOptions = (this.data.orderOptions || [])
+      .filter((item) => item && item.selected && item.id);
+    const selectedIds = selectedOptions.map((item) => item.id);
+    this._selectedOrderIds = selectedIds;
+
+    const orderMap = new Map((app.getOrders() || []).map((order) => [
+      String(order.id || order.order_id || '').trim(),
+      order
+    ]));
+    return selectedOptions.map((option) => {
+      const orderId = String(option.id || '').trim();
+      const order = orderMap.get(orderId);
+      return {
+        ...(order || {}),
+        id: orderId,
+        order_id: orderId,
+        petName: (order && order.petName) || option.petName || '',
+        serviceKind: (order && order.serviceKind) || option.serviceKind || '',
+        serviceLine: (order && order.serviceLine) || option.serviceKind || ''
+      };
+    });
   },
 
   onToggleOrder(e) {
