@@ -183,8 +183,56 @@ async function reverseGeocode(latRaw, lngRaw) {
   return { ...value, cached: false };
 }
 
+function isPrivateIp(ip) {
+  const text = String(ip || '').trim().replace(/^::ffff:/, '');
+  if (!text || text === '127.0.0.1' || text === '::1' || text === '0.0.0.0') return true;
+  if (text.startsWith('10.') || text.startsWith('192.168.') || text.startsWith('169.254.')) return true;
+  const m = text.match(/^172\.(\d+)\./);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 16 && n <= 31) return true;
+  }
+  return false;
+}
+
+/**
+ * IP → 省市区。内网 / 空 IP 时跳过，避免落到服务器机房城市。
+ */
+async function locateByIp(ipRaw) {
+  const ip = String(ipRaw || '').trim().replace(/^::ffff:/, '');
+  if (isPrivateIp(ip)) {
+    return { province: '', city: '', district: '', ip, skipped: true };
+  }
+
+  const cacheKeyStr = `ip:${ip}`;
+  const cached = getCached(cacheKeyStr);
+  if (cached) return { ...cached, cached: true };
+
+  const key = requireMapKey();
+  const { data } = await axios.get('https://apis.map.qq.com/ws/location/v1/ip', {
+    params: { ip, key },
+    timeout: 8000
+  });
+  if (!data || data.status !== 0 || !data.result) {
+    const err = new Error((data && data.message) || 'IP 定位失败');
+    err.code = 'MAP_API_ERROR';
+    err.status = data && data.status;
+    throw err;
+  }
+  const ad = (data.result && data.result.ad_info) || {};
+  const value = {
+    province: String(ad.province || '').trim(),
+    city: String(ad.city || '').trim(),
+    district: String(ad.district || '').trim(),
+    ip
+  };
+  setCached(cacheKeyStr, value, CACHE_TTL_MS);
+  return { ...value, cached: false, skipped: false };
+}
+
 module.exports = {
   getDrivingDistanceKm,
   reverseGeocode,
+  locateByIp,
   roundKm
 };

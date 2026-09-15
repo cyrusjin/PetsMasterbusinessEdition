@@ -47,6 +47,10 @@ function getStoreOaShareLink(storeId) {
   return callStoreService('getStoreOaShareLink', { store_id: storeId || '' });
 }
 
+function discoverGuestStores(payload = {}) {
+  return callStoreService('discoverGuestStores', payload);
+}
+
 function getMembershipStatus(storeId) {
   return callStoreService('getMembershipStatus', { store_id: storeId || '' });
 }
@@ -80,6 +84,7 @@ module.exports = {
   removeStoreStaff,
   acceptStaffInvite,
   getStoreOaShareLink,
+  discoverGuestStores,
   getMembershipStatus,
   createMembershipPay,
   queryMembershipPay,

@@ -7,6 +7,13 @@ const notifyService = require('./notifyService');
 const oaBindService = require('./oaBindService');
 const oaBindTicketService = require('./oaBindTicketService');
 const membershipService = require('./membershipService');
+const { pickPersonality } = require('./petPersonality');
+const mapService = require('./mapService');
+const {
+  clientIp,
+  isPrivateIp,
+  storeMatchesCity
+} = require('./guestStoreDiscover');
 
 function toServiceLineBool(value, fallback) {
   if (value === true || value === 'yes' || value === 1 || value === '1') return true;
@@ -1660,6 +1667,7 @@ function buildAdminInsightPet(orderDoc, petDoc) {
     isNeutered: pet.isNeutered || snapshot.isNeutered || '',
     hasDogLicense: pet.hasDogLicense || snapshot.hasDogLicense || '',
     character: pet.character || snapshot.character || '',
+    personality: pickPersonality(pet.personality, snapshot.personality),
     behaviorHabits: pet.behaviorHabits || snapshot.behaviorHabits || '',
     dietTaboo: pet.dietTaboo || snapshot.dietTaboo || '',
     specialCare: pet.specialCare || snapshot.specialCare || '',
@@ -2330,7 +2338,102 @@ async function getStoreOaShareLink(event, openid) {
   }
 }
 
-async function handle(event, openid) {
+async function formatGuestStoreCard(doc) {
+  const formatted = formatStore(doc);
+  const coverRaw = (Array.isArray(formatted.storePhotos) && formatted.storePhotos[0])
+    || formatted.logo
+    || '';
+  let cover = coverRaw;
+  try {
+    cover = (await oss.resolveMediaUrl(coverRaw)) || coverRaw;
+  } catch (err) {
+    cover = coverRaw;
+  }
+  const intro = String(formatted.intro || '').replace(/\s+/g, ' ').trim();
+  const name = formatted.name || '合作店铺';
+  return {
+    store_id: formatted.store_id,
+    name,
+    nameInitial: String(name).slice(0, 1),
+    address: formatted.address || formatted.locationName || '',
+    status: formatted.status || '营业中',
+    cover,
+    intro: intro.slice(0, 48),
+    hours: formatted.hours || '',
+    range: formatted.range || ''
+  };
+}
+
+async function resolveGuestCity({ event, req }) {
+  const askedCity = String((event && (event.city || event.cityName)) || '').trim();
+  const askedProvince = String((event && event.province) || '').trim();
+  if (askedCity) {
+    return { city: askedCity, province: askedProvince, source: 'query' };
+  }
+
+  const ip = clientIp(req);
+  if (!isPrivateIp(ip)) {
+    try {
+      const located = await mapService.locateByIp(ip);
+      if (located && located.city) {
+        return {
+          city: located.city,
+          province: located.province || '',
+          source: 'ip'
+        };
+      }
+    } catch (err) {
+      console.warn('[store] locateByIp failed', (err && err.message) || err);
+    }
+  }
+
+  const lat = event && (event.latitude || event.lat);
+  const lng = event && (event.longitude || event.lng);
+  if (lat != null && lng != null) {
+    try {
+      const geo = await mapService.reverseGeocode(lat, lng);
+      if (geo && (geo.city || geo.province)) {
+        return {
+          city: geo.city || geo.province,
+          province: geo.province || '',
+          source: 'geo'
+        };
+      }
+    } catch (err) {
+      console.warn('[store] reverseGeocode for discover failed', (err && err.message) || err);
+    }
+  }
+
+  return { city: '', province: '', source: 'none' };
+}
+
+async function discoverGuestStores(event, req) {
+  const located = await resolveGuestCity({ event, req });
+  const docs = await db.findMany('stores', {
+    merchantApplyStatus: 'approved',
+    status: { $nin: ['已闭店', '暂停接单'] }
+  }, { limit: 200, sort: { updateTime: -1 } });
+
+  const matched = located.city
+    ? (docs || []).filter((doc) => storeMatchesCity(doc, located.city, located.province))
+    : [];
+  const cityStores = matched.length ? matched : [];
+
+  const cards = await Promise.all(cityStores.slice(0, 20).map((doc) => formatGuestStoreCard(doc)));
+
+  return {
+    success: true,
+    city: located.city,
+    province: located.province,
+    located: !!located.city,
+    source: located.source,
+    stores: cards,
+    otherStores: [],
+    emptyInCity: !!located.city && !cards.length
+  };
+}
+
+async function handle(event, openid, req) {
   switch (event.action) {
     case 'getCollectionSettings':
     case 'applyCollection':
@@ -2338,6 +2441,8 @@ async function handle(event, openid) {
       return require('./collectionService').handle(event, openid);
     case 'getStore':
       return getStore(event);
+    case 'discoverGuestStores':
+      return discoverGuestStores(event, req);
     case 'getMyStore':
       return getMyStore(openid);
     case 'saveStore':

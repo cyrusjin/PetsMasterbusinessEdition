@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="admin.css?v=20260821b" />
+  <link rel="stylesheet" href="admin.css?v=20260914a" />
   <link rel="icon" href="../assets/card/card-pets.png" type="image/png" />
 </head>
 <body class="admin-page">
@@ -74,6 +74,16 @@
           <div class="card admin-loading">加载中...</div>
         </div>
       </section>
+
+      <div class="card dash-panel dash-dau-panel">
+        <div class="dash-section-head">
+          <div>
+            <h2>近 7 日活跃用户</h2>
+            <p>商家端 / 用户端 · 用现有订单、打卡、用户活跃数据回补 · 悬停可看各店店主与客人</p>
+          </div>
+        </div>
+        <div id="dau-chart" class="dash-chart dash-chart-dau"></div>
+      </div>
 
       <!-- ③ 增长趋势 + 单店模型 -->
       <div class="dash-split-grid">
@@ -354,6 +364,7 @@
     let dashboardData = null;
     let mapChart = null;
     let trendChart = null;
+    let dauChart = null;
     let petTypeChart = null;
     let petAgeChart = null;
     let chinaMapReady = null;
@@ -504,6 +515,8 @@
       const items = [
         { label: '今日增收', value: '¥' + money(ops.todayGmv), hint: deltaText(ops.todayGmvDelta), tone: 'primary' },
         { label: '今日新单', value: ops.todayOrders || 0, hint: deltaText(ops.todayOrderDelta) + ' · 完成 ' + (ops.todayCompleted || 0) },
+        { label: '今日商家日活', value: ops.todayMerchantDau || 0, hint: '打开商家端去重' },
+        { label: '今日客人日活', value: ops.todayGuestDau || 0, hint: '打开用户端去重' },
         { label: '当前在住', value: ops.boardingCount || 0, hint: '寄养中订单' },
         { label: '7 日活跃店', value: ops.activeStores7d || 0, hint: '占已开通 ' + (ops.activeStoreRate7d || 0) + '%' },
         { label: '30 日有单店', value: ops.earningStores30d || 0, hint: '已开通 ' + (stores.approved || 0) },
@@ -567,6 +580,120 @@
           );
         }).join('') +
         '</div>';
+    }
+
+    function renderDauTrend(dau) {
+      const el = document.getElementById('dau-chart');
+      if (!el) return;
+      if (!window.echarts) {
+        el.innerHTML = '<div class="dash-empty">图表库未加载</div>';
+        return;
+      }
+      if (dauChart) {
+        dauChart.dispose();
+        dauChart = null;
+      }
+      const rows = dau || [];
+      dauChart = echarts.init(el);
+      if (!el._dashResizeBound) {
+        el._dashResizeBound = true;
+        window.addEventListener('resize', function () {
+          if (dauChart) dauChart.resize();
+        });
+      }
+
+      function storeBlock(title, count, list, kind) {
+        const items = (list || []).map(function (s) {
+          const name = PetAdmin.escapeHtml(s.storeName || '未命名店铺');
+          if (kind === 'merchant') {
+            const bits = [];
+            if (s.ownerCount) bits.push('店主 ' + s.ownerCount);
+            if (s.staffCount) bits.push('员工 ' + s.staffCount);
+            const names = (s.names || []).map(function (n) {
+              return PetAdmin.escapeHtml(n);
+            }).join('、');
+            return (
+              '<div class="dau-tip-store">' +
+                '<strong>' + name + '</strong>' +
+                '<span>' + (bits.length ? bits.join(' · ') : ((s.count || 0) + ' 人')) + '</span>' +
+                (names ? '<em>' + names + '</em>' : '') +
+              '</div>'
+            );
+          }
+          return (
+            '<div class="dau-tip-store">' +
+              '<strong>' + name + '</strong>' +
+              '<span>' + (s.count || 0) + ' 位客人</span>' +
+            '</div>'
+          );
+        }).join('');
+        return (
+          '<div class="dau-tip-section">' +
+            '<div class="dau-tip-head">' + title + ' <b>' + (count || 0) + '</b></div>' +
+            (items || '<div class="dau-tip-empty">当日暂无</div>') +
+          '</div>'
+        );
+      }
+
+      dauChart.setOption({
+        color: ['#E98657', '#6FA462'],
+        tooltip: {
+          trigger: 'axis',
+          confine: true,
+          enterable: true,
+          extraCssText: 'max-width:420px;max-height:360px;overflow:auto;white-space:normal;line-height:1.45;padding:12px 14px;border-radius:12px;'
+        },
+        legend: { data: ['商家用户', '客人用户'], top: 0, textStyle: { color: '#8A6A55' } },
+        grid: { left: 40, right: 24, top: 36, bottom: 28 },
+        xAxis: {
+          type: 'category',
+          data: rows.map(function (d) { return String(d.date || '').slice(5); }),
+          axisLabel: { color: '#A98972' }
+        },
+        yAxis: {
+          type: 'value',
+          minInterval: 1,
+          axisLabel: { color: '#A98972' },
+          splitLine: { lineStyle: { color: '#F2DEC9' } }
+        },
+        series: [
+          {
+            name: '商家用户',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 8,
+            data: rows.map(function (d) { return d.merchantCount || 0; }),
+            areaStyle: { color: 'rgba(233,134,87,0.12)' }
+          },
+          {
+            name: '客人用户',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 8,
+            data: rows.map(function (d) { return d.guestCount || 0; }),
+            areaStyle: { color: 'rgba(111,164,98,0.12)' }
+          }
+        ]
+      });
+
+      dauChart.setOption({
+        tooltip: {
+          formatter: function (params) {
+            const idx = params && params[0] && params[0].dataIndex;
+            const row = rows[idx] || {};
+            const date = PetAdmin.escapeHtml(row.date || '');
+            return (
+              '<div class="dau-tip">' +
+                '<div class="dau-tip-date">' + date + '</div>' +
+                storeBlock('商家用户', row.merchantCount, row.merchants, 'merchant') +
+                storeBlock('客人用户', row.guestCount, row.guests, 'guest') +
+              '</div>'
+            );
+          }
+        }
+      });
     }
 
     function renderTrend(trend) {
@@ -677,6 +804,7 @@
         ['7 日打卡 / 异常', (ops.publishedLogs7d || 0) + ' / ' + (ops.abnormalLogs7d || 0)],
         ['注册用户 / 下过单', (ops.userTotal || 0) + ' / ' + (ops.orderedUserCount || 0)],
         ['商家用户 / 客人用户', (ops.merchantUserCount || 0) + ' / ' + (ops.guestUserCount || 0)],
+        ['今日日活（商家 / 客人）', (ops.todayMerchantDau || 0) + ' / ' + (ops.todayGuestDau || 0)],
         ['线下扫码用户（累计 / 7 日 / 30 日）', (ops.offlineScanUsers || 0) + ' / ' + (ops.offlineScanUsers7d || 0) + ' / ' + (ops.offlineScanUsers30d || 0)],
         ['7 日新用户', ops.newUsers7d || 0],
         ['访店绑定宠主', ops.visitBoundUsers || 0]
@@ -961,6 +1089,7 @@
         window.addEventListener('resize', function () {
           if (mapChart) mapChart.resize();
           if (trendChart) trendChart.resize();
+          if (dauChart) dauChart.resize();
           if (petTypeChart) petTypeChart.resize();
           if (petAgeChart) petAgeChart.resize();
         });
@@ -1141,6 +1270,7 @@
         renderInvestHero(data);
         renderPulse(data);
         renderInsuranceMetrics(data);
+        renderDauTrend(data.dauTrend || []);
         renderTrend(data.trend || []);
         renderUnitModel(data);
         renderStoreRank(data.topStoresByOrders || data.topStores, 'top-orders', '暂无订单门店', 'orders');
@@ -1167,6 +1297,8 @@
           '<div class="card dash-empty">' + PetAdmin.escapeHtml((err && err.message) || '加载失败') + '</div>';
         document.getElementById('pulse-grid').innerHTML =
           '<div class="card dash-empty">无法加载</div>';
+        document.getElementById('dau-chart').innerHTML =
+          '<div class="dash-empty">无法加载</div>';
         ['funnel-list', 'revenue-box', 'health-box', 'unit-model', 'top-orders', 'top-stores', 'zombie-stores', 'region-list', 'pet-breed-list', 'pet-order-type'].forEach(function (id) {
           const node = document.getElementById(id);
           if (node) node.innerHTML = '<div class="dash-empty">无法加载</div>';

@@ -23,6 +23,7 @@ const {
   buildProxyReserveUrl,
   PROXY_GUEST_PICKER_PATH
 } = require('../../../utils/proxyOrder');
+const personalityUtil = require('../../../utils/petPersonality');
 
 function createDefaultHealthFields() {
   return {
@@ -53,6 +54,7 @@ Page({
     color: '',
     photo: '',
     character: '',
+    personality: null,
     behaviorHabits: '',
     dietTaboo: '',
     specialCare: '',
@@ -93,6 +95,7 @@ Page({
           ...health,
           ...ageParts,
           behaviorHabits: pet.behaviorHabits || '',
+          personality: personalityUtil.getPersonality(pet),
           petType
         });
         this._refreshBreedSuggestions(pet.breed || '', petType, false);
@@ -101,6 +104,16 @@ Page({
     }
     this.setData(createDefaultHealthFields());
     this._refreshBreedSuggestions('', '', false);
+  },
+
+  onShow() {
+    if (!this.data.id || this._proxyMode) return;
+    const pet = app.getPets().find((item) => item.id === this.data.id);
+    if (!pet) return;
+    this.setData({
+      personality: personalityUtil.getPersonality(pet),
+      character: this.data.character || pet.character || ''
+    });
   },
 
   _refreshBreedSuggestions(keyword, petType, openPanel) {
@@ -244,6 +257,17 @@ Page({
   },
 
   onDatePanelTap() {},
+
+  onOpenPersonality() {
+    const id = this.data.id;
+    if (!id) {
+      wx.showToast({ title: '请先保存宠物档案', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url: `/packageUser/user/pet-butler/personality/personality?petId=${encodeURIComponent(id)}`
+    });
+  },
 
   onRadio(e) {
     const field = e.currentTarget.dataset.field;

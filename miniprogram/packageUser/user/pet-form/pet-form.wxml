@@ -102,6 +102,22 @@
   </view>
   <view class="card">
     <view class="card-title">生活习性</view>
+    <view class="personality-panel" wx:if="{{personality}}">
+      <view class="personality-panel-head">
+        <view>
+          <text class="personality-kicker">宠物 MBTI</text>
+          <text class="personality-code">{{personality.typeId}}</text>
+          <text class="personality-name">{{personality.typeName}}</text>
+          <text class="personality-sub">{{personality.subtitle}}</text>
+        </view>
+        <text class="link-action" bindtap="onOpenPersonality">再测一次</text>
+      </view>
+      <text class="personality-summary" wx:if="{{personality.summary}}">{{personality.summary}}</text>
+    </view>
+    <view class="personality-empty" wx:elif="{{id}}" bindtap="onOpenPersonality">
+      <text class="personality-empty-title">还没有宠物 MBTI</text>
+      <text class="personality-empty-sub">8 道灵魂拷问，测出它是霸总还是咸鱼 ›</text>
+    </view>
     <view class="form-group"><text class="form-label">性格特点</text><input class="form-input" placeholder="性格特点" value="{{character}}" bindinput="onField" data-field="character" /></view>
     <view class="form-group">
       <text class="form-label">特殊行为</text>

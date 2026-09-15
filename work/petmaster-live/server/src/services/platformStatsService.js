@@ -2,6 +2,7 @@ const db = require('../db');
 const identity = require('./identity');
 const mapService = require('./mapService');
 const userFields = require('./userFields');
+const userActivityService = require('./userActivityService');
 
 const ORDER_STATUSES = [
   'pending',
@@ -1348,9 +1349,16 @@ async function getPlatformDashboard() {
     activePaidVipCount: Number(activePaidVipRows && activePaidVipRows[0] && activePaidVipRows[0].count) || 0
   };
 
-  const [storeRevenueReportResolved, userAudience] = await Promise.all([
+  const [storeRevenueReportResolved, userAudience, dauTrend] = await Promise.all([
     buildStoreRevenueReport(stores || [], now),
-    countMerchantAndGuestUsers(usersCol, stores || [], excludedUserMatch)
+    countMerchantAndGuestUsers(usersCol, stores || [], excludedUserMatch),
+    userActivityService.buildDauTrend({
+      now,
+      days: 7,
+      stores: stores || [],
+      excludedOpenids: DASHBOARD_EXCLUDED_OWNER_OPENIDS,
+      excludedStoreIds: resolvedExcludedStoreIds
+    })
   ]);
 
   const storeSummary = {
@@ -1680,6 +1688,10 @@ async function getPlatformDashboard() {
     clickRate30d: pct(insurancePopupClicks30d, insurancePopupImpressions30d)
   };
 
+  const todayDau = (dauTrend && dauTrend.length)
+    ? dauTrend[dauTrend.length - 1]
+    : { merchantCount: 0, guestCount: 0 };
+
   const mapTopStore = (s) => ({
     store_id: s.store_id,
     name: s.name,
@@ -1757,7 +1769,9 @@ async function getPlatformDashboard() {
         offlineScanUsers7d: offlineScanCount(offlineScanFacet.d7),
         offlineScanUsers30d: offlineScanCount(offlineScanFacet.d30),
         orderedUserCount,
-        orderUserRate: pct(orderedUserCount, userTotal || 0)
+        orderUserRate: pct(orderedUserCount, userTotal || 0),
+        todayMerchantDau: (todayDau && todayDau.merchantCount) || 0,
+        todayGuestDau: (todayDau && todayDau.guestCount) || 0
       }
     },
     periods: {
@@ -1774,6 +1788,7 @@ async function getPlatformDashboard() {
     },
     funnel,
     trend,
+    dauTrend: dauTrend || [],
     topStores: topStores.slice(0, 10).map(mapTopStore),
     topStoresByOrders,
     zombieStores: zombieStores.slice(0, 10).map((s) => ({

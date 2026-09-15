@@ -45,18 +45,29 @@
       </view>
       <text class="pet-hero-sub" wx:if="{{petsCount > 0}}">已记录 {{petsCount}} 只毛孩子</text>
       <text class="pet-hero-sub" wx:else>记录成长 · 关爱相伴</text>
-      <view class="pill-action">
-        <image class="pill-icon" src="/images/card/card-pets.png" mode="aspectFit" />
-        <text>{{petsCount > 0 ? '查看档案' : '添加宠物'}}</text>
+      <view class="pill-stack">
+        <view class="pill-action">
+          <image class="pill-icon" src="/images/card/card-pets.png" mode="aspectFit" />
+          <text>{{petsCount > 0 ? '查看档案' : '添加宠物'}}</text>
+        </view>
+        <view class="pill-action pill-action-badge" wx:if="{{petsCount > 0}}" catchtap="onGoPersonality">
+          <image class="pill-icon" src="/images/card/card-personality.png" mode="aspectFit" />
+          <text>性格测试</text>
+          <view class="pill-new">
+            <text class="pill-new-text">NEW</text>
+          </view>
+        </view>
       </view>
     </view>
     <image class="pet-hero-img" src="/images/home/home-hero-pet-v2.png" mode="aspectFit" />
     <view class="pet-mini-orbit size-{{petPreviewSize}}" wx:if="{{previewPets.length}}">
       <view
-        class="pet-mini-card"
+        class="pet-mini-card {{item.personalityShort ? 'has-trait' : ''}}"
         wx:for="{{previewPets}}"
         wx:key="id"
         style="{{item.cardStyle}}"
+        catchtap="onGoPetPersonality"
+        data-id="{{item.id}}"
       >
         <cached-image
           wx:if="{{item.photo}}"
@@ -69,24 +80,17 @@
           <text class="pet-mini-name">{{item.name || '我的宝贝'}}</text>
           <text class="pet-mini-meta">{{item.breed || item.type || '健康成长中'}}</text>
         </view>
+        <text wx:if="{{item.personalityShort}}" class="pet-mini-trait">{{item.personalityShort}}</text>
       </view>
       <view class="pet-mini-more" wx:if="{{petsMoreCount > 0}}">+{{petsMoreCount}}</view>
     </view>
-  </view>
-
-  <view class="invite-family-bar" bindtap="onOpenInviteFamily">
-    <view class="invite-family-copy">
-      <text class="invite-family-title">邀请家人</text>
-      <text class="invite-family-sub">分享宠物档案，一起接收服务动态</text>
-    </view>
-    <text class="invite-family-arrow">›</text>
   </view>
 
   <view class="reserve-card" bindtap="onGoReserve">
     <view class="reserve-copy">
       <text class="reserve-title">{{reserveCardTitle}}</text>
       <text class="reserve-sub">{{reserveCardSub}}</text>
-      <view class="reserve-button {{currentStore ? '' : 'reserve-button-disabled'}}">
+      <view class="reserve-button {{currentStore || !auditMode ? '' : 'reserve-button-disabled'}}">
         <view class="reserve-button-text">{{reserveButtonText}}</view>
         <view class="reserve-button-icon">
           <view class="reserve-button-chevron"></view>
@@ -119,6 +123,14 @@
     </view>
   </view>
 
+  <view class="invite-family-bar" bindtap="onOpenInviteFamily">
+    <view class="invite-family-copy">
+      <text class="invite-family-title">邀请家人</text>
+      <text class="invite-family-sub">分享宠物档案，一起接收服务动态</text>
+    </view>
+    <text class="invite-family-arrow">›</text>
+  </view>
+
   <view class="card soft-card" wx:if="{{boardingPets.length > 0}}">
     <view class="section-heading">
       <text class="section-heading-text">近期事项</text>
@@ -140,7 +152,10 @@
 
   <view class="store-section" wx:if="{{currentStore}}">
     <view class="section-heading">
-      <text class="section-heading-text">服务门店</text>
+      <view class="section-heading-main">
+        <text class="section-heading-text">服务门店</text>
+        <text wx:if="{{canSwitchStore}}" class="store-switch-link" catchtap="onSwitchStore">切换</text>
+      </view>
     </view>
     <view class="store-card">
       <swiper
@@ -265,6 +280,58 @@
       </view>
       <view class="reserve-picker-arrow"><text>›</text></view>
     </view>
+  </view>
+</view>
+
+<view class="city-store-root" wx:if="{{cityStorePickerVisible}}">
+  <view class="city-store-mask" catchtouchmove="onCityStorePickerTouchMove" bindtap="onCloseCityStorePicker"></view>
+  <view class="city-store-sheet" catchtap="onCityStorePickerTouchMove">
+    <view class="city-store-handle"></view>
+    <view class="city-store-head">
+      <view>
+        <view class="city-store-kicker-row">
+          <text class="city-store-kicker">{{cityStoreCity || '合作寄养店'}}</text>
+          <picker mode="region" level="city" value="{{cityStoreValue}}" bindchange="onChangeGuestCity">
+            <text class="city-store-edit">修改</text>
+          </picker>
+        </view>
+        <text class="city-store-title">{{cityStoreEmpty ? (cityStoreCity ? '这座城市等你来开店' : '先认识一下合作店') : '选一家店，开始预约'}}</text>
+      </view>
+      <text class="city-store-close" bindtap="onCloseCityStorePicker">关闭</text>
+    </view>
+
+    <view wx:if="{{cityStoreLoading}}" class="city-store-loading">
+      <view class="city-store-loading-dot"></view>
+      <text>正在为你寻找附近的店…</text>
+    </view>
+
+    <scroll-view wx:else scroll-y class="city-store-scroll" show-scrollbar="{{false}}">
+      <view wx:if="{{cityStoreEmpty}}" class="city-store-empty">
+        <image class="city-store-empty-art" src="/images/home/home-hero-pet-v2.png" mode="aspectFit" />
+        <text class="city-store-empty-title">{{cityStoreCity ? (cityStoreCity + '还没有合作寄养店') : '暂时还没有找到附近的店'}}</text>
+        <text class="city-store-empty-desc">你可以成为第一家，把身边的寄养做成一门生意。客人来了就能直接预约你。</text>
+        <view class="city-store-cta" bindtap="onBecomeFirstStore">我想开一家店</view>
+      </view>
+
+      <view
+        class="city-store-card"
+        wx:for="{{cityStoreList}}"
+        wx:key="store_id"
+        bindtap="onPickCityStore"
+        data-id="{{item.store_id}}"
+      >
+        <cached-image wx:if="{{item.cover}}" src="{{item.cover}}" mode="aspectFill" custom-class="city-store-cover" />
+        <view wx:else class="city-store-cover fallback">{{item.nameInitial || '店'}}</view>
+        <view class="city-store-meta">
+          <view class="city-store-name-row">
+            <text class="city-store-name">{{item.name}}</text>
+            <text class="city-store-status {{item.status === '营业中' ? 'open' : ''}}">{{item.status || '营业中'}}</text>
+          </view>
+          <text class="city-store-addr">{{item.address || '地址待完善'}}</text>
+          <text wx:if="{{item.intro}}" class="city-store-intro">{{item.intro}}</text>
+        </view>
+      </view>
+    </scroll-view>
   </view>
 </view>
 

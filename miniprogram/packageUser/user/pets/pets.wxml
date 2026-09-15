@@ -2,12 +2,14 @@
   <view wx:if="{{pets.length > 0}}">
     <view class="card" wx:for="{{pets}}" wx:key="id">
       <view class="flex-between">
-        <view class="flex-row gap-20">
+        <view class="flex-row gap-20 pet-main">
           <cached-image wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" custom-class="pet-photo" />
           <view wx:else class="pet-avatar-small">{{item.name[0]}}</view>
-          <view>
-            <view class="flex-row gap-12">
+          <view class="pet-info">
+            <view class="flex-row gap-12 pet-name-row">
               <text class="boarding-name">{{item.name}}</text>
+              <text wx:if="{{item.personalityShort}}" class="tag tag-green">{{item.personalityShort}}</text>
+              <text class="personality-action" catchtap="onPersonality" data-id="{{item.id}}">{{item.personalityName ? '查看测评' : '性格测试'}}</text>
               <text wx:if="{{item.isShared}}" class="tag tag-orange">家人共享</text>
               <text wx:elif="{{item.memberCount > 0}}" class="tag tag-blue">家庭宠</text>
             </view>

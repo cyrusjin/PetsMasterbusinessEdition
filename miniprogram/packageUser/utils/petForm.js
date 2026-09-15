@@ -165,6 +165,7 @@ function buildPetPayload(data) {
     isNeutered: health.isNeutered,
     hasDogLicense: health.hasDogLicense,
     character: pet.character || '',
+    personality: pet.personality || null,
     behaviorHabits: String(pet.behaviorHabits || '').trim(),
     dietTaboo: pet.dietTaboo || '',
     specialCare: pet.specialCare || '',

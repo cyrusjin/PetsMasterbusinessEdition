@@ -38,6 +38,15 @@ function authRequired(req, res, next) {
     req.openid = decoded.openid;
     req.client = decoded.client === 'merchant' ? 'merchant' : 'user';
     req.auth = decoded;
+    try {
+      const userActivityService = require('../services/userActivityService');
+      userActivityService.recordActivity({
+        openid: req.openid,
+        client: req.client
+      });
+    } catch (err) {
+      console.warn('[auth] record activity failed', (err && err.message) || err);
+    }
     return next();
   } catch (err) {
     return res.status(401).json({ success: false, errMsg: '登录已过期，请重新登录' });

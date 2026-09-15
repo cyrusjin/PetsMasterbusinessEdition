@@ -260,6 +260,9 @@
             petDetailRow('过敏史', pet.allergyStatus === '是' ? pet.allergy : pet.allergyStatus),
             petDetailRow('既往病史', pet.medicalHistoryStatus === '是' ? pet.medicalHistory : pet.medicalHistoryStatus),
             petDetailRow('性格', pet.character),
+            petDetailRow('宠物MBTI', pet.personality && pet.personality.typeId
+              ? [pet.personality.typeId, pet.personality.typeName].filter(Boolean).join(' ')
+              : ''),
             petDetailRow('行为习惯', pet.behaviorHabits),
             petDetailRow('饮食禁忌', pet.dietTaboo),
             petDetailRow('特别照护', pet.specialCare),

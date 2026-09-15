@@ -16,7 +16,9 @@ const { copyText } = require('../../utils/clipboard');
 const { hideHomeButton, getCustomNavMetrics } = require('../../utils/navBar');
 const { openPetInsurance } = require('../../utils/petInsurance');
 const petApi = require('../../utils/pet');
+const personalityUtil = require('../../utils/petPersonality');
 const { claimProxyOrdersForGuest, extractProxyClaimToken } = require('../../utils/proxyOrder');
+const storeApi = require('../../utils/store');
 const {
   getMiniProgramMeta,
   fetchRemoteAppConfig,
@@ -33,6 +35,7 @@ const {
 
 /** 超过该字数时首页店铺介绍截断，点击查看完整 */
 const INTRO_EXPAND_CHARS = 72;
+const GUEST_CITY_KEY = 'pet_guest_city';
 
 function isIntroExpandable(intro) {
   const text = String(intro || '').trim();
@@ -63,6 +66,18 @@ Page({
     invitePreparing: false,
     homeServiceCards: [],
     reservePickerVisible: false,
+    cityStorePickerVisible: false,
+    cityStoreLoading: false,
+    cityStoreCity: '',
+    cityStoreProvince: '',
+    cityStoreValue: [],
+    cityStoreManual: false,
+    cityStoreLocated: false,
+    cityStoreEmpty: false,
+    cityStoreList: [],
+    cityStoreBinding: false,
+    cityStoreFromSwitch: false,
+    canSwitchStore: false,
     reserveCardTitle: '预约服务',
     reserveCardSub: '通过商家分享链接进入后预约',
     reserveButtonText: '请先绑定店铺',
@@ -408,7 +423,7 @@ Page({
   },
 
   _buildPetPreview(pets) {
-    const list = Array.isArray(pets) ? pets : [];
+    const list = personalityUtil.attachToPets(Array.isArray(pets) ? pets : []);
     const maxShow = 3;
     const sliced = list.slice(0, maxShow);
     const count = sliced.length;
@@ -466,12 +481,79 @@ Page({
     return listGuestShareCards(store);
   },
 
+  _readManualGuestCity() {
+    try {
+      const raw = wx.getStorageSync(GUEST_CITY_KEY);
+      if (!raw) return null;
+      if (typeof raw === 'string') {
+        const city = raw.trim();
+        return city ? { city, province: '' } : null;
+      }
+      const city = String((raw && raw.city) || '').trim();
+      if (!city) return null;
+      return {
+        city,
+        province: String((raw && raw.province) || '').trim()
+      };
+    } catch (err) {
+      return null;
+    }
+  },
+
+  _saveManualGuestCity(city, province) {
+    try {
+      wx.setStorageSync(GUEST_CITY_KEY, {
+        city: String(city || '').trim(),
+        province: String(province || '').trim()
+      });
+    } catch (err) {
+      // ignore
+    }
+  },
+
+  _clearManualGuestCity() {
+    try {
+      wx.removeStorageSync(GUEST_CITY_KEY);
+    } catch (err) {
+      // ignore
+    }
+  },
+
+  _pickerValueFrom(city, province) {
+    const nextCity = String(city || '').trim();
+    const nextProvince = String(province || '').trim();
+    if (!nextCity) return [];
+    if (nextProvince) return [nextProvince, nextCity];
+    return [];
+  },
+
+  _isAuditModeNow() {
+    return isAuditMode(app);
+  },
+
+  _canSwitchStore(store) {
+    if (this._isAuditModeNow()) return false;
+    if (!store) return false;
+    return (app.getVisitStoreSource && app.getVisitStoreSource()) === 'search';
+  },
+
+  _effectiveStore(store) {
+    return store || null;
+  },
+
   _reserveCardCopy(store, cards) {
     if (!store) {
+      if (this._isAuditModeNow()) {
+        return {
+          reserveCardTitle: '预约服务',
+          reserveCardSub: '通过商家分享链接进入后预约',
+          reserveButtonText: '请先绑定店铺'
+        };
+      }
       return {
-        reserveCardTitle: '预约服务',
-        reserveCardSub: '通过商家分享链接进入后预约',
-        reserveButtonText: '请先绑定店铺'
+        reserveCardTitle: '预约寄养',
+        reserveCardSub: '看看附近合作店铺，或成为这座城市的第一家',
+        reserveButtonText: '选择店铺'
       };
     }
     const list = cards || [];
@@ -491,7 +573,7 @@ Page({
   },
 
   _applyPageData(payload) {
-    const currentStore = payload.currentStore;
+    const currentStore = this._effectiveStore(payload.currentStore);
     const homeServiceCards = this._homeServiceCards(currentStore);
     this.setData({
       ...this._buildUserViewState(payload.userInfo),
@@ -504,6 +586,7 @@ Page({
       auditMode: typeof payload.auditMode === 'boolean' ? payload.auditMode : isAuditMode(app),
       introExpandable: isIntroExpandable(currentStore && currentStore.intro),
       homeServiceCards,
+      canSwitchStore: this._canSwitchStore(currentStore),
       ...this._reserveCardCopy(currentStore, homeServiceCards)
     });
     this._syncNavTitle(currentStore);
@@ -644,12 +727,12 @@ Page({
   _maybeShowNativeAd() {
     if (!shouldShowUserNativeAd()) return;
     if (hasShownNativeAdThisLaunch()) return;
-    if (this.data.inviteModalVisible || this.data.introPreviewVisible || this.data.reservePickerVisible) {
+    if (this.data.inviteModalVisible || this.data.introPreviewVisible || this.data.reservePickerVisible || this.data.cityStorePickerVisible) {
       return;
     }
     setTimeout(() => {
       if (hasShownNativeAdThisLaunch()) return;
-      if (this.data.inviteModalVisible || this.data.introPreviewVisible || this.data.reservePickerVisible) {
+      if (this.data.inviteModalVisible || this.data.introPreviewVisible || this.data.reservePickerVisible || this.data.cityStorePickerVisible) {
         return;
       }
       if (!markNativeAdShown()) return;
@@ -725,16 +808,146 @@ Page({
     wx.navigateTo({ url });
   },
 
-  onGoReserve() {
-    const storeId = app.getStoreId();
-    const currentStore = app.getCurrentStore();
-    if (!storeId || !currentStore) {
-      wx.showModal({
-        title: '暂无法预约',
-        content: '您还未绑定店铺，请先通过商家分享链接进入店铺后再预约服务。',
-        showCancel: false,
-        confirmText: '我知道了'
+  _readFuzzyLocation() {
+    return new Promise((resolve) => {
+      if (!wx.getFuzzyLocation) {
+        resolve({});
+        return;
+      }
+      wx.getFuzzyLocation({
+        type: 'wgs84',
+        success: (res) => resolve({
+          latitude: res.latitude,
+          longitude: res.longitude
+        }),
+        fail: () => resolve({})
       });
+    });
+  },
+
+  _withStoreInitials(list) {
+    return (list || []).map((item) => ({
+      ...item,
+      nameInitial: String((item && item.name) || '店').slice(0, 1)
+    }));
+  },
+
+  _applyDiscoverResult(res, extra = {}) {
+    const city = String((res && res.city) || extra.city || '').trim();
+    const province = String((res && res.province) || extra.province || '').trim();
+    this.setData({
+      cityStoreLoading: false,
+      cityStoreCity: city,
+      cityStoreProvince: province,
+      cityStoreLocated: !!city,
+      cityStoreManual: !!extra.manual,
+      cityStoreEmpty: !!(res && res.emptyInCity) || !((res && res.stores) || []).length,
+      cityStoreList: this._withStoreInitials((res && res.stores) || []),
+      cityStoreValue: this._pickerValueFrom(city, province)
+    });
+  },
+
+  _fetchGuestStores(options = {}) {
+    const city = String(options.city || '').trim();
+    const province = String(options.province || '').trim();
+    const manual = !!options.manual;
+    this.setData({
+      cityStoreLoading: true,
+      cityStoreEmpty: false,
+      cityStoreList: []
+    });
+    const request = city
+      ? Promise.resolve(storeApi.discoverGuestStores({ city, province }))
+      : this._readFuzzyLocation().then((coords) => storeApi.discoverGuestStores(coords || {}));
+    return request.then((res) => {
+      if (!res || res.success === false) {
+        throw new Error((res && res.errMsg) || '加载店铺失败');
+      }
+      this._applyDiscoverResult(res, { city, province, manual });
+    }).catch((err) => {
+      console.error('[index] discoverGuestStores failed', err);
+      this.setData({
+        cityStoreLoading: false,
+        cityStoreEmpty: true,
+        cityStoreList: []
+      });
+      wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' });
+    });
+  },
+
+  _openCityStorePicker() {
+    this.setData({
+      cityStorePickerVisible: true,
+      cityStoreLoading: true,
+      cityStoreCity: '',
+      cityStoreProvince: '',
+      cityStoreValue: [],
+      cityStoreManual: false,
+      cityStoreLocated: false,
+      cityStoreEmpty: false,
+      cityStoreList: []
+    });
+    this._setTabBarHidden(true);
+    const saved = this._readManualGuestCity();
+    if (saved && saved.city) {
+      this.setData({
+        cityStoreCity: saved.city,
+        cityStoreProvince: saved.province || '',
+        cityStoreValue: this._pickerValueFrom(saved.city, saved.province),
+        cityStoreManual: true
+      });
+      this._fetchGuestStores({
+        city: saved.city,
+        province: saved.province,
+        manual: true
+      });
+      return;
+    }
+    this._fetchGuestStores();
+  },
+
+  onChangeGuestCity(e) {
+    const value = (e && e.detail && e.detail.value) || [];
+    const province = String(value[0] || '').trim();
+    const city = String(value[1] || value[0] || '').trim();
+    if (!city) return;
+    this._saveManualGuestCity(city, province);
+    this.setData({
+      cityStoreValue: value,
+      cityStoreCity: city,
+      cityStoreProvince: province,
+      cityStoreManual: true,
+      cityStoreLocated: true
+    });
+    this._fetchGuestStores({ city, province, manual: true });
+  },
+
+  onUseLocatedCity() {
+    this._clearManualGuestCity();
+    this.setData({
+      cityStoreManual: false,
+      cityStoreValue: [],
+      cityStoreCity: '',
+      cityStoreProvince: ''
+    });
+    this._fetchGuestStores();
+  },
+
+  onGoReserve() {
+    const currentStore = this._effectiveStore(app.getCurrentStore() || app.getUserStoreView());
+    const storeId = currentStore && (currentStore.store_id || app.getStoreId());
+    if (!storeId || !currentStore) {
+      if (this._isAuditModeNow()) {
+        wx.showModal({
+          title: '暂无法预约',
+          content: '您还未绑定店铺，请先通过商家分享链接进入店铺后再预约服务。',
+          showCancel: false,
+          confirmText: '我知道了'
+        });
+        return;
+      }
+      this.setData({ cityStoreFromSwitch: false });
+      this._openCityStorePicker();
       return;
     }
     const cards = this.data.homeServiceCards || [];
@@ -743,6 +956,67 @@ Page({
       return;
     }
     this._navigateToReserve(cards.length === 1 ? cards[0].key : '');
+  },
+
+  onCloseCityStorePicker() {
+    this.setData({
+      cityStorePickerVisible: false,
+      cityStoreBinding: false,
+      cityStoreFromSwitch: false
+    });
+    this._setTabBarHidden(false);
+  },
+
+  onSwitchStore() {
+    if (!this._canSwitchStore(this.data.currentStore)) return;
+    this.setData({ cityStoreFromSwitch: true });
+    this._openCityStorePicker();
+  },
+
+  onCityStorePickerTouchMove() {},
+
+  onPickCityStore(e) {
+    const storeId = String((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || '').trim();
+    if (!storeId || this.data.cityStoreBinding) return;
+    this.setData({ cityStoreBinding: true });
+    wx.showLoading({ title: '正在进入店铺', mask: true });
+    Promise.resolve(app.bindStore(storeId, { force: true, syncUser: true, source: 'search' }))
+      .then((store) => {
+        wx.hideLoading();
+        if (!store || !store.store_id) {
+          this.setData({ cityStoreBinding: false });
+          wx.showToast({ title: '进入店铺失败', icon: 'none' });
+          return;
+        }
+        const fromSwitch = !!this.data.cityStoreFromSwitch;
+        this.setData({
+          cityStorePickerVisible: false,
+          cityStoreBinding: false,
+          cityStoreFromSwitch: false
+        });
+        this._setTabBarHidden(false);
+        this._refreshPage();
+        if (fromSwitch) {
+          wx.showToast({ title: '已切换店铺', icon: 'success' });
+          return;
+        }
+        const cards = this._homeServiceCards(store);
+        if (cards.length > 1) {
+          this.setData({ homeServiceCards: cards, reservePickerVisible: true });
+          return;
+        }
+        this._navigateToReserve(cards.length === 1 ? cards[0].key : '');
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        this.setData({ cityStoreBinding: false });
+        wx.showToast({ title: (err && err.message) || '进入店铺失败', icon: 'none' });
+      });
+  },
+
+  onBecomeFirstStore() {
+    this.onCloseCityStorePicker();
+    this.onSwitchToMerchant();
   },
 
   onGoPetInsurance() {
@@ -761,6 +1035,29 @@ Page({
     this._navigateToReserve(line);
   },
   onGoPets() { wx.navigateTo({ url: '/packageUser/user/pets/pets' }); },
+
+  onGoPersonality() {
+    const pets = app.getPets() || [];
+    if (!pets.length) {
+      wx.navigateTo({ url: '/packageUser/user/pets/pets' });
+      return;
+    }
+    const first = pets[0];
+    const petId = first && first.id ? encodeURIComponent(first.id) : '';
+    wx.navigateTo({
+      url: petId
+        ? `/packageUser/user/pet-butler/personality/personality?petId=${petId}`
+        : '/packageUser/user/pet-butler/personality/personality'
+    });
+  },
+
+  onGoPetPersonality(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({
+      url: `/packageUser/user/pet-butler/personality/personality?petId=${encodeURIComponent(id)}`
+    });
+  },
   onGoOrders() { wx.switchTab({ url: '/pages/orders/orders' }); },
   onGoDaily(e) { wx.navigateTo({ url: '/packageUser/user/pet-daily/pet-daily?id=' + e.currentTarget.dataset.id }); },
 

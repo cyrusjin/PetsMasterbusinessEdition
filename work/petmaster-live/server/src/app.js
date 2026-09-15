@@ -22,6 +22,7 @@ const {
 const { startDailyScheduleWorker, initDailyDatabase } = require('./services/dailyService');
 const { initLedgerDatabase } = require('./services/ledgerService');
 const { initializeMembership, startMembershipPaymentReconcileWorker } = require('./services/membershipService');
+const { initialize: initializeUserActivity } = require('./services/userActivityService');
 
 async function main() {
   await connectDb();
@@ -45,6 +46,11 @@ async function main() {
   }
   await require('./services/orderPaymentService').initialize();
   await require('./services/collectionOnboardingService').initialize();
+  try {
+    await initializeUserActivity();
+  } catch (err) {
+    console.warn('[userActivity] init database failed', (err && err.message) || err);
+  }
   startDailyScheduleWorker();
   startMembershipPaymentReconcileWorker();
   // 入驻无订单引导推送已关闭（原 startMerchantNoOrderRemindWorker）

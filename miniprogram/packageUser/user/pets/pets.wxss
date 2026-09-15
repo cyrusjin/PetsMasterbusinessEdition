@@ -1,7 +1,20 @@
 .pet-photo { width: 80rpx; height: 80rpx; border-radius: 50%; border: 3rpx solid #F2DEC9; }
+.pet-main {
+  flex: 1;
+  min-width: 0;
+}
+.pet-info {
+  flex: 1;
+  min-width: 0;
+}
+.pet-name-row {
+  flex-wrap: wrap;
+  align-items: center;
+}
 .pet-detail-row { display: flex; align-items: center; margin-top: 16rpx; padding-top: 16rpx; border-top: 1rpx solid #F2DEC9; font-size: 24rpx; }
 .pet-actions {
   display: flex;
+  align-items: center;
   gap: 32rpx;
   margin-top: 16rpx;
   padding-top: 16rpx;
@@ -10,5 +23,15 @@
 .link-action {
   font-size: 24rpx;
   color: #E98657;
+}
+.personality-action {
+  flex-shrink: 0;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: #FFF1E7;
+  color: #E98657;
+  font-size: 20rpx;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .gap-12 { gap: 12rpx; }

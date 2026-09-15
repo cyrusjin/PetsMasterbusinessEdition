@@ -141,3 +141,84 @@
   flex: none;
   text-align: center;
 }
+
+.link-action {
+  font-size: 24rpx;
+  color: #E98657;
+  font-weight: 650;
+}
+
+.personality-panel {
+  margin-bottom: 24rpx;
+  padding: 22rpx;
+  border-radius: 18rpx;
+  background: #FFF4E9;
+}
+
+.personality-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.personality-kicker {
+  display: block;
+  color: #E98657;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.personality-code {
+  display: block;
+  margin-top: 6rpx;
+  color: #E98657;
+  font-size: 36rpx;
+  font-weight: 800;
+  letter-spacing: 4rpx;
+}
+
+.personality-name {
+  display: block;
+  margin-top: 4rpx;
+  color: #4E3729;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.personality-sub {
+  display: block;
+  margin-top: 4rpx;
+  color: #8C6A52;
+  font-size: 22rpx;
+}
+
+.personality-summary {
+  display: block;
+  margin-top: 16rpx;
+  color: #5B4535;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.personality-empty {
+  margin-bottom: 24rpx;
+  padding: 22rpx;
+  border-radius: 18rpx;
+  background: #FFF8F0;
+  border: 2rpx dashed #F2D8D2;
+}
+
+.personality-empty-title {
+  display: block;
+  color: #4E3729;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.personality-empty-sub {
+  display: block;
+  margin-top: 6rpx;
+  color: #A98972;
+  font-size: 22rpx;
+}

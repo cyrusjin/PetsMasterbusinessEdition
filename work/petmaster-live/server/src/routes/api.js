@@ -22,7 +22,7 @@ function guardedAction(actions, handler) {
       const blocked = await membershipService.guardMerchantAction(event, openid);
       if (blocked) return blocked;
     }
-    return handler(event, openid);
+    return handler(event, openid, req);
   });
 }
 
@@ -33,7 +33,7 @@ function guardedExceptActions(allowedActions, handler) {
       const blocked = await membershipService.guardMerchantAction(event, openid);
       if (blocked) return blocked;
     }
-    return handler(event, openid);
+    return handler(event, openid, req);
   });
 }
 
@@ -50,8 +50,10 @@ storeRouter.post('/', authRequired, guardedExceptActions([
   'submitPromotionProof',
   'createMembershipPay',
   'queryMembershipPay',
-  'redeemMembershipCode'
-], (event, openid) => storeService.handle(event, openid)));
+  'redeemMembershipCode',
+  'getStore',
+  'discoverGuestStores'
+], (event, openid, req) => storeService.handle(event, openid, req)));
 
 const orderRouter = express.Router();
 // 支付、查单、退款不能被订阅过期拦截；业务接口内部仍校验订单归属。

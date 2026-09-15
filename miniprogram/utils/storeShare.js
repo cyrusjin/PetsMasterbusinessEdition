@@ -100,6 +100,7 @@ function pickShopLogo(shop) {
 }
 
 let prefetchedShareImage = { source: '', path: '' };
+let prefetchedCustomShareImage = { source: '', path: '' };
 
 function downloadShareTempFile(url) {
   return new Promise((resolve, reject) => {
@@ -156,6 +157,40 @@ function prefetchStoreShareImage(shop) {
   return resolveImageUrl(logo).then(remember).catch(() => DEFAULT_SHARE_IMAGE);
 }
 
+function resolvePrefetchedShareImage(url) {
+  const source = String(url || '').trim();
+  if (!source) return '';
+  if (prefetchedCustomShareImage.source === source && prefetchedCustomShareImage.path) {
+    return prefetchedCustomShareImage.path;
+  }
+  if (isLocalImagePath(source)) return source;
+  return peekCachedPath(source) || '';
+}
+
+function prefetchShareImage(url) {
+  const source = String(url || '').trim();
+  if (!source) {
+    prefetchedCustomShareImage = { source: '', path: '' };
+    return Promise.resolve('');
+  }
+  const ready = resolvePrefetchedShareImage(source);
+  if (ready) {
+    prefetchedCustomShareImage = { source, path: ready };
+    return Promise.resolve(ready);
+  }
+  const remember = (path) => {
+    const resolved = String(path || '').trim();
+    prefetchedCustomShareImage = { source, path: resolved };
+    return resolved;
+  };
+  if (source.indexOf('https://') === 0 || source.indexOf('http://') === 0) {
+    return downloadShareTempFile(source)
+      .then(remember)
+      .catch(() => resolveImageUrl(source).then(remember).catch(() => ''));
+  }
+  return resolveImageUrl(source).then(remember).catch(() => '');
+}
+
 function buildStoreShareConfig(shop, storeId, serviceLine, tracking) {
   const id = resolveShareStoreId(shop) || (storeId || '').trim();
   const line = resolveShareServiceLine(shop, serviceLine);
@@ -167,6 +202,46 @@ function buildStoreShareConfig(shop, storeId, serviceLine, tracking) {
     title,
     path: buildSharePath(id, line, tracking),
     imageUrl: resolveShareImageUrl(shop)
+  };
+}
+
+function buildUserHomeShareConfig(extra = {}) {
+  let app = null;
+  try {
+    app = getApp();
+  } catch (err) {
+    app = null;
+  }
+  const shop = extra.shop
+    || (app && app.getUserStoreView && app.getUserStoreView())
+    || (app && app.getCurrentStore && app.getCurrentStore())
+    || (app && app.getShop && app.getShop())
+    || {};
+  const storeId = String(
+    extra.storeId
+    || resolveShareStoreId(shop)
+    || (app && app.getShareStoreId && app.getShareStoreId())
+    || ''
+  ).trim();
+  const source = String(extra.source || 'user_share').trim().slice(0, 40);
+  const shareCode = storeId ? growth.createShareCode(storeId) : '';
+  if (storeId) {
+    growth.recordPromotionEvent({
+      store_id: storeId,
+      shareCode,
+      source,
+      type: 'share'
+    }).catch(() => {});
+  }
+  const parts = [];
+  if (storeId) parts.push(`store_id=${encodeURIComponent(storeId)}`);
+  if (shareCode) parts.push(`shareCode=${encodeURIComponent(shareCode)}`);
+  if (storeId && source) parts.push(`source=${encodeURIComponent(source)}`);
+  prefetchStoreShareImage(shop);
+  return {
+    title: extra.title || '来看看这家宠物店',
+    path: parts.length ? `${USER_MINI_PROGRAM_HOME}?${parts.join('&')}` : USER_MINI_PROGRAM_HOME,
+    imageUrl: extra.imageUrl || resolveShareImageUrl(shop)
   };
 }
 
@@ -316,11 +391,14 @@ module.exports = {
   pickShopLogo,
   resolveShareImageUrl,
   prefetchStoreShareImage,
+  prefetchShareImage,
+  resolvePrefetchedShareImage,
   preloadGuestSharePicker,
   buildSharePath,
   buildStaffSharePath,
   resolveShareStoreId,
   buildStoreShareConfig,
+  buildUserHomeShareConfig,
   buildStaffShareConfig,
   buildTimelineShareConfig,
   buildMerchantShareConfig,

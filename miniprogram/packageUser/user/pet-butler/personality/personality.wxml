@@ -1,0 +1,92 @@
+<view class="page">
+  <view wx:if="{{step === 'intro'}}">
+    <view class="hero">
+      <text class="hero-kicker">宠物 MBTI</text>
+      <text class="hero-title">它到底是哪种怪咖</text>
+      <text class="hero-sub">8 道灵魂拷问，测出它是霸总、咸鱼，还是家里的项目经理。纯属娱乐，请勿拿去跟它对质。</text>
+    </view>
+
+    <view class="card" wx:if="{{pets.length}}">
+      <view class="form-group">
+        <text class="form-label">今天测谁</text>
+        <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
+          <view class="picker-value">{{petNames[petIndex]}} <text class="picker-arrow">更换</text></view>
+        </picker>
+      </view>
+      <view class="existing-box" wx:if="{{existing}}">
+        <text class="existing-label">上次测出来是</text>
+        <text class="existing-code">{{existing.typeId}}</text>
+        <text class="existing-name">{{existing.typeName}}</text>
+        <text class="existing-sub">{{existing.subtitle}}</text>
+      </view>
+    </view>
+
+    <view class="card empty-card" wx:else>
+      <text class="empty-title">还没有宠物档案</text>
+      <text class="empty-sub">先把毛孩子加进来，再测它是哪门子人格。</text>
+    </view>
+
+    <view class="card tips">
+      <text class="tips-title">怎么答</text>
+      <text class="tips-line">选更像它平时的那个，不要选你希望它成为的样子。</text>
+      <text class="tips-line">没有标准答案，只有更离谱的答案。</text>
+    </view>
+
+    <button class="btn-primary start-btn" bindtap="onStart">{{pets.length ? (existing ? '再测一次' : '开始灵魂拷问') : '去添加宠物'}}</button>
+    <view class="ghost-btn" wx:if="{{existing}}" bindtap="onViewExisting">看上次结果</view>
+  </view>
+
+  <view wx:elif="{{step === 'quiz'}}" class="quiz">
+    <view class="quiz-head">
+      <text class="quiz-back" bindtap="onPrevQuestion">{{qIndex === 0 ? '退出' : '上一题'}}</text>
+      <text class="quiz-progress">{{progressText}}</text>
+    </view>
+    <view class="progress-track">
+      <view class="progress-fill" style="width: {{progressPercent}}%;"></view>
+    </view>
+    <view class="question-card" wx:if="{{currentQuestion}}">
+      <text class="question-dim">{{currentQuestion.dimLabel}}</text>
+      <text class="question-text">{{currentQuestion.prompt}}</text>
+    </view>
+    <view class="option-list" wx:if="{{currentQuestion}}">
+      <view
+        class="option-item {{answers[qIndex] === item.letter ? 'on' : ''}}"
+        wx:for="{{currentQuestion.options}}"
+        wx:key="letter"
+        bindtap="onSelectOption"
+        data-letter="{{item.letter}}"
+      >
+        <text class="option-tag">{{item.tag}}</text>
+        <text class="option-text">{{item.text}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:elif="{{step === 'result' && result}}" class="result-page">
+    <view class="result-hero">
+      <text class="result-kicker">{{petName}} 的宠物 MBTI</text>
+      <text class="result-code">{{result.typeId}}</text>
+      <text class="result-name">{{result.typeName}}</text>
+      <text class="result-sub">{{result.subtitle}}</text>
+      <text class="result-summary">{{result.summary}}</text>
+      <text class="saving-hint" wx:if="{{saving}}">正在写进档案…</text>
+    </view>
+
+    <view class="card">
+      <text class="card-title">给铲屎官的吐槽</text>
+      <text class="tip-line" wx:for="{{result.careTips}}" wx:key="*this">{{item}}</text>
+    </view>
+
+    <view class="card">
+      <text class="card-title">寄养店员工须知</text>
+      <text class="tip-line" wx:for="{{result.boardingTips}}" wx:key="*this">{{item}}</text>
+    </view>
+
+    <view class="card disclaimer">
+      <text class="disclaimer-text">这是玩梗版宠物 MBTI，不是心理学鉴定，也不是训宠方案。测完请继续好好投喂。</text>
+    </view>
+
+    <button class="btn-primary start-btn" open-type="share">分享给好友</button>
+    <view class="ghost-btn" bindtap="onRetake">我不服，再测</view>
+  </view>
+</view>

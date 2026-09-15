@@ -323,11 +323,16 @@ async function bindUserStore(event, openid) {
 
   const doc = await getOrCreateUser(openid);
   const now = Date.now();
-  // 换绑只改 visit；若已有商家身份，显式保留 merchantStoreId，避免被 visit 覆盖
   const merchantStoreId = userFields.resolveMerchantStoreId(doc);
+  const requested = String(event.source || event.visitStoreSource || '').trim();
+  const existing = String(doc.visitStoreSource || '').trim();
+  const visitStoreSource = requested === 'search' || requested === 'share'
+    ? requested
+    : (existing === 'search' || existing === 'share' ? existing : 'share');
   const updateData = {
     visitStoreId: storeId,
     store_id: storeId,
+    visitStoreSource,
     updateTime: now
   };
   if (merchantStoreId) {
@@ -336,6 +341,22 @@ async function bindUserStore(event, openid) {
 
   const updated = await db.updateById('users', doc._id, updateData);
   return { success: true, user: formatUser(updated), store: storeDocs[0] };
+}
+
+async function unbindUserStore(openid) {
+  if (!openid) {
+    return { success: false, errMsg: '无法获取用户身份' };
+  }
+  const doc = await getOrCreateUser(openid);
+  const merchantStoreId = userFields.resolveMerchantStoreId(doc);
+  const updated = await db.updateById('users', doc._id, {
+    visitStoreId: '',
+    store_id: '',
+    visitStoreSource: '',
+    merchantStoreId: merchantStoreId || '',
+    updateTime: Date.now()
+  });
+  return { success: true, user: formatUser(updated) };
 }
 
 async function setMerchantProfile(event, openid) {
@@ -435,6 +456,8 @@ async function handle(event, openid, req) {
       return dedupeMyUser(openid);
     case 'bindUserStore':
       return bindUserStore(event, openid);
+    case 'unbindUserStore':
+      return unbindUserStore(openid);
     case 'registerVisitStoreIntent':
       return registerVisitStoreIntent(event, openid, req);
     case 'setMerchantProfile':

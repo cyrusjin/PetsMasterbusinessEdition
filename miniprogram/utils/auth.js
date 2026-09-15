@@ -24,8 +24,10 @@ function dedupeMyUser() {
   return callUserAuth('dedupeMyUser');
 }
 
-function bindUserStore(storeId) {
-  return callUserAuth('bindUserStore', { store_id: storeId });
+function bindUserStore(storeId, source) {
+  const payload = { store_id: storeId };
+  if (source === 'search' || source === 'share') payload.source = source;
+  return callUserAuth('bindUserStore', payload);
 }
 
 function unbindUserStore() {

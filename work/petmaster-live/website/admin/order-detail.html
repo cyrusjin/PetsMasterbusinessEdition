@@ -246,6 +246,9 @@
         isNeutered: formatYesNo(pet.isNeutered),
         hasDogLicense: formatYesNo(pet.hasDogLicense),
         character: pet.character || '--',
+        personality: pet.personality && pet.personality.typeId
+          ? [pet.personality.typeId, pet.personality.typeName].filter(Boolean).join(' ')
+          : '--',
         dietTaboo: pet.dietTaboo || '--',
         specialCare: pet.specialCare || '--',
         remark: pet.remark || '--'
@@ -390,6 +393,7 @@
       const habits = sectionCard('生活习性', [
         '<dl class="apply-detail">',
         kvRow('性格特点', petView.character),
+        kvRow('宠物MBTI', petView.personality),
         kvRow('饮食禁忌', petView.dietTaboo),
         kvRow('特殊照料需求', petView.specialCare),
         kvRow('备注', petView.remark),

@@ -43,12 +43,19 @@ function resolveVisitStoreId(doc) {
   return legacy;
 }
 
+function resolveVisitStoreSource(doc) {
+  const source = String((doc && doc.visitStoreSource) || '').trim();
+  if (source === 'search' || source === 'share') return source;
+  return resolveVisitStoreId(doc) ? 'share' : '';
+}
+
 function formatUserStoreFields(doc) {
   const merchantStoreId = resolveMerchantStoreId(doc);
   const visitStoreId = resolveVisitStoreId(doc);
   return {
     merchantStoreId,
     visitStoreId,
+    visitStoreSource: resolveVisitStoreSource(doc),
     // 兼容旧客户端：宠主端 bindStore 仍读 store_id
     store_id: visitStoreId
   };
@@ -60,5 +67,6 @@ module.exports = {
   isMerchantApprovedFromDoc,
   resolveMerchantStoreId,
   resolveVisitStoreId,
+  resolveVisitStoreSource,
   formatUserStoreFields
 };

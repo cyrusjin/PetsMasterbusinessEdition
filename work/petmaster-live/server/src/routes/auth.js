@@ -22,6 +22,16 @@ router.post('/login', async (req, res) => {
       unionid: session.unionid || '',
       client
     });
+    try {
+      const userActivityService = require('../services/userActivityService');
+      userActivityService.recordActivity({
+        openid: (user && user.openid) || session.openid,
+        client,
+        user
+      });
+    } catch (err) {
+      console.warn('[auth] record login activity failed', (err && err.message) || err);
+    }
     const canonicalOpenid = (user && user.openid) || session.openid;
     const token = signToken({
       openid: canonicalOpenid,

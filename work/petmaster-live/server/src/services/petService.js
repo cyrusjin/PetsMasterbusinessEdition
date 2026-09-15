@@ -1,6 +1,7 @@
 const db = require('../db');
 const oss = require('../oss');
 const identity = require('./identity');
+const { normalizePersonality } = require('./petPersonality');
 
 const PET_TYPES = ['小型犬', '中型犬', '大型犬', '猫咪', '其他'];
 const YES_NO_VALUES = ['是', '否'];
@@ -77,6 +78,7 @@ function formatPet(doc) {
     isNeutered: health.isNeutered,
     hasDogLicense: health.hasDogLicense,
     character: doc.character || '',
+    personality: normalizePersonality(doc.personality),
     behaviorHabits: doc.behaviorHabits || '',
     dietTaboo: doc.dietTaboo || '',
     specialCare: doc.specialCare || '',
@@ -193,6 +195,7 @@ function buildPetData(pet, ownerOpenid) {
     isNeutered: health.isNeutered,
     hasDogLicense: health.hasDogLicense,
     character: pet.character || '',
+    personality: normalizePersonality(pet.personality),
     behaviorHabits: String(pet.behaviorHabits || '').trim(),
     dietTaboo: pet.dietTaboo || '',
     specialCare: pet.specialCare || '',
@@ -379,6 +382,9 @@ async function savePet(event, openid) {
       const existing = await ensurePetDocumentId(data[0]);
       if (!petData.photo && existing.photo) {
         petData.photo = existing.photo;
+      }
+      if (!petData.personality && existing.personality) {
+        petData.personality = normalizePersonality(existing.personality);
       }
       const updated = await db.updateById('pets', existing._id, petData);
       await addPetIdToUser(openid, existing.pet_id || petId);

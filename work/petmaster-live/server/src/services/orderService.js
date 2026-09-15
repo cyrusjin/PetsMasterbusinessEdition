@@ -5,6 +5,7 @@ const userFields = require('./userFields');
 const notifyService = require('./notifyService');
 const crypto = require('crypto');
 const membershipService = require('./membershipService');
+const { normalizePersonality, pickPersonality } = require('./petPersonality');
 
 const INSURANCE_SHARE_COLLECTION = 'insurance_share_links';
 const INSURANCE_EVENT_COLLECTION = 'insurance_events';
@@ -241,6 +242,7 @@ function buildPetSnapshotFromDoc(pet) {
     isNeutered: pet.isNeutered || '',
     hasDogLicense: pet.hasDogLicense || '',
     character: pet.character || '',
+    personality: normalizePersonality(pet.personality),
     dietTaboo: pet.dietTaboo || '',
     specialCare: pet.specialCare || '',
     remark: pet.remark || ''
@@ -266,7 +268,8 @@ function mergePetSnapshot(stored, petDoc, orderDoc) {
     breed,
     gender,
     age,
-    weight
+    weight,
+    personality: pickPersonality(fromStored.personality, fromPet.personality)
   };
 }
 
@@ -1198,6 +1201,7 @@ function buildClaimPetFromOrder(order, sourceDoc) {
     isNeutered: src.isNeutered || snap.isNeutered || '否',
     hasDogLicense: src.hasDogLicense || snap.hasDogLicense || '否',
     character: src.character || snap.character || '',
+    personality: pickPersonality(src.personality, snap.personality),
     behaviorHabits: src.behaviorHabits || snap.behaviorHabits || '',
     dietTaboo: src.dietTaboo || snap.dietTaboo || '',
     specialCare: src.specialCare || snap.specialCare || '',
@@ -1233,6 +1237,7 @@ async function clonePetForClaim(order, sourceDoc, ownerOpenid) {
     isNeutered: fields.isNeutered || '',
     hasDogLicense: fields.hasDogLicense || '',
     character: fields.character || '',
+    personality: normalizePersonality(fields.personality),
     behaviorHabits: fields.behaviorHabits || '',
     dietTaboo: fields.dietTaboo || '',
     specialCare: fields.specialCare || '',
@@ -1386,13 +1391,14 @@ async function recordPromotionEvent(event, openid) {
   const type = normalizeGrowthType(event.type || event.eventType);
   if (!storeId || !type) return { success: false, errMsg: '推广事件参数无效' };
   if (!(await getStoreById(storeId))) return { success: false, errMsg: '店铺不存在' };
-  if (type === 'share' && !(await assertStoreManager(storeId, openid))) {
+  const source = String(event.source || '').trim().slice(0, 40);
+  const allowGuestShare = source === 'personality';
+  if (type === 'share' && !allowGuestShare && !(await assertStoreManager(storeId, openid))) {
     return { success: false, errMsg: '无权记录该店铺推广' };
   }
   await ensureGrowthCollections();
   const now = Date.now();
   const shareCode = String(event.shareCode || '').trim().slice(0, 80);
-  const source = String(event.source || '').trim().slice(0, 40);
   const doc = {
     store_id: storeId,
     type,

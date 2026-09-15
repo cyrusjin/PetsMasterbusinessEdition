@@ -28,6 +28,7 @@
         "user/pet-butler/food-check/food-check",
         "user/pet-butler/age-calc/age-calc",
         "user/pet-butler/weight-check/weight-check",
+        "user/pet-butler/personality/personality",
         "user/pet-butler/walk/walk",
         "user/pet-butler/milestones/milestones",
         "user/reserve/reserve",
@@ -152,10 +153,11 @@
   "lazyCodeLoading": "requiredComponents",
   "permission": {
     "scope.userLocation": {
-      "desc": "用于选择寄养地址与接送位置"
+      "desc": "用于匹配所在城市合作寄养店，以及选择寄养与接送地址"
     }
   },
   "requiredPrivateInfos": [
-    "chooseLocation"
+    "chooseLocation",
+    "getFuzzyLocation"
   ]
 }

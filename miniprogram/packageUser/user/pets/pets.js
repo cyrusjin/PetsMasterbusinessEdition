@@ -1,5 +1,6 @@
 const app = getApp();
 const { formatAgeText } = require('../../../utils/petAge');
+const personalityUtil = require('../../../utils/petPersonality');
 
 Page({
   data: {
@@ -24,11 +25,11 @@ Page({
   },
 
   _renderPets(pets) {
-    const next = (pets || []).map((pet) => ({
+    const next = personalityUtil.attachToPets(pets || []).map((pet) => ({
       ...pet,
       ageText: formatAgeText(pet) || `${pet.age || '?'}岁`
     }));
-    const sig = next.map((pet) => [pet.id, pet.updateTime || 0, pet.name, pet.photo, pet.ageText].join(':')).join('|');
+    const sig = next.map((pet) => [pet.id, pet.updateTime || 0, pet.name, pet.photo, pet.ageText, pet.personalityName].join(':')).join('|');
     if (sig === this._petsSig) return;
     this._petsSig = sig;
     this.setData({ pets: next });
@@ -45,6 +46,15 @@ Page({
   onMembers(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({ url: '/packageUser/user/pet-members/pet-members?id=' + id });
+  },
+
+  onPersonality(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.navigateTo({
+      url: id
+        ? `/packageUser/user/pet-butler/personality/personality?petId=${encodeURIComponent(id)}`
+        : '/packageUser/user/pet-butler/personality/personality'
+    });
   },
 
   onDelete(e) {

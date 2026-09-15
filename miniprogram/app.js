@@ -62,6 +62,7 @@ App({
     currentStore: null,
     merchantStoreId: '',
     pendingEntryStoreId: '',
+    pendingVisitStoreSource: '',
     pendingSharedDailyLogId: '',
     pendingStaffInviteStoreId: '',
     pendingProxyClaimToken: '',
@@ -923,7 +924,7 @@ App({
           this._ensureDefaultLanding({});
           return null;
         }
-        return this.bindStore(id, { syncUser: true, force: true })
+        return this.bindStore(id, { syncUser: true, force: true, source: 'share' })
           .then(() => this._flushPendingStoreBinding())
           .then(() => this.getCurrentStore());
       });
@@ -1070,6 +1071,10 @@ App({
   bindStore(storeId, options = {}) {
     const force = !!(options && options.force);
     const syncUser = options.syncUser !== false;
+    const source = options.source === 'search' || options.source === 'share'
+      ? options.source
+      : '';
+    if (source) this._setVisitStoreSource(source);
     if (!storeId) {
       return Promise.resolve(this.getCurrentStore());
     }
@@ -1116,7 +1121,7 @@ App({
             storeName: store.name
           });
           if (syncUser) {
-            return this._maybeSyncUserStore(storeId).then(() => store);
+            return this._maybeSyncUserStore(storeId, source).then(() => store);
           }
           return store;
         }
@@ -1126,7 +1131,7 @@ App({
         }
         const store = applyFallback();
         if (store && syncUser && !merchantDemo.isDemoEntityId(storeId)) {
-          return this._maybeSyncUserStore(storeId).then(() => store);
+          return this._maybeSyncUserStore(storeId, source).then(() => store);
         }
         return store;
       })
@@ -1140,14 +1145,17 @@ App({
     return !!(this.isUserClientMode() || !this.canAccessMerchantBackend());
   },
 
-  _maybeSyncUserStore(storeId) {
+  _maybeSyncUserStore(storeId, source) {
     if (!this._shouldSyncUserStore()) {
       return Promise.resolve(null);
     }
     if (this.globalData.isLoggedIn) {
-      return this._syncUserStoreBinding(storeId);
+      return this._syncUserStoreBinding(storeId, source);
     }
     this.globalData.pendingEntryStoreId = storeId;
+    if (source === 'search' || source === 'share') {
+      this.globalData.pendingVisitStoreSource = source;
+    }
     return Promise.resolve(null);
   },
 
@@ -1160,23 +1168,53 @@ App({
     if (!storeId || !this._shouldSyncUserStore()) {
       return Promise.resolve(null);
     }
-    return this._syncUserStoreBinding(storeId).then((res) => {
+    return this._syncUserStoreBinding(storeId, this.globalData.pendingVisitStoreSource).then((res) => {
       if (res && res.success) {
         this.globalData.pendingEntryStoreId = '';
+        this.globalData.pendingVisitStoreSource = '';
       }
       return res;
     });
   },
 
-  _syncUserStoreBinding(storeId) {
+  getVisitStoreSource() {
+    const user = this.globalData.userInfo || {};
+    const fromUser = String(user.visitStoreSource || '').trim();
+    if (fromUser === 'search' || fromUser === 'share') return fromUser;
+    const pending = String(this.globalData.pendingVisitStoreSource || '').trim();
+    if (pending === 'search' || pending === 'share') return pending;
+    const local = String(this.getData(STORAGE_KEYS.VISIT_STORE_SOURCE) || '').trim();
+    if (local === 'search' || local === 'share') return local;
+    const visitStoreId = String(user.visitStoreId || this.getStoreId() || '').trim();
+    return visitStoreId ? 'share' : '';
+  },
+
+  _setVisitStoreSource(source) {
+    const next = source === 'search' || source === 'share' ? source : '';
+    this.globalData.pendingVisitStoreSource = next;
+    if (this.globalData.userInfo) {
+      this.globalData.userInfo = {
+        ...this.globalData.userInfo,
+        visitStoreSource: next
+      };
+      this.setData(STORAGE_KEYS.USER, this.globalData.userInfo);
+    }
+    this.setData(STORAGE_KEYS.VISIT_STORE_SOURCE, next);
+  },
+
+  _syncUserStoreBinding(storeId, source) {
     if (!storeId || !this.globalData.env) return Promise.resolve();
     // 演示店仅本地预览，不写 users.visitStoreId
     if (merchantDemo.isDemoEntityId(storeId)) {
       return Promise.resolve({ success: true, skipped: true });
     }
+    const nextSource = source === 'search' || source === 'share'
+      ? source
+      : String(this.globalData.pendingVisitStoreSource || '').trim();
     const now = Date.now();
     if (
       this._lastSyncedVisitStoreId === storeId
+      && this._lastSyncedVisitStoreSource === nextSource
       && this._lastSyncedVisitStoreAt
       && now - this._lastSyncedVisitStoreAt < STORE_BIND_TTL
     ) {
@@ -1186,27 +1224,31 @@ App({
       return this._syncUserStorePromise;
     }
     this._syncingVisitStoreId = storeId;
-    this._syncUserStorePromise = auth.bindUserStore(storeId)
+    this._syncUserStorePromise = auth.bindUserStore(storeId, nextSource)
       .then((res) => {
         if (res.success && res.user) {
           this._lastSyncedVisitStoreId = storeId;
+          this._lastSyncedVisitStoreSource = String(res.user.visitStoreSource || nextSource || '');
           this._lastSyncedVisitStoreAt = Date.now();
           storeDebug.log('users 表已同步 visitStoreId', {
             store_id: res.user.store_id,
             visitStoreId: res.user.visitStoreId,
+            visitStoreSource: res.user.visitStoreSource || nextSource,
             isMerchant: res.user.isMerchant
           });
           const user = {
             ...(this.globalData.userInfo || {}),
             ...res.user,
             visitStoreId: res.user.visitStoreId || storeId,
-            store_id: res.user.visitStoreId || res.user.store_id || storeId
+            store_id: res.user.visitStoreId || res.user.store_id || storeId,
+            visitStoreSource: res.user.visitStoreSource || nextSource || ''
           };
           const merchantCap = hasMerchantCapability(user);
           this.globalData.userInfo = user;
           this.globalData.isMerchant = merchantCap;
           this.globalData.role = this.isUserClientMode() ? 'user' : (merchantCap ? 'merchant' : 'user');
           this.setData(STORAGE_KEYS.USER, user);
+          this._setVisitStoreSource(user.visitStoreSource);
           this._enterUserClientMode(storeId, { applyShell: false });
         } else {
           const errMsg = (res && res.errMsg) || '绑定店铺失败';
@@ -1475,6 +1517,7 @@ App({
       address: remoteUser.address || cached.address || '',
       merchantStoreId,
       visitStoreId,
+      visitStoreSource: pickRemoteString('visitStoreSource') || (visitStoreId ? 'share' : ''),
       store_id: visitStoreId,
       pet_ids: Array.isArray(remoteUser.pet_ids) ? remoteUser.pet_ids : (cached.pet_ids || []),
       merchantStatus: pickRemoteString('merchantStatus'),
@@ -1521,6 +1564,7 @@ App({
       store_id: user.store_id,
       merchantStoreId: user.merchantStoreId,
       visitStoreId: user.visitStoreId,
+      visitStoreSource: user.visitStoreSource,
       merchantStatus: user.merchantStatus,
       meta
     });
@@ -2158,6 +2202,8 @@ App({
     this.setData(STORAGE_KEYS.STORE_ID, '');
     this.setData(STORAGE_KEYS.CURRENT_STORE, null);
     this.setData(STORAGE_KEYS.SAVED_USER_VISIT_STORE_ID, '');
+    this.setData(STORAGE_KEYS.VISIT_STORE_SOURCE, '');
+    this.globalData.pendingVisitStoreSource = '';
 
     const user = this.globalData.userInfo;
     if (user) {
@@ -2165,6 +2211,7 @@ App({
       const next = {
         ...user,
         visitStoreId: '',
+        visitStoreSource: '',
         store_id: ''
       };
       if (merchantStoreId && !(next.merchantStoreId || '').trim()) {
@@ -2184,6 +2231,7 @@ App({
             ...(this.globalData.userInfo || {}),
             ...res.user,
             visitStoreId: '',
+            visitStoreSource: '',
             store_id: res.user.visitStoreId || ''
           };
           this.globalData.userInfo = merged;
@@ -2330,6 +2378,7 @@ App({
         ...pet,
         id,
         weight: pet.weight || existing.weight,
+        personality: pet.personality || existing.personality || null,
         updateTime: Math.max(pet.updateTime || 0, existing.updateTime || 0)
       });
     };
@@ -2382,10 +2431,15 @@ App({
         if (!res.success || !res.pet) {
           throw new Error(res.errMsg || '保存失败');
         }
-        this._upsertLocalPet(res.pet);
+        const merged = {
+          ...pet,
+          ...res.pet,
+          personality: (res.pet && res.pet.personality) || pet.personality || null
+        };
+        this._upsertLocalPet(merged);
         this._syncUserPetIds(res.pet.id, 'add');
         this._petsFetchedAt = 0;
-        return res.pet;
+        return merged;
       });
   },
 
