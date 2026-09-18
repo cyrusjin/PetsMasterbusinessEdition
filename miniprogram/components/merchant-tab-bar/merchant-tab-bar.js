@@ -31,9 +31,10 @@ Component({
       try {
         const app = getApp();
         const disabled = !!(app.isMerchantDisabled && app.isMerchantDisabled());
-        const basicReady = !!(app.hasCompletedBasicStoreSetup && app.hasCompletedBasicStoreSetup());
+        const demo = !!(app.isMerchantDemoMode && app.isMerchantDemoMode());
+        const basicReady = demo || !!(app.hasCompletedBasicStoreSetup && app.hasCompletedBasicStoreSetup());
         this.setData({
-          // 未完成基础设置时整栏隐藏（由门店页不再挂载本组件兜底）
+          // 未完成基础设置时整栏隐藏；展示数据模式可浏览各 Tab
           showBizTabs: !disabled && basicReady,
           basicReady
         });

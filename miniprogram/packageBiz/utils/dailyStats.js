@@ -1,4 +1,4 @@
-const { getOrderServiceKind, getOrderServiceLabel } = require('./dailyCheckable');
+const { getOrderServiceKind, getOrderServiceLabel } = require('../../utils/dailyCheckable');
 
 function normalizeOrderId(value) {
   return String(value || '').trim();
@@ -64,7 +64,7 @@ function countTodayCheckIns(logs, orderId, refDate = new Date()) {
 }
 
 function buildBoardingListWithDailyStats(orders, pets, logs, refDate = new Date()) {
-  const { formatOrderCreateTime } = require('./util');
+  const { formatOrderCreateTime } = require('../../utils/util');
   const todayCountMap = buildTodayCheckCountMap(logs, refDate);
   const list = (orders || []).map((order) => {
     const pet = (pets || []).find((item) => item.id === order.petId);

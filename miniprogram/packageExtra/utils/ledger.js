@@ -1,6 +1,6 @@
-const { callApiService } = require('./api');
-const { STORAGE_KEYS } = require('./constants');
-const merchantDemo = require('./merchantDemo');
+const { callApiService } = require('../../utils/api');
+const { STORAGE_KEYS } = require('../../utils/constants');
+const merchantDemo = require('../../utils/merchantDemo');
 
 const EXPENSE_CATEGORIES = [
   { key: 'rent', label: '房租租金' },

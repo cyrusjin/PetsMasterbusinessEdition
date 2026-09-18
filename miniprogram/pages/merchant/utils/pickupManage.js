@@ -1,6 +1,6 @@
-const { formatOrderStatus } = require('./orderStatus');
-const { formatOrderCreateTime } = require('./util');
-const { resolveOrderDisplayNo } = require('./displayNo');
+const { formatOrderStatus } = require('../../../utils/orderStatus');
+const { formatOrderCreateTime } = require('../../../utils/util');
+const { resolveOrderDisplayNo } = require('../../../utils/displayNo');
 
 const LEG_OUTBOUND = 'outbound';
 const LEG_RETURN = 'return';

@@ -18,7 +18,7 @@
       <text class="demo-banner-text">{{dailyUploadText}} · 可继续操作，不要退出小程序</text>
     </view>
     <view class="demo-banner" wx:if="{{isDemoMode}}">
-      <text class="demo-banner-text">体验模式 · 数据仅保存在本地，提交入驻申请后可使用完整功能</text>
+      <text class="demo-banner-text">展示数据 · 开通店铺后即可发给客人、购买保险</text>
     </view>
     <view class="demo-banner pending-banner" wx:elif="{{isPendingReview}}">
       <text class="demo-banner-text">入驻审核中 · 日常管理将在审核通过后开放，请前往「申请入驻」查看进度</text>
@@ -54,17 +54,44 @@
       </view>
     </view>
 
-    <view class="promotion-card" wx:if="{{promotionStats}}">
-      <view class="promotion-head"><view><text class="promotion-title">推广小报</text><text class="promotion-sub">近30天 · 看看分享带来的预约</text></view><text class="promotion-link" bindtap="onGoCustomers">客户标签 ›</text></view>
-      <view class="promotion-grid">
-        <view><text class="promotion-value">{{promotionStats.shares}}</text><text class="promotion-label">分享</text></view>
-        <view><text class="promotion-value">{{promotionStats.opens}}</text><text class="promotion-label">打开</text></view>
-        <view><text class="promotion-value">{{promotionStats.orders}}</text><text class="promotion-label">带来订单</text></view>
-        <view><text class="promotion-value">{{promotionStats.conversionRate}}%</text><text class="promotion-label">转化率</text></view>
+    <view id="guestInviteCard" class="guest-invite-card">
+      <view class="guest-invite-frame" aria-hidden="true"></view>
+      <text class="guest-invite-title">发给客人</text>
+      <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
+      <text class="guest-invite-desc">{{guestShareDesc}}</text>
+      <view class="guest-invite-actions">
+        <view id="onboarding-record-target" class="guest-invite-action guest-invite-action-record" hover-class="guest-invite-action-hover" bindtap="onServiceRecord">发服务记录</view>
+        <button
+          wx:if="{{!guestShareMulti && !isDemoMode}}"
+          id="onboarding-customer-target"
+          class="guest-invite-action"
+          open-type="share"
+          data-share-type="customer"
+          hover-class="guest-invite-action-hover"
+        >发送给客人预约</button>
+        <view
+          wx:elif="{{!guestShareMulti}}"
+          id="onboarding-customer-target"
+          class="guest-invite-action"
+          hover-class="guest-invite-action-hover"
+          bindtap="onShareToGuest"
+        >发送给客人预约</view>
+        <view
+          wx:else
+          id="onboarding-customer-target"
+          class="guest-invite-action"
+          hover-class="guest-invite-action-hover"
+          bindtap="onShareToGuest"
+        >{{guestShareBtnText}}</view>
+        <view
+          class="guest-invite-action guest-invite-action-alt"
+          hover-class="guest-invite-action-hover"
+          bindtap="onProxyOrder"
+        >代客人下单</view>
       </view>
     </view>
 
-    <view class="card">
+    <view class="card quick-ops-card">
       <view class="card-title">快捷操作</view>
       <view class="quick-grid">
         <view class="quick-item quick-item-badge-wrap" bindtap="onGoMerchantOrders">
@@ -90,9 +117,12 @@
           <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
           <text>客户管理</text>
         </view>
-        <view class="quick-item" bindtap="onGoLedger">
-          <image class="quick-icon-img" src="/images/card/card-stats.png" mode="aspectFit" />
-          <text>记账本</text>
+        <view class="quick-item quick-item-badge-wrap" bindtap="onGoBoardingInsurance">
+          <image class="quick-icon-img" src="/images/insurance/pingan-logo.png" mode="aspectFit" />
+          <text>商家寄养保</text>
+          <view class="quick-gift-badge">
+            <text class="quick-gift-badge-text">免费送宠粮</text>
+          </view>
         </view>
       </view>
     </view>
@@ -113,33 +143,13 @@
       <text class="insurance-promo-arrow">›</text>
     </view>
 
-    <view id="guestInviteCard" class="guest-invite-card">
-      <view class="guest-invite-frame" aria-hidden="true"></view>
-      <text class="guest-invite-title">发给客人</text>
-      <text class="guest-invite-luck">发财 · 爆单 · 生意兴隆</text>
-      <text class="guest-invite-desc">{{guestShareDesc}}</text>
-      <view class="guest-invite-actions">
-        <view id="onboarding-record-target" class="guest-invite-action guest-invite-action-record" hover-class="guest-invite-action-hover" bindtap="onServiceRecord">发服务记录</view>
-        <button
-          wx:if="{{!guestShareMulti}}"
-          id="onboarding-customer-target"
-          class="guest-invite-action"
-          open-type="share"
-          data-share-type="customer"
-          hover-class="guest-invite-action-hover"
-        >发送给客人预约</button>
-        <view
-          wx:else
-          id="onboarding-customer-target"
-          class="guest-invite-action"
-          hover-class="guest-invite-action-hover"
-          bindtap="onShareToGuest"
-        >{{guestShareBtnText}}</view>
-        <view
-          class="guest-invite-action guest-invite-action-alt"
-          hover-class="guest-invite-action-hover"
-          bindtap="onProxyOrder"
-        >代客人下单</view>
+    <view class="promotion-card" wx:if="{{promotionStats}}">
+      <view class="promotion-head"><view><text class="promotion-title">推广小报</text><text class="promotion-sub">近30天 · 看看分享带来的预约</text></view><text class="promotion-link" bindtap="onGoCustomers">客户标签 ›</text></view>
+      <view class="promotion-grid">
+        <view><text class="promotion-value">{{promotionStats.shares}}</text><text class="promotion-label">分享</text></view>
+        <view><text class="promotion-value">{{promotionStats.opens}}</text><text class="promotion-label">打开</text></view>
+        <view><text class="promotion-value">{{promotionStats.orders}}</text><text class="promotion-label">带来订单</text></view>
+        <view><text class="promotion-value">{{promotionStats.conversionRate}}%</text><text class="promotion-label">转化率</text></view>
       </view>
     </view>
 

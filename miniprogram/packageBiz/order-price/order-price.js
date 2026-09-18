@@ -1,5 +1,5 @@
 const app = getApp();
-const { parseFee, buildFeePayload, normalizeOrderFees } = require('../../utils/orderFees');
+const { parseFee, buildFeePayload, normalizeOrderFees } = require('../utils/orderFees');
 const { formatPickupLegs, formatPickupTripType } = require('../utils/pickupInfo');
 const { formatOrderCreateTime } = require('../../utils/util');
 const { formatHomeVisitTimeText } = require('../../utils/homeVisitAddress');

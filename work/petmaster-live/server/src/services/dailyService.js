@@ -290,16 +290,20 @@ async function canManageStore(storeId, openid) {
   return ownedStores.length > 0;
 }
 
+async function ensureDailyIndex(spec, name) {
+  try {
+    await db.collection(DAILY_LOGS_COLLECTION).createIndex(spec, { name, background: true });
+  } catch (err) {
+    console.warn(`[daily] createIndex ${name} failed`, (err && err.message) || err);
+  }
+}
+
 async function initDailyDatabase() {
   await db.ensureCollections([DAILY_LOGS_COLLECTION, DAILY_LOG_COMMENTS_COLLECTION]);
-  try {
-    await db.collection(DAILY_LOGS_COLLECTION).createIndex(
-      { status: 1, scheduledAt: 1 },
-      { name: 'status_scheduledAt', background: true }
-    );
-  } catch (err) {
-    console.warn('[daily] createIndex status_scheduledAt failed', (err && err.message) || err);
-  }
+  await ensureDailyIndex({ status: 1, scheduledAt: 1 }, 'status_scheduledAt');
+  await ensureDailyIndex({ store_id: 1, createTime: -1 }, 'store_id_createTime');
+  await ensureDailyIndex({ order_id: 1, createTime: -1 }, 'order_id_createTime');
+  await ensureDailyIndex({ log_id: 1 }, 'log_id');
   try {
     await db.collection(DAILY_LOG_COMMENTS_COLLECTION).createIndex(
       { log_id: 1, createTime: 1 },
@@ -309,6 +313,28 @@ async function initDailyDatabase() {
     console.warn('[daily] createIndex log_id_createTime failed', (err && err.message) || err);
   }
   return { success: true, collection: DAILY_LOGS_COLLECTION };
+}
+
+async function getViewerContext(openid) {
+  const user = await identity.findPrimaryUserByOpenid(openid);
+  const openids = user ? identity.collectOpenids(user) : [openid].filter(Boolean);
+  const storeAccess = new Map();
+  return {
+    openids,
+    async canManageOrder(order) {
+      if (!order) return false;
+      if (order.merchantOpenid && openids.includes(order.merchantOpenid)) return true;
+      const storeId = order.store_id;
+      if (!storeId) return false;
+      if (!storeAccess.has(storeId)) {
+        storeAccess.set(storeId, await canManageStore(storeId, openid));
+      }
+      return storeAccess.get(storeId);
+    },
+    isOrderOwner(order) {
+      return !!(order && order.userOpenid && openids.includes(order.userOpenid));
+    }
+  };
 }
 
 async function getLogAccessContext(logId, openid) {
@@ -566,7 +592,6 @@ async function saveDailyLog(event, openid) {
     publishedAt: isScheduled ? 0 : now
   };
 
-  await db.ensureCollections([DAILY_LOGS_COLLECTION]);
   await db.insertOne('daily_logs', logData);
 
   const [savedLog] = await enrichLogsMedia([logData]);
@@ -587,6 +612,7 @@ async function listDailyLogsByOrders(event, openid) {
   const orderIds = [...new Set((event.orderIds || event.order_ids || []).filter(Boolean))];
   if (!orderIds.length) return { success: true, logs: [] };
 
+  const viewer = await getViewerContext(openid);
   const authorizedOrderIds = [];
   let viewerIsMerchant = false;
   const chunkSize = 20;
@@ -594,8 +620,8 @@ async function listDailyLogsByOrders(event, openid) {
     const chunk = orderIds.slice(i, i + chunkSize);
     const orderDocs = await db.findMany('orders', { order_id: { $in: chunk } });
     for (const order of orderDocs || []) {
-      const isMerchant = await canManageOrder(order, openid);
-      const isUser = await isOrderUser(order, openid);
+      const isMerchant = await viewer.canManageOrder(order);
+      const isUser = viewer.isOrderOwner(order);
       if (isMerchant) viewerIsMerchant = true;
       if (isMerchant || isUser) {
         authorizedOrderIds.push(order.order_id);
@@ -610,10 +636,14 @@ async function listDailyLogsByOrders(event, openid) {
     const chunk = authorizedOrderIds.slice(i, i + chunkSize);
     const result = await db.findMany('daily_logs', { order_id: { $in: chunk } }, { limit: 500 });
     allDocs.push(...(result || []));
+    if (allDocs.length >= 500) break;
   }
 
   const logs = filterLogsForViewer(
-    allDocs.map(formatLog).sort((a, b) => (b.createTime || 0) - (a.createTime || 0)),
+    allDocs
+      .sort((a, b) => (b.createTime || 0) - (a.createTime || 0))
+      .slice(0, 500)
+      .map(formatLog),
     viewerIsMerchant
   );
 

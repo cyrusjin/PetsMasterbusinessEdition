@@ -1,5 +1,5 @@
 const app = getApp();
-const { redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
+const { redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed, redirectToUserIfClientMode } = require('../../../utils/shell');
 
 /** 兼容旧入驻码：统一跳转到我的门店基础设置 */
 Page({
@@ -7,8 +7,7 @@ Page({
     if (redirectToUserIfMerchantUiBlocked()) return;
     ensureMerchantPageAllowed().then((blocked) => {
       if (blocked) return;
-      if (app.isUserClientMode && app.isUserClientMode()) {
-        wx.switchTab({ url: '/pages/index/index' });
+      if (redirectToUserIfClientMode()) {
         return;
       }
       if (app.enterMerchantMode) {

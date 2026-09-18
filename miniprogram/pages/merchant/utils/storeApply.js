@@ -1,6 +1,6 @@
-const { isVagueAddress } = require('./location');
-const { normalizeStorePhotos } = require('./storePhotos');
-const { validateMobilePhone } = require('./phone');
+const { isVagueAddress } = require('../../../utils/location');
+const { normalizeStorePhotos } = require('../../../utils/storePhotos');
+const { validateMobilePhone } = require('../../../utils/phone');
 
 function validateApplyForm(payload) {
   const shop = payload.shop || {};

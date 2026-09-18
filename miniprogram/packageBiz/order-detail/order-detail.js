@@ -1,9 +1,9 @@
 const orderPayment = require('../utils/orderPayment');
 const app = getApp();
-const { normalizeOrderFees } = require('../../utils/orderFees');
+const { normalizeOrderFees } = require('../utils/orderFees');
 const { buildPetDetailView } = require('../../utils/petSnapshot');
 const { formatPickupLegs } = require('../utils/pickupInfo');
-const { formatPickupProgress } = require('../../utils/pickupManage');
+const { formatPickupProgress } = require('../utils/pickupManage');
 const { loadOrderFeeDetail, buildOrderFeeDetail } = require('../utils/orderFeeDetail');
 const { exportAndShareOrderDetail } = require('../utils/orderDetailExport');
 const { resolveImageUrl } = require('../../utils/imageCache');
@@ -20,6 +20,7 @@ const {
 } = require('../../utils/dailyCheckable');
 const { canShareProxyOrder, buildProxyShareConfig } = require('../../utils/proxyOrder');
 const { prefetchStoreShareImage, resolveShareImageUrl } = require('../../utils/storeShare');
+const merchantDemo = require('../../utils/merchantDemo');
 
 Page({
   data: {
@@ -103,7 +104,7 @@ Page({
       pendingEditLines: order.editPendingConfirm ? buildPendingEditLines(order) : [],
       pendingEditTotalFee: order.editPendingConfirm ? getPendingEditTotalFee(order) : null,
       canMerchantOperate: canMerchantModifyOrder(order),
-      canShareProxy: canShareProxyOrder(order)
+      canShareProxy: !app.isMerchantDemoMode() && canShareProxyOrder(order)
     });
     this._resolvePetPhoto(petView.photo);
     loadOrderFeeDetail(app, order).then((nextDetail) => {
@@ -269,6 +270,10 @@ Page({
   },
 
   onShareAppMessage() {
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      return { title: '萌宠寄养体验', path: '/pages/merchant/tab-daily/tab-daily' };
+    }
     const order = this.data.order || {};
     if (canShareProxyOrder(order)) {
       return buildProxyShareConfig({

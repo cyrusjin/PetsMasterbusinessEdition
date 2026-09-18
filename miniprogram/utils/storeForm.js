@@ -8,7 +8,7 @@ const {
   MAX_NOTICE_TEXT,
   MAX_PICKUP_NOTICE_TEXT
 } = require('./storePhotos');
-const { normalizeDepartureCharge } = require('./billing');
+const { normalizeDepartureCharge, normalizePickupReturnFullDeparture } = require('./billing');
 const { isVagueAddress } = require('./location');
 const { validateWeightPricing, getDefaultWeightPricing } = require('./weightPricing');
 const { validateRoomPricing } = require('./roomPricing');
@@ -99,6 +99,12 @@ function buildBillingRulesFromPayload(payload, shop) {
     ),
     checkInDayCharge: (payload.billingRules && payload.billingRules.checkInDayCharge) || payload.checkInDayCharge,
     departureDayCharge: (payload.billingRules && payload.billingRules.departureDayCharge) || payload.departureDayCharge,
+    pickupReturnFullDeparture: (
+      ((payload.billingRules && payload.billingRules.departureDayCharge) || payload.departureDayCharge) === 'half'
+    ) && normalizePickupReturnFullDeparture(
+      (payload.billingRules && payload.billingRules.pickupReturnFullDeparture)
+      || payload.pickupReturnFullDeparture
+    ),
     billingMode: (payload.billingRules && payload.billingRules.billingMode)
       || payload.billingMode
       || (shop && shop.billingRules && shop.billingRules.billingMode)

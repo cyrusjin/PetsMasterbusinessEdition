@@ -55,6 +55,42 @@ function getDepartureDayFactor(departureTime, rules) {
   return 1;
 }
 
+function normalizePickupReturnFullDeparture(value) {
+  return value === true;
+}
+
+function resolvePickupStayOptions(pickupOptions) {
+  const src = pickupOptions && typeof pickupOptions === 'object' ? pickupOptions : {};
+  const needPickup = src.needPickup === true;
+  return {
+    needPickup,
+    pickupIncludeReturn: needPickup && src.pickupIncludeReturn !== false
+  };
+}
+
+function hasPickupReturnLeg(pickupOptions) {
+  const resolved = resolvePickupStayOptions(pickupOptions);
+  return resolved.needPickup && resolved.pickupIncludeReturn;
+}
+
+function isDepartureTimeBandMode(rules) {
+  return ((rules && rules.departureDayCharge) || 'full') === 'half';
+}
+
+function isPickupReturnFullDepartureEnabled(rules) {
+  return isDepartureTimeBandMode(rules)
+    && normalizePickupReturnFullDeparture(rules && rules.pickupReturnFullDeparture);
+}
+
+function isPickupReturnFullDeparture(rules, pickupOptions) {
+  return isPickupReturnFullDepartureEnabled(rules) && hasPickupReturnLeg(pickupOptions);
+}
+
+function resolveDepartureDayFactor(departureTime, rules, pickupOptions) {
+  if (isPickupReturnFullDeparture(rules, pickupOptions)) return 1;
+  return getDepartureDayFactor(departureTime, rules);
+}
+
 function addDaysToDate(dateStr, offset) {
   const d = new Date(String(dateStr).replace(/-/g, '/'));
   d.setDate(d.getDate() + offset);
@@ -81,13 +117,13 @@ function formatMoney(amount) {
   return Number.isInteger(num) ? String(num) : num.toFixed(1);
 }
 
-function calcStayFeeBreakdown(startDate, endDate, startTime, endTime, rules, basePrice) {
+function calcStayFeeBreakdown(startDate, endDate, startTime, endTime, rules, basePrice, pickupOptions) {
   const empty = {
     ready: false,
     days: 0,
     baseFee: 0,
     dailyBreakdown: [],
-    chargeSummary: buildChargeSummary(rules)
+    chargeSummary: buildChargeSummary(rules, pickupOptions)
   };
 
   if (!startDate || !endDate || !startTime || !endTime) {
@@ -100,7 +136,8 @@ function calcStayFeeBreakdown(startDate, endDate, startTime, endTime, rules, bas
 
   const billingRules = rules || {};
   const checkInFactor = getCheckInDayFactor(billingRules.checkInDayCharge || 'full');
-  const departureFactor = getDepartureDayFactor(endTime, billingRules);
+  const departureFactor = resolveDepartureDayFactor(endTime, billingRules, pickupOptions);
+  const forceFullDeparture = isPickupReturnFullDeparture(billingRules, pickupOptions);
   const dailyBreakdown = [];
 
   for (let i = 0; i < calendarDays; i += 1) {
@@ -117,7 +154,7 @@ function calcStayFeeBreakdown(startDate, endDate, startTime, endTime, rules, bas
       dayLabel = '入住当天';
     } else if (i === calendarDays - 1) {
       factor = departureFactor;
-      dayLabel = '离店当天';
+      dayLabel = forceFullDeparture ? '离店当天 · 含送全价' : '离店当天';
     } else {
       factor = 1;
       dayLabel = '寄养期间';
@@ -156,11 +193,11 @@ function calcStayFeeBreakdown(startDate, endDate, startTime, endTime, rules, bas
     baseFee,
     baseFeeText: formatMoney(baseFee),
     dailyBreakdown,
-    chargeSummary: buildChargeSummary(billingRules)
+    chargeSummary: buildChargeSummary(billingRules, pickupOptions)
   };
 }
 
-function calcStayDays(startDate, endDate, startTime, endTime, rules) {
+function calcStayDays(startDate, endDate, startTime, endTime, rules, pickupOptions) {
   if (!startDate || !endDate) return 0;
 
   const calendarDays = Math.ceil((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
@@ -171,7 +208,7 @@ function calcStayDays(startDate, endDate, startTime, endTime, rules) {
     return 1;
   }
 
-  const departureFactor = getDepartureDayFactor(endTime, rules);
+  const departureFactor = resolveDepartureDayFactor(endTime, rules, pickupOptions);
   const middleDays = Math.max(0, calendarDays - 2);
   return checkInFactor + middleDays + departureFactor;
 }
@@ -189,17 +226,25 @@ function getDepartureDayChargeLabel(charge) {
   return getChargeLabel(charge, DEPARTURE_DAY_CHARGE_OPTIONS);
 }
 
-function buildChargeSummary(rules) {
+function buildChargeSummary(rules, pickupOptions) {
   const checkInLabel = getCheckInChargeLabel((rules && rules.checkInDayCharge) || 'full');
   const departureMode = (rules && rules.departureDayCharge) || 'full';
-
-  if (departureMode === 'half') {
-    const config = getDepartureChargeConfig(rules);
-    return `入住当天计${checkInLabel}；离店当天按时间分段：${config.freeUntil} 前免费，${config.halfUntil} 前计半天，${config.fullFrom} 后起计全天；当日寄养按全价`;
+  if (isPickupReturnFullDeparture(rules, pickupOptions)) {
+    return `入住当天计${checkInLabel}；离店当天因含送按全价；当日寄养按全价`;
   }
 
-  const departureLabel = getDepartureDayChargeLabel(departureMode);
-  return `入住当天计${checkInLabel}；离店当天计${departureLabel}；当日寄养按全价`;
+  let summary;
+  if (departureMode === 'half') {
+    const config = getDepartureChargeConfig(rules);
+    summary = `入住当天计${checkInLabel}；离店当天按时间分段：${config.freeUntil} 前免费，${config.halfUntil} 前计半天，${config.fullFrom} 后起计全天；当日寄养按全价`;
+    if (isPickupReturnFullDepartureEnabled(rules)) {
+      summary += '；预约接送且含送时离店当天改按全价';
+    }
+  } else {
+    const departureLabel = getDepartureDayChargeLabel(departureMode);
+    summary = `入住当天计${checkInLabel}；离店当天计${departureLabel}；当日寄养按全价`;
+  }
+  return summary;
 }
 
 function normalizeDepartureCharge(departureCharge) {
@@ -233,6 +278,12 @@ module.exports = {
   DEFAULT_DEPARTURE_CHARGE,
   getCheckInDayFactor,
   getDepartureDayFactor,
+  resolveDepartureDayFactor,
+  normalizePickupReturnFullDeparture,
+  resolvePickupStayOptions,
+  isDepartureTimeBandMode,
+  isPickupReturnFullDepartureEnabled,
+  isPickupReturnFullDeparture,
   calcStayDays,
   calcStayFeeBreakdown,
   formatMoney,

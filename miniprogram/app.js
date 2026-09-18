@@ -8,7 +8,7 @@ const storeApi = require('./utils/store');
 const { API_BASE_URL } = require('./config/api');
 const { ensureLogin, clearToken } = require('./utils/api');
 const { normalizeIsMerchant, resolveRole, isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled, isMerchantStaff, isStaffOfStore, isStoreOwner, getMerchantStoreId, getVisitStoreId, hasMerchantCapability } = require('./utils/role');
-const { applyRoleShell: applyTabShell, getMerchantLandingUrl, getUserLandingUrl, isUserTabRoute } = require('./utils/shell');
+const { applyRoleShell: applyTabShell, getMerchantLandingUrl, getUserLandingUrl, isUserTabRoute, isMerchantStayRoute, pageStackHasMerchantStay, installMerchantPickerStayGuard } = require('./utils/shell');
 const { mergeBillingRules, buildUserStoreView, prepareUserStoreView } = require('./utils/storeContext');
 const storeDebug = require('./utils/storeDebug');
 const petApi = require('./utils/pet');
@@ -91,6 +91,7 @@ App({
     });
     // 标记冷启动：紧随其后的 onShow 不再重复 bootstrap
     this._skipNextAppShowBootstrap = true;
+    installMerchantPickerStayGuard();
     this._bootstrapSession(options, { force: true });
   },
 
@@ -114,16 +115,52 @@ App({
       return;
     }
     // 前后台切换走 TTL，避免每次强制登录打穿缓存
-    this._bootstrapSession(options, { force: false });
+    this._bootstrapSession(options, { force: false, resumeFromHide: this._consumeResumeFromHide() });
   },
 
   onHide() {
     // 小程序切后台时尽快刷盘，避免用户刚编辑的数据只停留在内存队列中。
     this._flushPendingStorage();
+    this._appWasHidden = true;
+    try {
+      const pages = getCurrentPages();
+      this._hiddenRoute = pages.length ? (pages[pages.length - 1].route || '') : '';
+    } catch (err) {
+      this._hiddenRoute = '';
+    }
+    if (isMerchantStayRoute(this._hiddenRoute)) {
+      this._resumeKeepPage = true;
+    }
+  },
+
+  _consumeResumeFromHide() {
+    const resume = !!this._appWasHidden;
+    this._appWasHidden = false;
+    return resume;
+  },
+
+  /** 相册/相机/定位等系统页返回，或从商家业务页回到前台 */
+  _shouldKeepMerchantPage(options, resumeFromHide) {
+    const scene = Number((options && options.scene) || 0);
+    // 商家业务页优先：选图返回时 WeChat 可能带上启动 query，不能当成新入口踢走
+    if (isMerchantStayRoute(this._hiddenRoute) || pageStackHasMerchantStay()) return true;
+    if (scene === 1034) return true;
+    const hasNewEntry = !!(
+      this._extractStoreId(options)
+      || this._parseStaffInviteStoreId(options)
+      || this._extractDailyLogId(options)
+      || this._isMerchantApplyEntry(options)
+    );
+    if (hasNewEntry) {
+      const signature = this._entryOptionsSignature(options);
+      if (signature && signature !== this._lastHandledEntrySignature) return false;
+    }
+    if (!resumeFromHide) return false;
+    return !hasNewEntry;
   },
 
   /** 合并 App / 进入参数，兼容 tabBar 分享时 query 只在一侧出现 */
-  _normalizeEntryOptions(options) {
+  _normalizeEntryOptions(options, extra = {}) {
     const base = options || {};
     if (
       this._extractStoreId(base)
@@ -133,6 +170,7 @@ App({
     ) {
       return base;
     }
+    if (extra.allowLaunchFallback === false) return base;
     try {
       const enter = typeof wx.getEnterOptionsSync === 'function' ? (wx.getEnterOptionsSync() || {}) : {};
       if (
@@ -313,7 +351,12 @@ App({
 
   _bootstrapSession(options, bootOptions = {}) {
     const force = !!(bootOptions && bootOptions.force);
-    const entry = this._normalizeEntryOptions(options);
+    const resumeFromHide = !!(bootOptions && bootOptions.resumeFromHide);
+    const keepMerchantPage = this._shouldKeepMerchantPage(options, resumeFromHide);
+    this._resumeKeepPage = keepMerchantPage;
+    const entry = this._normalizeEntryOptions(options, {
+      allowLaunchFallback: !keepMerchantPage
+    });
     const staffInviteId = this._parseStaffInviteStoreId(entry);
     const merchantApplyEntry = this._isMerchantApplyEntry(entry);
     const merchantUiBlocked = isMerchantUiBlocked();
@@ -323,26 +366,29 @@ App({
       this._exitMerchantShellMode();
       this.globalData.role = 'user';
     }
-    // 员工邀请优先：立刻退出用户版，避免商家页 onShow 把人踢回首页
-    if (!merchantUiBlocked && staffInviteId && !this.shouldIgnoreShareEntry()) {
-      this.globalData.pendingStaffInviteStoreId = staffInviteId;
-      this.globalData.pendingEntryStoreId = '';
-      this._exitUserClientMode();
-    } else if (!merchantUiBlocked && merchantApplyEntry) {
-      // 入驻小程序码：强制商家壳，避免新用户被踢回用户首页
-      this.globalData.pendingMerchantApplyEntry = true;
-      this._exitUserClientMode();
-      this._enterMerchantShellMode();
-    } else {
-      // 登录前先记下分享店，避免并行 getUserInfo 回写时冲掉绑店
-      this._rememberShareEntryStore(entry);
-      // 打卡分享：进用户壳但不绑店
-      if (this._rememberShareEntryDailyLog(entry) && !this._extractStoreId(entry)) {
-        this._enterUserClientMode('', { persist: true, applyShell: false });
+    // 选图/定位返回：不要把启动入口再跑一遍，避免把打卡/下单踢回主页
+    if (!keepMerchantPage) {
+      if (!merchantUiBlocked && staffInviteId && !this.shouldIgnoreShareEntry()) {
+        this.globalData.pendingStaffInviteStoreId = staffInviteId;
+        this.globalData.pendingEntryStoreId = '';
+        this._exitUserClientMode();
+      } else if (!merchantUiBlocked && merchantApplyEntry) {
+        // 入驻小程序码：强制商家壳，避免新用户被踢回用户首页
+        this.globalData.pendingMerchantApplyEntry = true;
+        this._exitUserClientMode();
+        this._enterMerchantShellMode();
+      } else {
+        // 登录前先记下分享店，避免并行 getUserInfo 回写时冲掉绑店
+        this._rememberShareEntryStore(entry);
+        // 打卡分享：进用户壳但不绑店
+        if (this._rememberShareEntryDailyLog(entry) && !this._extractStoreId(entry)) {
+          this._enterUserClientMode('', { persist: true, applyShell: false });
+        }
       }
     }
     return this.ensureCloudAndLogin(force ? { force: true } : {})
       .then(() => {
+        if (keepMerchantPage) return null;
         if (
           !isMerchantUiBlocked()
           && (this.globalData.pendingMerchantApplyEntry || this._isMerchantApplyEntry(entry))
@@ -354,18 +400,30 @@ App({
         return this._handleEntryOptions(entry);
       })
       .then(() => {
+        if (keepMerchantPage) {
+          applyTabShell();
+          this.refreshUserBadges();
+          return this._flushPendingStoreBinding();
+        }
         this._applyEntrySideEffects(entry);
         applyTabShell();
-        this.refreshUserBadges();        return this._flushPendingStoreBinding();
+        this.refreshUserBadges();
+        return this._flushPendingStoreBinding();
       })
       .then(() => {
+        if (keepMerchantPage) return null;
         if (!this.canAccessMerchantBackend() || this.isUserClientMode()) {
           return this.syncUserFeed();
         }
         return null;
       })
       .then(() => {
-        this._ensureDefaultLanding(entry);
+        if (!keepMerchantPage) this._ensureDefaultLanding(entry);
+      })
+      .then(() => {
+        setTimeout(() => { this._resumeKeepPage = false; }, 800);
+      }, () => {
+        setTimeout(() => { this._resumeKeepPage = false; }, 800);
       });
   },
 
@@ -471,7 +529,9 @@ App({
       if (route === 'pages/merchant/apply/apply') {
         wx.redirectTo({ url: getMerchantLandingUrl() });
       } else if (
-        route
+        !this._resumeKeepPage
+        && !isMerchantStayRoute(route)
+        && route
         && route.indexOf('pages/merchant/') !== 0
         && !this.isMerchantApproved()
       ) {
@@ -495,14 +555,19 @@ App({
       return;
     }
 
-    // 仅纠正「商家态却停在用户 Tab」；分包页（打卡/订单等）必须保留。
-    // chooseMedia 从相机/相册返回会触发 App.onShow，若按非 merchant Tab 一律 reLaunch，
-    // 会把 packageBiz/daily-check 等业务页直接踢回商家主页。
+    // 打卡 / 代下单 / 订单 / 门店设置等业务页，以及选图定位返回：必须留在当前页。
+    if (
+      this._resumeKeepPage
+      || !route
+      || isMerchantStayRoute(route)
+      || pageStackHasMerchantStay()
+    ) {
+      return;
+    }
+
+    // 仅纠正「商家态却停在用户 Tab」
     if (this._hasMerchantWorkspace() && !this.isUserClientMode()) {
-      const isUserRoute = isUserTabRoute(route)
-        || route.indexOf('packageUser/') === 0
-        || route.indexOf('pages/share/') === 0;
-      if (!isUserRoute) return;
+      if (!isUserTabRoute(route)) return;
       if (this._defaultLandingScheduled) return;
       this._defaultLandingScheduled = true;
       wx.reLaunch({
@@ -541,13 +606,11 @@ App({
 
   _entryOptionsSignature(options) {
     if (!options) return '';
-    const query = options.query || {};
     const staff = this._parseStaffInviteStoreId(options);
     const store = this._extractStoreId(options);
     const logId = this._extractDailyLogId(options);
     const path = options.path || '';
-    const scene = options.scene || query.scene || '';
-    return `${path}|${staff}|${store}|${logId}|${scene}`;
+    return `${path}|${staff}|${store}|${logId}`;
   },
 
   _redirectStaffInviteIfNeeded(storeId) {
@@ -703,7 +766,8 @@ App({
       storeDebug.log('阻止自动切换用户版：保持商家身份', { storeId: storeId || '' });
       return false;
     }
-    if (storeId && this.isStaffForStore(storeId)) {
+    // 分享/自动绑店时店员应留在商家壳；主动点「切换用户版」必须放行。
+    if (storeId && this.isStaffForStore(storeId) && !explicitIntent) {
       this._keepStaffMerchantMode();
       return false;
     }
@@ -908,8 +972,6 @@ App({
     const currentId = this.getStoreId();
     const forceData = options.forceData !== false;
     storeDebug.log('enterUserStore 换绑', { storeId: id, currentId, forceData });
-    // 允许重复点开同一分享卡片也重新走绑定
-    this._lastHandledEntrySignature = '';
     this._resetOrdersFetchState();
     this._petsFetchedAt = 0;
     return this.ensureCloudAndLogin({ silent: true })
@@ -921,7 +983,7 @@ App({
         const enteredUserMode = this._enterUserClientMode(id);
         if (!enteredUserMode) {
           this.globalData.pendingEntryStoreId = '';
-          this._ensureDefaultLanding({});
+          if (!this._resumeKeepPage) this._ensureDefaultLanding({});
           return null;
         }
         return this.bindStore(id, { syncUser: true, force: true, source: 'share' })
@@ -934,9 +996,13 @@ App({
     if (!options) return Promise.resolve();
 
     const signature = this._entryOptionsSignature(options);
+    if (signature && signature === this._lastHandledEntrySignature) {
+      return Promise.resolve();
+    }
+
     const staffStoreId = this._parseStaffInviteStoreId(options);
     const storeId = this._extractStoreId(options)
-      || String(this.globalData.pendingEntryStoreId || '').trim();
+      || (this._resumeKeepPage ? '' : String(this.globalData.pendingEntryStoreId || '').trim());
     const sharedLogId = this._extractDailyLogId(options)
       || String(this.globalData.pendingSharedDailyLogId || '').trim();
     const hasShareEntry = staffStoreId || (storeId && this._isUserEntryPath(options));
@@ -1402,6 +1468,7 @@ App({
   syncShopToCloud(shop) {
     if (
       this.isMerchantDemoMode()
+      && merchantDemo.isDemoEntityId(shop && shop.store_id)
       && !this.isMerchantPending()
       && !isMerchantRejected(this.globalData.userInfo)
       && !this.isMerchantDisabled()
@@ -1420,7 +1487,10 @@ App({
       .then((res) => {
         if (res.success && res.store) {
           const localShop = this.getShop() || {};
-          const merged = mergeMerchantShop(localShop, {
+          const persistBase = merchantDemo.isDemoEntityId(localShop.store_id)
+            ? (this.getData(STORAGE_KEYS.SHOP) || {})
+            : localShop;
+          const merged = mergeMerchantShop(persistBase, {
             ...shop,
             ...res.store,
             store_id: res.store.store_id
@@ -3067,6 +3137,7 @@ App({
     const normalized = attachStoreDisplayNo(shop || {});
     if (
       this.isMerchantDemoMode()
+      && merchantDemo.isDemoEntityId(normalized.store_id)
       && !this.isMerchantPending()
       && !isMerchantRejected(this.globalData.userInfo)
       && !this.isMerchantDisabled()
@@ -3077,11 +3148,17 @@ App({
       this._syncCurrentStoreFromShop(saved);
       return attachStoreDisplayNo(saved);
     }
+    const leavingShowcase = this.isMerchantDemoMode()
+      && normalized.store_id
+      && !merchantDemo.isDemoEntityId(normalized.store_id);
     this.setData(STORAGE_KEYS.SHOP, normalized);
     if (normalized && normalized.store_id) {
       this.globalData.merchantStoreId = normalized.store_id;
       this._merchantStoreFetchedAt = Date.now();
       this._syncCurrentStoreFromShop(normalized);
+    }
+    if (leavingShowcase) {
+      merchantDemo.clearDemoRuntimeData();
     }
     return normalized;
   },
@@ -3109,6 +3186,7 @@ App({
       customPricing: getDefaultCustomPricing(),
       checkInDayCharge: 'full',
       departureDayCharge: 'full',
+      pickupReturnFullDeparture: false,
       departureCharge: {
         freeUntil: '12:00',
         halfUntil: '18:00',

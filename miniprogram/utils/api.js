@@ -166,7 +166,7 @@ function ensureLogin(force = false) {
   return loginPromise;
 }
 
-function callApiService(service, data = {}) {
+function callApiService(service, data = {}, options = {}) {
   const path = API_ROUTES[service];
   if (!path) {
     return Promise.resolve({ success: false, errMsg: `未知服务 ${service}` });
@@ -176,10 +176,10 @@ function callApiService(service, data = {}) {
   }
 
   return ensureLogin()
-    .then(() => request(path, data))
+    .then(() => request(path, data, options))
     .then((res) => {
       if (res && res.unauthorized) {
-        return ensureLogin(true).then(() => request(path, data));
+        return ensureLogin(true).then(() => request(path, data, options));
       }
       return res;
     })

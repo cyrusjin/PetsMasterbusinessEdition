@@ -2,6 +2,7 @@ const orderApi = require('./order');
 const { buildPetSnapshot } = require('./petSnapshot');
 const { resolveShareImageUrl } = require('./storeShare');
 const { formatAgeText } = require('./petAge');
+const merchantDemo = require('./merchantDemo');
 
 const DRAFT_PETS_KEY = 'pet_proxy_draft_pets';
 const UNASSIGNED_PETS_KEY = 'pet_proxy_unassigned_pets';
@@ -333,6 +334,15 @@ function openUrl(url, options = {}) {
 }
 
 function openProxyGuestPicker(serviceLine, options = {}) {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (app && app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      return;
+    }
+  } catch (err) {
+    // ignore
+  }
   const line = String(serviceLine || '').trim();
   const extra = [];
   if (line) extra.push(`serviceLine=${encodeURIComponent(line)}`);

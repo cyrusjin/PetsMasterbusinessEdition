@@ -5,6 +5,7 @@ const { isHomeVisitPricingComplete } = require('./homeVisitPricing');
 const { getBookableServiceOptions, getServiceShareMeta } = require('./serviceLines');
 const { peekCachedPath, resolveImageUrl, isLocalImagePath } = require('./imageCache');
 const growth = require('./growth');
+const merchantDemo = require('./merchantDemo');
 
 const DEFAULT_SHARE_IMAGE = '/images/default-avatar.png';
 /** 旧版落地页（历史分享卡片兼容） */
@@ -293,7 +294,20 @@ function resolveMerchantShareShop(page) {
   };
 }
 
+function isMerchantShowcaseMode() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    return !!(app && app.isMerchantDemoMode && app.isMerchantDemoMode());
+  } catch (err) {
+    return false;
+  }
+}
+
 function buildMerchantShareConfig(page, extra) {
+  if (isMerchantShowcaseMode()) {
+    merchantDemo.promptDemoGuestBlocked();
+    return { title: '萌宠寄养体验', path: '/pages/merchant/tab-daily/tab-daily' };
+  }
   const shop = resolveMerchantShareShop(page);
   if (!shop.store_id) {
     promptShareUnavailable();
@@ -314,6 +328,10 @@ function shouldOpenGuestSharePicker(shop) {
 }
 
 function openGuestSharePicker() {
+  if (isMerchantShowcaseMode()) {
+    merchantDemo.promptDemoGuestBlocked();
+    return;
+  }
   wx.navigateTo({ url: GUEST_SHARE_PICKER_PATH, animationType: 'none', animationDuration: 0 });
 }
 

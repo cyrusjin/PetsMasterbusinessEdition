@@ -169,6 +169,17 @@
   font-weight: 700;
 }
 
+.personality-tag {
+  display: inline-block;
+  margin-top: 8rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: #E98657;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
 .personality-code {
   display: block;
   margin-top: 6rpx;

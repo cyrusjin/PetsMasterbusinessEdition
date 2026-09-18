@@ -1,316 +1,340 @@
 const { STORAGE_KEYS } = require('./constants');
 
-const VERSION = 2;
+const VERSION = 3;
+const PAGE_SIZE = 5;
 
 const AXIS = {
-  EI: { label: '社交现场', letters: ['E', 'I'] },
-  SN: { label: '脑内世界', letters: ['S', 'N'] },
-  TF: { label: '情感态度', letters: ['T', 'F'] },
-  JP: { label: '生活作风', letters: ['J', 'P'] }
+  EI: { label: '社交能量', letters: ['E', 'I'] },
+  SN: { label: '关注方式', letters: ['S', 'N'] },
+  TF: { label: '决策风格', letters: ['T', 'F'] },
+  JP: { label: '生活节奏', letters: ['J', 'P'] }
 };
+
+const OPPOSITE = {
+  E: 'I', I: 'E',
+  S: 'N', N: 'S',
+  T: 'F', F: 'T',
+  J: 'P', P: 'J'
+};
+
+const SCALE_OPTIONS = [
+  { value: 1, label: '非常不符合' },
+  { value: 2, label: '不符合' },
+  { value: 3, label: '一般' },
+  { value: 4, label: '符合' },
+  { value: 5, label: '非常符合' }
+];
 
 const QUESTIONS = [
   {
-    id: 'ei1',
+    id: 'q01',
     dim: 'EI',
+    letter: 'E',
     prompt: {
-      dog: '门一响，它的第一反应更像？',
-      cat: '门一响，它的第一反应更像？',
-      other: '家里来人时，它的第一反应更像？'
-    },
-    a: {
-      letter: 'E',
-      text: {
-        dog: '直接飞扑，欢迎仪式比春晚还隆重',
-        cat: '踩着客人的包去安检，顺便巡视领地',
-        other: '立刻现身营业，生怕少一个观众'
-      }
-    },
-    b: {
-      letter: 'I',
-      text: {
-        dog: '先钻沙发底，确认来的不是那个拿澡盆的',
-        cat: '秒变走廊尽头的一缕影子',
-        other: '先隐身观察三集，再决定出不出现'
-      }
+      dog: '狗狗在家中听到动感的音乐会很兴奋并加入进去',
+      cat: '家里热闹或放起音乐时，猫咪会兴奋地凑过来一起加入',
+      other: '你在旁边活动、环境热闹时，它会兴奋地探头出来跑一跑'
     }
   },
   {
-    id: 'ei2',
+    id: 'q02',
     dim: 'EI',
+    letter: 'I',
     prompt: {
-      dog: '下楼遇到同类时，它通常？',
-      cat: '窗台上有人路过时，它通常？',
-      other: '碰到不熟的同类时，它通常？'
-    },
-    a: {
-      letter: 'E',
-      text: {
-        dog: '全小区的狗都是发小，社交日历排到明年',
-        cat: '窗台就是演播厅，路过的都是观众',
-        other: '主动上前寒暄，仿佛在发名片'
-      }
-    },
-    b: {
-      letter: 'I',
-      text: {
-        dog: '看见同类先装树，社交任务能躲就躲',
-        cat: '家里三个人已经够热闹了谢谢',
-        other: '保持安全距离，眼神翻译是「别过来」'
-      }
+      dog: '遛狗时你的狗狗总会尽可能躲避其他狗狗',
+      cat: '看到其他猫咪，哪怕只是窗外那只，它也总会尽可能躲开',
+      other: '有同类靠近时，它总会缩回躲避屋，尽可能躲开'
     }
   },
   {
-    id: 'sn1',
+    id: 'q03',
+    dim: 'EI',
+    letter: 'E',
+    prompt: {
+      dog: '你的狗狗非常受周围人的欢迎',
+      cat: '家里来客人时，猫咪愿意出现，也常被摸、被夸好亲近',
+      other: '别人来看它时，它不怕人，愿意出现，也常被夸好接触'
+    }
+  },
+  {
+    id: 'q04',
+    dim: 'EI',
+    letter: 'I',
+    prompt: {
+      dog: '带狗去邻居或朋友家走访时，狗狗兴致缺缺',
+      cat: '换环境、去别人家或进航空箱时，猫咪兴致缺缺，只想躲起来',
+      other: '换笼子、换缸或拿到陌生环境时，它兴致缺缺，只想躲着'
+    }
+  },
+  {
+    id: 'q05',
+    dim: 'EI',
+    letter: 'E',
+    prompt: {
+      dog: '每当有人靠近时，你的狗狗都会表现出很大热情',
+      cat: '你一靠近，猫咪就会很热情，主动蹭过来要摸',
+      other: '你一靠近笼子或缸，它就会很积极地探头、凑过来'
+    }
+  },
+  {
+    id: 'q06',
     dim: 'SN',
+    letter: 'S',
     prompt: {
-      dog: '给它一个新玩具，它更可能？',
-      cat: '给它一个纸箱，它更可能？',
-      other: '给它一个新玩意，它更可能？'
-    },
-    a: {
-      letter: 'S',
-      text: {
-        dog: '咬、拆、埋，三步走完再思考人生',
-        cat: '钻进去睡觉，纸箱的最高使命就是这个',
-        other: '先上手试验，实用主义拉满'
-      }
-    },
-    b: {
-      letter: 'N',
-      text: {
-        dog: '对着空气汪两声，明显在打一场你看不见的架',
-        cat: '对着墙角发呆三小时，疑似在写小说',
-        other: '先研究它的宇宙意义，再决定用不用'
-      }
+      dog: '当你拎了一个袋子回家时，狗狗会先过来闻袋子',
+      cat: '你拎袋子回家时，猫咪会先过来闻一闻、检查里面有什么',
+      other: '你拿出袋子或新食物时，它会先凑过来闻、盯着看'
     }
   },
   {
-    id: 'sn2',
+    id: 'q07',
+    dim: 'EI',
+    letter: 'E',
+    prompt: {
+      dog: '任何人在家门口发出声音，狗狗都会很兴奋地迎接',
+      cat: '听到开门或钥匙声，猫咪会跑到门口看一看',
+      other: '听到你走近的脚步声，它就会从躲避处探头或出来'
+    }
+  },
+  {
+    id: 'q08',
+    dim: 'EI',
+    letter: 'E',
+    prompt: {
+      dog: '当遛狗时把狗绳伸给陌生人，狗狗会跟着陌生人回家',
+      cat: '不太熟的人伸手摸或抱它，猫咪也愿意靠近，不太躲',
+      other: '不太熟的人伸手靠近或把它拿出来，它也愿意配合、不太躲'
+    }
+  },
+  {
+    id: 'q09',
     dim: 'SN',
+    letter: 'S',
     prompt: {
-      dog: '你出门后，它更像在？',
-      cat: '你出门后，它更像在？',
-      other: '家里没人时，它更像在？'
-    },
-    a: {
-      letter: 'S',
-      text: {
-        dog: '老实等，最多把拖鞋搬去一个「风水更好」的位置',
-        cat: '该吃吃该睡睡，作息比你还稳',
-        other: '按原计划过日子，不搞抽象创作'
-      }
-    },
-    b: {
-      letter: 'N',
-      text: {
-        dog: '把客厅重新装修成它想象中的游乐场',
-        cat: '开始筹备晚上三点的个人演唱会',
-        other: '在脑内完成一部冒险片，家具是道具'
-      }
+      dog: '你的狗狗只喜欢玩飞盘或球等特定玩具',
+      cat: '猫咪只认某几种固定玩具，比如特定的逗猫棒或小球，换新的兴趣不大',
+      other: '它只认固定的躲避屋、晒背点或某几种玩具，换新的兴趣不大'
     }
   },
   {
-    id: 'tf1',
+    id: 'q10',
+    dim: 'SN',
+    letter: 'N',
+    prompt: {
+      dog: '你家的狗狗热衷于追逐一切在移动的事物，比如被风吹起的衣服',
+      cat: '猫咪热衷追逐一切会动的东西，比如光斑、绳子、飘动的窗帘',
+      other: '它对晃动的影子、新摆件或任何会动的东西特别感兴趣'
+    }
+  },
+  {
+    id: 'q11',
     dim: 'TF',
+    letter: 'T',
     prompt: {
-      dog: '你说「不行」的时候，它更像？',
-      cat: '你阻止它搞事情的时候，它更像？',
-      other: '你阻止它做某事时，它更像？'
-    },
-    a: {
-      letter: 'T',
-      text: {
-        dog: '一脸「你说你的，我有我的计划」',
-        cat: '听完，转头把杯子推下去当回执',
-        other: '迅速评估利弊，然后继续原方案'
-      }
-    },
-    b: {
-      letter: 'F',
-      text: {
-        dog: '瞬间变成全世界最委屈的狗',
-        cat: '不理你三天，但会在你 emo 时突然贴上来',
-        other: '先受伤，再决定要不要给你一个台阶'
-      }
+      dog: '狗狗在家犯错之后总是笑嘻嘻的，毫不心虚',
+      cat: '推倒杯子、抓沙发之后，猫咪总是若无其事，毫不心虚',
+      other: '翻乱垫材、拱倒食盆之后，它总是若无其事，毫不心虚'
     }
   },
   {
-    id: 'tf2',
+    id: 'q12',
     dim: 'TF',
+    letter: 'F',
     prompt: {
-      dog: '你心情很差摊在沙发上，它会？',
-      cat: '你心情很差摊在沙发上，它会？',
-      other: '你明显不高兴时，它会？'
-    },
-    a: {
-      letter: 'T',
-      text: {
-        dog: '把球推过来：解决方案就是再玩一把',
-        cat: '继续睡，觉得你有点小题大做',
-        other: '提供一个非常实际但完全不走心的方案'
-      }
-    },
-    b: {
-      letter: 'F',
-      text: {
-        dog: '沉默贴着你，专业情绪海绵上线',
-        cat: '坐到键盘上，强制你停止内耗',
-        other: '挨过来当暖水袋，业务是陪伴不是讲理'
-      }
+      dog: '当你情绪低落时，你的狗狗会很快察觉你的情绪并陪伴着你',
+      cat: '你情绪低落时，猫咪会很快靠近，安静陪在你身边',
+      other: '你情绪低落、坐在它旁边时，它会出来待着，而不是躲起来'
     }
   },
   {
-    id: 'jp1',
-    dim: 'JP',
+    id: 'q13',
+    dim: 'TF',
+    letter: 'F',
     prompt: {
-      dog: '到了惯常的出门时间，它？',
-      cat: '到了惯常的开饭时间，它？',
-      other: '到了惯常的日程点，它？'
-    },
-    a: {
-      letter: 'J',
-      text: {
-        dog: '会用眼神看表，误差超过三分钟开始审计你',
-        cat: '饭点误差超过三分钟，开始拍桌子',
-        other: '日程感很强，迟到会被记仇'
-      }
-    },
-    b: {
-      letter: 'P',
-      text: {
-        dog: '今天想疯跑就疯跑，想摆烂就原地融化',
-        cat: '白天是死的，晚上是活的，完全随缘',
-        other: '计划是参考，灵感才是KPI'
-      }
+      dog: '睡觉时你的狗狗经常守在卧室门口',
+      cat: '你睡觉时，猫咪经常守在卧室门口，或趴在床边、枕边',
+      other: '你在房间里休息时，它常待在能看见你的位置，而不是缩在最深处'
     }
   },
   {
-    id: 'jp2',
-    dim: 'JP',
+    id: 'q14',
+    dim: 'TF',
+    letter: 'F',
     prompt: {
-      dog: '散步路线要改道时，它？',
-      cat: '你把纸箱/窝挪了位置，它？',
-      other: '你临时改了安排，它？'
-    },
-    a: {
-      letter: 'J',
-      text: {
-        dog: '拒绝，这条路昨天才认证过',
-        cat: '闹革命，家具位置属于宪法',
-        other: '需要重新开会，不能说改就改'
-      }
-    },
-    b: {
-      letter: 'P',
-      text: {
-        dog: '新味道？立刻改道，计划是用来打破的',
-        cat: '今晚睡哪全看灵感，挪了刚好换景',
-        other: '惊喜！生活需要一点混乱'
-      }
+      dog: '如果你突然晕倒，你的狗狗会焦急地呼唤你',
+      cat: '如果你突然倒下或很久不动，猫咪会焦急地叫你或来回蹭你',
+      other: '如果你突然很久不靠近，它会焦躁地叫、乱转或反复探头'
+    }
+  },
+  {
+    id: 'q15',
+    dim: 'TF',
+    letter: 'F',
+    prompt: {
+      dog: '当你出门后，你的狗狗会一直趴在门口等你回家',
+      cat: '你出门后，猫咪会在门口或窗边等很久',
+      other: '你离开后，它会长时间待在你常出现的那一侧等你回来'
+    }
+  },
+  {
+    id: 'q16',
+    dim: 'JP',
+    letter: 'P',
+    prompt: {
+      dog: '狗子热衷拆家，不管是玩具还是家具无一幸免',
+      cat: '猫咪热衷拆家，纸巾、电线、纸箱都可能无一幸免',
+      other: '它热衷把布置搞乱，垫材、食盆、摆件都可能无一幸免'
+    }
+  },
+  {
+    id: 'q17',
+    dim: 'TF',
+    letter: 'T',
+    prompt: {
+      dog: '当你在室外叫狗狗名字时，他从不会搭理你',
+      cat: '你叫猫咪名字时，它经常当没听见',
+      other: '你叫它或伸手招呼时，它经常不理你'
+    }
+  },
+  {
+    id: 'q18',
+    dim: 'JP',
+    letter: 'J',
+    prompt: {
+      dog: '你的狗狗对指令的服从性很高',
+      cat: '叫它过来、不许上桌这类要求，猫咪多数时候会配合',
+      other: '叫它出来活动或回躲避处，它多数时候会照做'
+    }
+  },
+  {
+    id: 'q19',
+    dim: 'JP',
+    letter: 'P',
+    prompt: {
+      dog: '精力十足，经常性在家跑“马拉松”',
+      cat: '精力十足，经常突然在家跑“马拉松”、半夜炸毛狂奔',
+      other: '精力突然爆棚，经常在笼子或活动空间里狂奔、不停探索'
+    }
+  },
+  {
+    id: 'q20',
+    dim: 'JP',
+    letter: 'J',
+    prompt: {
+      dog: '你的狗狗到了特定时间，一定要出去玩',
+      cat: '到了固定时间，猫咪一定要按习惯进食或找你互动',
+      other: '到了固定喂食或灯照时间，它一定要进食或出来活动'
     }
   }
 ];
 
 const TYPES = {
   ISTJ: {
-    typeName: '家委会主任',
-    subtitle: '内向 · 现实 · 理智 · 计划',
-    summary: '冰箱开门时间已备案。它不是高冷，只是认为家里该有规章制度，而你经常违规。',
+    baseName: '物流师',
+    tag: '作息必须准点',
+    subtitle: '内向 · 感觉 · 理性 · 计划',
+    summary: '家里的流程它比你还熟。吃饭、出门、睡觉最好固定，临时改计划会让它不踏实。不热闹，但可靠，属于把日子过明白的那一挂。',
     careTips: [
-      '喂食时间请准点，误差会被记进小本本。',
-      '玩具用完请放回原位，否则它会用眼神加班。'
+      '喂食和出门尽量准点，改习惯要一点点来。',
+      '新玩具、新路线先让它观察，再邀请它参与。'
     ],
     boardingTips: [
-      '给它固定房间和固定碗，别今天东明天西。',
-      '少安排突然派对，家委会不处理即兴活动。'
+      '固定食盆、固定休息位，少今天东明天西。',
+      '作息写清楚，它会自己按流程过。'
     ]
   },
   ISFJ: {
-    typeName: '隐形保姆',
-    subtitle: '内向 · 现实 · 情感 · 计划',
-    summary: '你没叫它，拖鞋已经到位。表面安静，实际把全家人的作息都默默承包了。',
+    baseName: '守卫者',
+    tag: '默默把家看好',
+    subtitle: '内向 · 感觉 · 情感 · 计划',
+    summary: '不抢镜头，却把家里每个人的习惯都记着。你回来晚了它会等，你不舒服它会跟着。表面安静，实际一直在值班。',
     careTips: [
-      '它很会忍，不代表你可以把委屈当空气。',
-      '回家先摸摸它，隐形保姆也要绩效面谈。'
+      '回家先跟它打个招呼，它很需要被看见。',
+      '它很会忍，状态不对时请主动检查环境和身体。'
     ],
     boardingTips: [
-      '需要一点熟悉气味，不然它会担心你是不是还活着。',
-      '温柔规律就好，不必强迫它当气氛组。'
+      '给一点熟悉气味，固定照料者会让它更安心。',
+      '温柔规律就好，不必强迫它热情待人。'
     ]
   },
   INFJ: {
-    typeName: '窗边哲学家',
-    subtitle: '内向 · 脑补 · 情感 · 计划',
-    summary: '三点的光斑有宇宙意义。它看着你，其实在看你有没有理解它没说出口的那句话。',
+    baseName: '提倡者',
+    tag: '懂你却不多说',
+    subtitle: '内向 · 直觉 · 情感 · 计划',
+    summary: '它不太热衷社交场，但对你的情绪很敏感。热闹里它可能悄悄退开，一对一时又贴得很近。需要被理解，不需要被围观。',
     careTips: [
-      '别随时打断它发呆，那是在开会。',
-      '情绪价值拉满，但社交电量很低，请节制访客。'
+      '访客不要太多太密，社交电量很低。',
+      '别随时打断它发呆，那是它在恢复和观察。'
     ],
     boardingTips: [
-      '安静角落比热闹大厅重要一百倍。',
-      '打卡视频请拍它思考人生，不要硬凑欢乐。'
+      '安静角落比热闹大厅重要。',
+      '少硬凑欢乐，稳定陪伴就够。'
     ]
   },
   INTJ: {
-    typeName: '暗中观察CEO',
-    subtitle: '内向 · 脑补 · 理智 · 计划',
-    summary: '沙发是总部，你只是临时工。它不吵，是因为战略已经想好了，执行时间另说。',
+    baseName: '建筑师',
+    tag: '先观察再行动',
+    subtitle: '内向 · 直觉 · 理性 · 计划',
+    summary: '先看、再判断、再决定出不出现。它不缺智力，也不缺主见，只是很少为了迎合你而改变自己的安排。给它空间，它反而更合作。',
     careTips: [
-      '不要突然抱，先发会议邀请。',
-      '它看起来在无视你，其实在优化你的生存权限。'
+      '不要突然抱或突然发指令，先给它准备时间。',
+      '讲清楚规则，比反复催促更有效。'
     ],
     boardingTips: [
-      '独立空间，谢绝热情过度的店员。',
+      '独立空间，谢绝过于热情的围观。',
       '流程清楚它就合作，混乱它就启动冷处理。'
     ]
   },
   ISTP: {
-    typeName: '拆家工程师',
-    subtitle: '内向 · 现实 · 理智 · 随缘',
-    summary: '遥控器里一定有秘密。它不是破坏，是在做结构实验，经费由你家家具承担。',
+    baseName: '鉴赏家',
+    tag: '先搞清楚怎么运作',
+    subtitle: '内向 · 感觉 · 理性 · 灵活',
+    summary: '对会动、能拆、有声音的东西特别感兴趣。情绪不大外露，遇事也不慌，更像在研究这个世界怎么转，而不是讨好谁。',
     careTips: [
-      '给它合法可拆的东西，否则沙发腿会报名。',
-      '夸奖请针对技术，别走煽情路线。'
+      '给它合法可拆、可咬、可研究的东西。',
+      '训练走短回合、高反馈，少讲大道理。'
     ],
     boardingTips: [
-      '收好线、鞋和能咬的遥控器替代品。',
-      '活动量给够，工程师闲着就会立项。'
+      '收好电线、鞋子和能咬坏的小物件。',
+      '活动量给够，闲着就容易自己找东西拆。'
     ]
   },
   ISFP: {
-    typeName: '行走的艺术品',
-    subtitle: '内向 · 现实 · 情感 · 随缘',
-    summary: '睡觉姿势都要出片。它敏感、好看、偶尔抽风，审美在线，逻辑离线。',
+    baseName: '探险家',
+    tag: '舒服最重要',
+    subtitle: '内向 · 感觉 · 情感 · 灵活',
+    summary: '环境不对它就关机，舒服了才会靠近。不喜欢被强行训练或围观，敏感、随性，节奏由自己定。尊重它的边界，它会自己来贴你。',
     careTips: [
-      '强行合照会被记仇，引导它自己摆。',
-      '环境舒服比训练口令更重要。'
+      '强行合照或强迫互动会被记仇，引导它自己靠近。',
+      '环境舒服比反复训练口令更重要。'
     ],
     boardingTips: [
-      '光线好、人少、有窗，它会自己完成营业。',
-      '不要一群人围观，艺术品需要呼吸。'
+      '人少、有窗、有能躲的位置，它会自己安定。',
+      '不要一群人围观，给它呼吸空间。'
     ]
   },
   INFP: {
-    typeName: '修仙咸鱼',
-    subtitle: '内向 · 脑补 · 情感 · 随缘',
-    summary: '世界与我无关，碗除外。它不是懒，是在内耗和睡觉之间选择了睡觉。',
+    baseName: '调停者',
+    tag: '心软，但需要缓冲',
+    subtitle: '内向 · 直觉 · 情感 · 灵活',
+    summary: '它在意你，但不喜欢被突然推到场面中央。情绪来了会黏，电量空了就躲起来充能。强硬纠正效果很差，温柔引导更有效。',
     careTips: [
-      '叫它起来请附赠零食，否则属于无效加班。',
-      '偶发黏人请珍惜，那是限量款情绪价值。'
+      '叫它起来请附带零食或喜欢的互动，硬拽效果很差。',
+      '偶发黏人请珍惜，那是它主动给的情绪价值。'
     ],
     boardingTips: [
-      '让它睡，真的，让它睡。',
-      '熟悉毯子比热情互动更有用。'
+      '熟悉毯子比热情互动更有用。',
+      '让它有地方躲，不要全天安排节目。'
     ]
   },
   INTP: {
-    typeName: '理论派干饭人',
-    subtitle: '内向 · 脑补 · 理智 · 随缘',
-    summary: '先研究碗的结构，再决定吃不吃。行动迟缓，脑子很吵，结论经常是「再观察观察」。',
+    baseName: '逻辑学家',
+    tag: '有点听话但不多',
+    subtitle: '内向 · 直觉 · 理性 · 灵活',
+    summary: '「你说的都对，但我不听你的」是 INTP 的常态。它们很有主见，学习能力也强；对指令通常会先自己判断。反应灵敏，但不太容易一直保持耐心和专注，一不注意就溜号了。',
     careTips: [
-      '新玩具请给研究时间，别催它立刻表演。',
-      '训练要讲道理，虽然它不一定听。'
+      '训练要短、要有变化，重复太多次它就会关机。',
+      '新玩具先给研究时间，别催它立刻表演。'
     ],
     boardingTips: [
       '环境稳定即可，别安排过于热闹的团建。',
@@ -318,64 +342,69 @@ const TYPES = {
     ]
   },
   ESTP: {
-    typeName: '全场焦点运动员',
-    subtitle: '外向 · 现实 · 理智 · 随缘',
-    summary: '进门先绕场三周。问题都可以用跑两圈解决，不能解决就再跑两圈。',
+    baseName: '企业家',
+    tag: '先动起来再说',
+    subtitle: '外向 · 感觉 · 理性 · 灵活',
+    summary: '能量高，反应快，现场有什么刺激就追什么。说教没用，跑够、玩够，它才听得进下一句。适合短时间、高反馈的互动。',
     careTips: [
-      '电量不消耗完会拆家，这是物理定律。',
-      '客人进门前先让它热完身，再允许握手。'
+      '电量不消耗完就容易拆家，出门前先让它活动够。',
+      '客人进门前先让它热完身，再允许打招呼。'
     ],
     boardingTips: [
       '活动空间和定时放电，否则全店都知道它来了。',
-      '洗护前先运动，兴奋下降再开工。'
+      '护理前先运动，兴奋下降再开工。'
     ]
   },
   ESFP: {
-    typeName: '派对永动机',
-    subtitle: '外向 · 现实 · 情感 · 随缘',
-    summary: '客人是来给它过生日的。镜头一举它就上线，没有观众也会自己鼓掌。',
+    baseName: '表演者',
+    tag: '有人看就会发光',
+    subtitle: '外向 · 感觉 · 情感 · 灵活',
+    summary: '客人、镜头、摸头都是加油站。它热情、好相处，也容易兴奋过头。给它社交和玩耍，同时帮它学会停下来休息。',
     careTips: [
-      '请提供舞台，否则它会把餐桌当T台。',
-      '情绪来得快去得也快，别跟它比谁更戏剧。'
+      '请提供正当的玩耍和社交，否则它会自己找舞台。',
+      '兴奋来得快去得也快，帮它建立「停」的信号。'
     ],
     boardingTips: [
-      '适合出镜，请多拍，它会很配合营业。',
-      '注意别让它社交到脱水。'
+      '适合出镜，互动可以多，但注意别社交到脱水。',
+      '热闹过后给它一个能断电的小窝。'
     ]
   },
   ENFP: {
-    typeName: '快乐遥控器',
-    subtitle: '外向 · 脑补 · 情感 · 随缘',
-    summary: '情绪价值拉满，逻辑为零。下一秒要干什么连它自己都不知道，但一定很热情。',
+    baseName: '竞选者',
+    tag: '快乐说来就来',
+    subtitle: '外向 · 直觉 · 情感 · 灵活',
+    summary: '对人和新事物都充满兴趣，情绪价值拉满，注意力也容易换频道。计划常常跟不上它的兴致，短一点、花样多一点的互动最合适。',
     careTips: [
-      '计划会破产，请准备B计划、C计划和零食。',
-      '它会治好你的emo，然后把你的拖鞋藏起来。'
+      '同一套训练不要磨太久，换个花样它才肯继续。',
+      '它会治愈你的低落，然后把你的计划带跑偏。'
     ],
     boardingTips: [
-      '多互动，但给它一个能断电的小窝。',
+      '多互动，但给它一个能安静下来的窝。',
       '太安静它会自己制造节目效果。'
     ]
   },
   ENTP: {
-    typeName: '抬杠小天才',
-    subtitle: '外向 · 脑补 · 理智 · 随缘',
-    summary: '你指东它往西，还觉得自己赢了。生活是一场辩论赛，奖品是你的零食。',
+    baseName: '辩论家',
+    tag: '指令可以商量',
+    subtitle: '外向 · 直觉 · 理性 · 灵活',
+    summary: '聪明、好动、不爱重复。你让它往东，它可能先研究为什么不能往西。把训练变成解题游戏，它才肯配合。',
     careTips: [
-      '不要和它讲道理，它会升级成课题。',
-      '新花样可以有，但请看好家具。'
+      '不要和它死磕同一个口令，它会升级成课题。',
+      '新花样可以有，但请看好家具和电线。'
     ],
     boardingTips: [
-      '聪明又闲就会搞事情，请给课题（玩具）。',
-      '店员要有点幽默感，严肃会输。'
+      '聪明又闲就会搞事情，请给课题（益智玩具）。',
+      '店员要有点耐心，硬压会输。'
     ]
   },
   ESTJ: {
-    typeName: '项目经理修狗',
-    subtitle: '外向 · 现实 · 理智 · 计划',
-    summary: '遛狗路线不允许偏差。它不是凶，是在催进度，你是那个总延期的供应商。',
+    baseName: '总经理',
+    tag: '出门得按计划',
+    subtitle: '外向 · 感觉 · 理性 · 计划',
+    summary: '规矩清楚它就好带，朝令夕改它就抗议。散步路线、时间点、指令最好稳定。它不是凶，是在催你把流程走完。',
     careTips: [
-      '规则清晰它就好带，朝令夕改会挨瞪。',
-      '请按时交付散步、饭和夸奖。'
+      '规则清晰它就好带，今天这样明天那样会挨瞪。',
+      '请按时交付散步、饭和明确夸奖。'
     ],
     boardingTips: [
       '作息写清楚，它会自己执行项目计划。',
@@ -383,11 +412,12 @@ const TYPES = {
     ]
   },
   ESFJ: {
-    typeName: '居委会热心肠',
-    subtitle: '外向 · 现实 · 情感 · 计划',
-    summary: '每栋楼的人都认识它。它操心你、操心客人、还操心隔壁那只不回消息的狗。',
+    baseName: '执政官',
+    tag: '人人都要照顾到',
+    subtitle: '外向 · 感觉 · 情感 · 计划',
+    summary: '见人就想问候，家里来客它比你还忙。非常在意你的态度，冷落比批评更伤。让它参与接待和日常仪式，它会很有成就感。',
     careTips: [
-      '它很需要被需要，冷落比挨骂更伤。',
+      '它很需要被需要，忽视比挨骂更伤。',
       '访客多时请让它当接待，不然它会加班到门口。'
     ],
     boardingTips: [
@@ -396,12 +426,13 @@ const TYPES = {
     ]
   },
   ENFJ: {
-    typeName: '灵魂治愈师',
-    subtitle: '外向 · 脑补 · 情感 · 计划',
-    summary: '你一 emo 它就贴上来。它真心觉得自己有义务拯救这个家，包括你的恋爱脑。',
+    baseName: '主人公',
+    tag: '你的情绪它先知道',
+    subtitle: '外向 · 直觉 · 情感 · 计划',
+    summary: '它会读空气，你一低落它就贴上来。社交能力强，也容易把全场情绪扛在自己身上。多给回应，少让它空转担心。',
     careTips: [
-      '它会读空气，所以你的假笑没用。',
-      '给足够陪伴，否则它会开始做思想工作。'
+      '它会读空气，所以你的假笑没用，状态不好就好好陪它。',
+      '给足够陪伴，否则它会开始过度操心。'
     ],
     boardingTips: [
       '需要回应，请多拍「我很好」的视频给主人。',
@@ -409,16 +440,17 @@ const TYPES = {
     ]
   },
   ENTJ: {
-    typeName: '霸总本霸',
-    subtitle: '外向 · 脑补 · 理智 · 计划',
-    summary: '家里没有主人，只有CEO。你负责开门和开饭，它负责战略、否决权和沙发。',
+    baseName: '指挥官',
+    tag: '家里我来安排',
+    subtitle: '外向 · 直觉 · 理性 · 计划',
+    summary: '目标明确，行动力强，不太吃硬命令。协商和奖励比压制有效。给它一点「自己说了算」的空间，合作会顺很多。',
     careTips: [
-      '协商可以，命令免谈。',
-      '它很能干也很要面子，当众训它等于宫斗开场。'
+      '协商可以，当众呵斥效果很差。',
+      '它能干也很要面子，请把指令说成合作而不是命令。'
     ],
     boardingTips: [
-      '给它一点掌控感，比如固定高处或固定床。',
-      '不要一上来就热情过载，先递上名片（零食）。'
+      '给它一点掌控感，比如固定高处或固定床位。',
+      '不要一上来就热情过载，先建立规则再互动。'
     ]
   }
 };
@@ -435,25 +467,23 @@ function pickText(map, kind) {
   return map[kind] || map.other || map.dog || '';
 }
 
+function formatTypeName(typeId, kind) {
+  const preset = TYPES[String(typeId || '').toUpperCase()];
+  if (!preset) return '';
+  if (kind === 'dog') return `${preset.baseName}狗`;
+  if (kind === 'cat') return `${preset.baseName}猫`;
+  return preset.baseName;
+}
+
 function getQuestions(type) {
   const kind = speciesKind(type);
-  return QUESTIONS.map((item) => ({
+  return QUESTIONS.map((item, index) => ({
     id: item.id,
+    no: index + 1,
     dim: item.dim,
     dimLabel: AXIS[item.dim] ? AXIS[item.dim].label : '',
-    prompt: pickText(item.prompt, kind),
-    options: [
-      {
-        letter: item.a.letter,
-        tag: 'A',
-        text: pickText(item.a.text, kind)
-      },
-      {
-        letter: item.b.letter,
-        tag: 'B',
-        text: pickText(item.b.text, kind)
-      }
-    ]
+    letter: item.letter,
+    prompt: pickText(item.prompt, kind)
   }));
 }
 
@@ -464,11 +494,17 @@ function pickLetter(counts, left, right) {
   return a > b ? left : right;
 }
 
-function classifyLetters(answers) {
+function classifyScores(answers) {
   const counts = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
-  (answers || []).forEach((letter) => {
-    const key = String(letter || '').toUpperCase();
-    if (counts[key] != null) counts[key] += 1;
+  QUESTIONS.forEach((item, index) => {
+    const value = Number(answers && answers[index]);
+    if (value < 1 || value > 5) return;
+    const weight = value - 3;
+    if (!weight) return;
+    const letter = item.letter;
+    const opposite = OPPOSITE[letter];
+    if (weight > 0) counts[letter] += weight;
+    else if (opposite) counts[opposite] += -weight;
   });
   return [
     pickLetter(counts, 'E', 'I'),
@@ -478,14 +514,26 @@ function classifyLetters(answers) {
   ].join('');
 }
 
-function normalizePersonality(raw) {
+function allAnswered(answers) {
+  if (!Array.isArray(answers) || answers.length < QUESTIONS.length) return false;
+  return QUESTIONS.every((_, index) => {
+    const value = Number(answers[index]);
+    return value >= 1 && value <= 5;
+  });
+}
+
+function normalizePersonality(raw, petType) {
   if (!raw || typeof raw !== 'object') return null;
   const typeId = String(raw.typeId || raw.id || '').trim().toUpperCase();
   const preset = TYPES[typeId];
-  const typeName = String(raw.typeName || (preset && preset.typeName) || '').trim();
+  const kind = speciesKind(petType);
+  const typeName = String(
+    (preset && formatTypeName(typeId, kind)) || raw.typeName || ''
+  ).trim();
   if (!typeId || !typeName) return null;
   const type = preset || {
-    typeName,
+    baseName: typeName,
+    tag: String(raw.tag || '').trim(),
     typeShort: String(raw.typeShort || typeId).trim(),
     subtitle: String(raw.subtitle || '').trim(),
     summary: String(raw.summary || '').trim(),
@@ -493,24 +541,26 @@ function normalizePersonality(raw) {
     boardingTips: Array.isArray(raw.boardingTips) ? raw.boardingTips : []
   };
   const tips = (list, fallback) => {
-    const source = Array.isArray(list) && list.length ? list : fallback;
+    const source = Array.isArray(list) && list.length && !preset ? list : (fallback || list);
     return (source || []).map((item) => String(item || '').trim()).filter(Boolean).slice(0, 6);
   };
   return {
-    version: VERSION,
+    version: preset ? VERSION : Math.max(1, Number(raw.version) || 1),
     typeId,
     typeName,
     typeShort: String(raw.typeShort || type.typeShort || typeId).trim().slice(0, 8),
-    subtitle: String(raw.subtitle || type.subtitle || '').trim().slice(0, 80),
-    summary: String(raw.summary || type.summary || '').trim().slice(0, 400),
+    tag: String((preset && preset.tag) || raw.tag || '').trim().slice(0, 20),
+    subtitle: String((preset && preset.subtitle) || raw.subtitle || '').trim().slice(0, 80),
+    summary: String((preset && preset.summary) || raw.summary || '').trim().slice(0, 400),
     careTips: tips(raw.careTips, type.careTips),
     boardingTips: tips(raw.boardingTips, type.boardingTips),
     completedAt: Number(raw.completedAt) || 0
   };
 }
 
-function buildResult(answers) {
-  const typeId = classifyLetters(answers);
+function buildResult(answers, petType) {
+  if (!allAnswered(answers)) return null;
+  const typeId = classifyScores(answers);
   const type = TYPES[typeId];
   if (!type) return null;
   return normalizePersonality({
@@ -518,7 +568,7 @@ function buildResult(answers) {
     typeId,
     typeShort: typeId,
     completedAt: Date.now()
-  });
+  }, petType);
 }
 
 function loadLocalMap() {
@@ -530,9 +580,9 @@ function loadLocalMap() {
   }
 }
 
-function saveLocal(petId, personality) {
+function saveLocal(petId, personality, petType) {
   const id = String(petId || '').trim();
-  const normalized = normalizePersonality(personality);
+  const normalized = normalizePersonality(personality, petType);
   if (!id || !normalized) return null;
   const map = loadLocalMap();
   map[id] = normalized;
@@ -546,11 +596,11 @@ function saveLocal(petId, personality) {
 
 function getPersonality(pet) {
   if (!pet) return null;
-  const fromPet = normalizePersonality(pet.personality);
+  const fromPet = normalizePersonality(pet.personality, pet.type);
   if (fromPet) return fromPet;
   const id = pet.id || pet.pet_id;
   if (!id) return null;
-  return normalizePersonality(loadLocalMap()[id]);
+  return normalizePersonality(loadLocalMap()[id], pet.type);
 }
 
 function attachToPet(pet) {
@@ -570,7 +620,7 @@ function attachToPets(pets) {
 }
 
 function persistToPet(pet, personality) {
-  const normalized = normalizePersonality(personality);
+  const normalized = normalizePersonality(personality, pet && pet.type);
   if (!pet || !normalized) return pet;
   const label = `${normalized.typeId} ${normalized.typeName}`.trim();
   const current = String(pet.character || '').trim();
@@ -593,15 +643,20 @@ function persistToPet(pet, personality) {
 
 module.exports = {
   VERSION,
+  PAGE_SIZE,
   AXIS,
   QUESTIONS,
   TYPES,
+  SCALE_OPTIONS,
   speciesKind,
+  formatTypeName,
   getQuestions,
   getPersonality,
   attachToPet,
   attachToPets,
   buildResult,
+  allAnswered,
+  classifyScores,
   normalizePersonality,
   saveLocal,
   persistToPet

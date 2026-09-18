@@ -1,5 +1,5 @@
 const { normalizeOrderFees } = require('./orderFees');
-const { formatOrderCreateTime } = require('./util');
+const { formatOrderCreateTime } = require('../../../utils/util');
 
 const PERIOD_OPTIONS = [
   { key: 'today', label: '今日' },

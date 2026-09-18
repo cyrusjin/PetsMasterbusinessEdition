@@ -614,7 +614,7 @@ function hasShopField(shop, key) {
 
 /**
  * 合并 billingRules：旧客户端不传新增嵌套字段时，保留库里已有配置，且不因缺字段拒绝保存。
- * 新增可选字段：multiPetDiscount / longTermDiscount / holidayPricing(.customDays) / customPricing / valueAddedServices
+ * 新增可选字段：multiPetDiscount / longTermDiscount / holidayPricing(.customDays) / customPricing / valueAddedServices / pickupReturnFullDeparture
  */
 function mergeBillingRulesForSave(incoming, existing) {
   if (incoming == null) {
@@ -632,6 +632,16 @@ function mergeBillingRulesForSave(incoming, existing) {
       next[key] = prev[key];
     }
   });
+
+  if ((next.departureDayCharge || 'full') !== 'half') {
+    next.pickupReturnFullDeparture = false;
+  } else if (Object.prototype.hasOwnProperty.call(incoming, 'pickupReturnFullDeparture')) {
+    next.pickupReturnFullDeparture = incoming.pickupReturnFullDeparture === true;
+  } else if (Object.prototype.hasOwnProperty.call(prev, 'pickupReturnFullDeparture')) {
+    next.pickupReturnFullDeparture = prev.pickupReturnFullDeparture === true;
+  } else {
+    next.pickupReturnFullDeparture = false;
+  }
 
   if (incoming.holidayPricing && typeof incoming.holidayPricing === 'object') {
     const prevHoliday = (prev.holidayPricing && typeof prev.holidayPricing === 'object')

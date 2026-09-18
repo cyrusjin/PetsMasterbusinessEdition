@@ -5,7 +5,7 @@
     </view>
     <oa-follow-banner scene="merchant" />
     <view class="demo-banner" wx:if="{{isDemoMode}}">
-      <text class="demo-banner-text">体验模式 · 以下为演示数据，入驻后可查看真实经营报表</text>
+      <text class="demo-banner-text">展示数据 · 以下为示例经营数据，开通店铺后可查看真实报表</text>
     </view>
 
     <view class="period-tabs">

@@ -1,10 +1,10 @@
 const app = getApp();
 const merchantDemo = require('../../../utils/merchantDemo');
-const { PERIOD_OPTIONS, buildMerchantStatistics } = require('../../../utils/merchantStats');
-const ledgerApi = require('../../../utils/ledger');
+const { PERIOD_OPTIONS, buildMerchantStatistics } = require('../utils/merchantStats');
+const ledgerApi = require('../utils/ledger');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
-const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
+const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed, redirectToUserIfClientMode } = require('../../../utils/shell');
 
 Page({
   data: {
@@ -33,11 +33,10 @@ Page({
     if (redirectToUserIfMerchantUiBlocked()) return;
     ensureMerchantPageAllowed().then((blocked) => {
       if (blocked) return;
-      if (app.isUserClientMode && app.isUserClientMode()) {
-        wx.switchTab({ url: '/pages/index/index' });
+      if (redirectToUserIfClientMode()) {
         return;
       }
-      // 未入驻不再展示演示营收，统一回门店授权
+      // 未开通店铺：展示示例营收，不强制回门店授权
       if (redirectToStoreAuthIfNeeded()) return;
       this._loadStats();
     });

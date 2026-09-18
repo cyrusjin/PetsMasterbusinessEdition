@@ -2,14 +2,14 @@ const app = getApp();
 const { STORAGE_KEYS } = require('../../../utils/constants');
 const { hideHomeButton } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
-const { redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
+const { redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed, redirectToUserIfClientMode } = require('../../../utils/shell');
 const storeApi = require('../../../utils/store');
 const merchantDemo = require('../../../utils/merchantDemo');
 const {
   validateApplyForm,
   createEmptyApplyShop,
   pickApplyShopFields
-} = require('../../../utils/storeApply');
+} = require('../utils/storeApply');
 const { preserveOutgoingShopFields, hydrateShopProfileFromCoop } = require('../../../utils/storeSync');
 const { resolveImageUrls } = require('../../../utils/imageCache');
 const {
@@ -31,9 +31,9 @@ const {
   STATUS_INCOMPLETE,
   STATUS_OPEN
 } = require('../../../utils/storeStatus');
-const { showValidationAlert } = require('../../../utils/formAlert');
+const { showValidationAlert } = require('../utils/formAlert');
 const { copyText } = require('../../../utils/clipboard');
-const { buildMerchantCoopContract } = require('../../../utils/merchantCoopContract');
+const { buildMerchantCoopContract } = require('../utils/merchantCoopContract');
 const { isMerchantRejected, isMerchantDisabled } = require('../../../utils/role');
 const { isAuthorizedNickName, getNickNameCapability } = require('../../../utils/userAuth');
 const { isOaBound } = require('../../../utils/officialAccount');
@@ -46,7 +46,7 @@ const {
 } = require('../../../utils/storeShare');
 const { normalizePhone, validateMobilePhone } = require('../../../utils/phone');
 
-const merchantOnboarding = require('../../../utils/merchantOnboarding');
+const merchantOnboarding = require('../utils/merchantOnboarding');
 const {
   normalizeReceptionRange,
   formatReceptionRangeText,
@@ -183,7 +183,7 @@ const {
   getDefaultClauseEditText,
   getStoredClauseEditText,
   isCustomContractSettings
-} = require('../../../utils/boardingContract');
+} = require('../utils/boardingContract');
 const {
   formatHolidayPricingSummary,
   getDefaultHolidayPricing,
@@ -243,6 +243,8 @@ function pickBillingState(rules) {
   );
   const checkInDayCharge = (rules && rules.checkInDayCharge) || 'full';
   const departureDayCharge = (rules && rules.departureDayCharge) || 'full';
+  const pickupReturnFullDeparture = departureDayCharge === 'half'
+    && !!(rules && rules.pickupReturnFullDeparture === true);
   const multiPetDiscount = normalizeMultiPetDiscount(
     (rules && rules.multiPetDiscount) || {}
   );
@@ -254,6 +256,7 @@ function pickBillingState(rules) {
   const billingState = {
     checkInDayCharge,
     departureDayCharge,
+    pickupReturnFullDeparture,
     departureCharge
   };
   const holidayPricing = normalizeHolidayPricing(
@@ -382,6 +385,7 @@ Page({
     customPricing: normalizeCustomPricingForUi(getDefaultCustomPricing()),
     checkInDayCharge: 'full',
     departureDayCharge: 'full',
+    pickupReturnFullDeparture: false,
     departureCharge: { ...DEFAULT_DEPARTURE_CHARGE },
     chargeSummary: '',
     businessHours: { ...DEFAULT_BUSINESS_HOURS },
@@ -530,6 +534,10 @@ Page({
   },
 
   onShareAppMessage(res) {
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      return { title: '萌宠寄养体验', path: '/pages/merchant/tab-daily/tab-daily' };
+    }
     const shareType = res && res.target && res.target.dataset && res.target.dataset.shareType;
     const serviceLine = res && res.target && res.target.dataset && res.target.dataset.serviceLine;
     if (shareType === 'open-success' || shareType === 'customer' || !shareType) {
@@ -551,6 +559,14 @@ Page({
 
   _isEmptyShopPreview() {
     return UI_EMPTY_SHOP_PREVIEW === true;
+  },
+
+  _getPersistShop() {
+    const shop = app.getShop() || {};
+    if (merchantDemo.isDemoEntityId(shop.store_id)) {
+      return (app.getData && app.getData(STORAGE_KEYS.SHOP)) || {};
+    }
+    return shop;
   },
 
   _isHomeFeedingForm() {
@@ -657,6 +673,7 @@ Page({
 
   _shouldHideMerchantTabBar() {
     if (app.isMerchantDisabled && app.isMerchantDisabled()) return true;
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) return false;
     // 未完成基础设置（含无店铺申请入驻）：隐藏底部 Tab
     return !this._isBasicSetupReady();
   },
@@ -810,7 +827,7 @@ Page({
         ? { force: true }
         : {};
       return app.ensureMerchantStore(storeOpts).then((shop) => {
-        if (!shop || !shop.store_id) {
+        if (!shop || !shop.store_id || merchantDemo.isDemoEntityId(shop.store_id)) {
           if (this._formDirty) return;
           this._applyShopToForm(this._createEmptyShop());
           this._syncApplyShellChrome();
@@ -831,8 +848,7 @@ Page({
       if (blocked) return;
       this._unlockMerchantCopy();
       this.setData({ merchantUiReady: true });
-      if (app.isUserClientMode && app.isUserClientMode()) {
-        wx.switchTab({ url: '/pages/index/index' });
+      if (redirectToUserIfClientMode()) {
         return;
       }
       this._reloadStorePage({ forceUser: this._needsForceUserRefresh() })
@@ -2056,7 +2072,8 @@ Page({
       chargeSummary: buildChargeSummary({
         checkInDayCharge: form.checkInDayCharge,
         departureDayCharge: form.departureDayCharge,
-        departureCharge: form.departureCharge
+        departureCharge: form.departureCharge,
+        pickupReturnFullDeparture: !!form.pickupReturnFullDeparture
       })
     });
   },
@@ -2229,6 +2246,7 @@ Page({
       valueAddedServices,
       checkInDayCharge: form.checkInDayCharge,
       departureDayCharge: form.departureDayCharge,
+      pickupReturnFullDeparture: form.departureDayCharge === 'half' && !!form.pickupReturnFullDeparture,
       departureCharge: normalizeDepartureCharge(form.departureCharge),
       holidayPricing,
       multiPetDiscount: (() => {
@@ -2582,6 +2600,14 @@ Page({
   onDepartureDayCharge(e) {
     this._markDirty();
     this._setForm({ departureDayCharge: e.detail.value }, () => this._updateChargeSummary());
+  },
+
+  onPickupReturnFullDepartureChange(e) {
+    this._markDirty();
+    const values = (e.detail && e.detail.value) || [];
+    this._setForm({
+      pickupReturnFullDeparture: Array.isArray(values) ? values.length > 0 : !!values
+    }, () => this._updateChargeSummary());
   },
 
   onDepartureTimeChange(e) {
@@ -3682,7 +3708,7 @@ Page({
         applyLocal(nextShop);
         return;
       }
-      const cachedShop = app.getShop() || {};
+      const cachedShop = this._getPersistShop();
       const shopToSync = preserveOutgoingShopFields(this._normalizeShop({
         ...cachedShop,
         store_id: (this.data.shop && this.data.shop.store_id) || cachedShop.store_id,
@@ -3746,7 +3772,7 @@ Page({
       return;
     }
 
-    const cachedShop = app.getShop() || {};
+    const cachedShop = this._getPersistShop();
     const shopToSync = preserveOutgoingShopFields(this._normalizeShop({
       ...cachedShop,
       store_id: (this.data.shop && this.data.shop.store_id) || cachedShop.store_id,
@@ -3914,7 +3940,7 @@ Page({
       serviceLines,
       billingRules
     });
-    const cachedShop = app.getShop() || {};
+    const cachedShop = this._getPersistShop();
     Object.assign(shop, preserveOutgoingShopFields(shop, cachedShop));
 
     if (this._isEmptyShopPreview()) {

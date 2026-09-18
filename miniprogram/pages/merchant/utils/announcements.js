@@ -1,5 +1,5 @@
-const { request } = require('./api');
-const { STORAGE_KEYS } = require('./constants');
+const { request } = require('../../../utils/api');
+const { STORAGE_KEYS } = require('../../../utils/constants');
 
 const CACHE_TTL = 60 * 1000;
 

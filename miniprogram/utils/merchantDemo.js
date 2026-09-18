@@ -1,6 +1,7 @@
 const { STORAGE_KEYS } = require('./constants');
+const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
 const { dedupeDailyLogs } = require('./dailyLogUtil');
-const { attachStoreDisplayNo } = require('./displayNo');
+const { attachOrderDisplayNo, attachStoreDisplayNo } = require('./displayNo');
 
 const DEMO_STORE_ID = 'demo_store';
 
@@ -17,9 +18,51 @@ function formatDateTime(date) {
   return `${formatDate(date)} ${h}:${min}`;
 }
 
-/** 商家端演示/体验模式已关闭：未入驻只走门店授权，不再注入本地假订单 */
-function isMerchantDemoMode() {
-  return false;
+function readPersistedShop() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (app && typeof app.getData === 'function') {
+      const shop = app.getData(STORAGE_KEYS.SHOP);
+      if (shop && typeof shop === 'object') return shop;
+    }
+  } catch (err) {
+    // fall through
+  }
+  try {
+    return wx.getStorageSync(STORAGE_KEYS.SHOP) || {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function hasRealMerchantShop() {
+  const shop = readPersistedShop();
+  return !!(shop && shop.store_id && !isDemoEntityId(shop.store_id));
+}
+
+/** 未开通真实店铺：商家壳下展示示例数据，开通后退出 */
+function isMerchantDemoMode(user) {
+  if (isMerchantApproved(user)) return false;
+  if (isMerchantPending(user)) return false;
+  if (isMerchantRejected(user)) return false;
+  if (isMerchantDisabled(user)) return false;
+  if (hasRealMerchantShop()) return false;
+  try {
+    const app = getApp();
+    if (!app) return false;
+    if (app.isUserClientMode && app.isUserClientMode()) return false;
+    return !!(app.globalData && app.globalData.role === 'merchant');
+  } catch (err) {
+    return false;
+  }
+}
+
+function promptDemoGuestBlocked() {
+  wx.showToast({ title: '开通店铺后即可发送给客人', icon: 'none' });
+}
+
+function promptDemoInsuranceBlocked() {
+  wx.showToast({ title: '开通店铺后即可购买保险', icon: 'none' });
 }
 
 /** 清除历史本地演示种子（保留入驻申请草稿） */
@@ -301,11 +344,37 @@ function buildSeedData() {
     store_id: DEMO_STORE_ID,
     name: '萌宠寄养体验店',
     status: '营业中',
-    address: '体验模式 · 数据仅保存在本地',
-    isDemo: true
+    address: '展示数据 · 开通店铺后可使用完整功能',
+    intro: '这是未开通店铺时的功能展示，订单、打卡、营收均为示例。',
+    contactPhone: '13800000000',
+    isDemo: true,
+    serviceLines: { boarding: true, wash: false, homeFeeding: false }
   };
 
-  return { pets, orders, dailyLogs, shop };
+  const ledger = [
+    {
+      id: 'demo_led_1',
+      store_id: DEMO_STORE_ID,
+      type: 'expense',
+      category: 'food',
+      amount: 320,
+      date: formatDate(yesterday),
+      note: '宠物口粮补货',
+      createTime: now - 86400000
+    },
+    {
+      id: 'demo_led_2',
+      store_id: DEMO_STORE_ID,
+      type: 'income',
+      category: 'extra_service',
+      amount: 80,
+      date: formatDate(today),
+      note: '加购洗护',
+      createTime: now - 3600000
+    }
+  ];
+
+  return { pets, orders, dailyLogs, shop, ledger };
 }
 
 function buildPetSnapshotFromPet(pet) {
@@ -343,31 +412,49 @@ function _set(key, value) {
 }
 
 function ensureDemoData() {
-  // 演示模式已关闭，不再写入本地种子
+  if (_get(STORAGE_KEYS.DEMO_INITIALIZED)) {
+    return;
+  }
+  const seed = buildSeedData();
+  _set(STORAGE_KEYS.DEMO_ORDERS, seed.orders);
+  _set(STORAGE_KEYS.DEMO_PETS, seed.pets);
+  _set(STORAGE_KEYS.DEMO_DAILY_LOGS, seed.dailyLogs);
+  _set(STORAGE_KEYS.DEMO_SHOP, seed.shop);
+  _set(STORAGE_KEYS.DEMO_CONTRACTS, []);
+  if (STORAGE_KEYS.DEMO_LEDGER) {
+    _set(STORAGE_KEYS.DEMO_LEDGER, seed.ledger || []);
+  }
+  _set(STORAGE_KEYS.DEMO_INITIALIZED, true);
 }
 
 function resetDemoData() {
-  clearDemoRuntimeData();
+  wx.removeStorageSync(STORAGE_KEYS.DEMO_INITIALIZED);
+  ensureDemoData();
 }
 
 function getDemoOrders() {
-  return [];
+  ensureDemoData();
+  return (_get(STORAGE_KEYS.DEMO_ORDERS) || []).map(attachOrderDisplayNo);
 }
 
 function getDemoPets() {
-  return [];
+  ensureDemoData();
+  return _get(STORAGE_KEYS.DEMO_PETS) || [];
 }
 
 function getDemoDailyLogs() {
-  return [];
+  ensureDemoData();
+  return _get(STORAGE_KEYS.DEMO_DAILY_LOGS) || [];
 }
 
 function getDemoShop() {
-  return null;
+  ensureDemoData();
+  return attachStoreDisplayNo(_get(STORAGE_KEYS.DEMO_SHOP) || buildSeedData().shop);
 }
 
 function getDemoContracts() {
-  return [];
+  ensureDemoData();
+  return _get(STORAGE_KEYS.DEMO_CONTRACTS) || [];
 }
 
 function saveDemoShop(shop) {
@@ -484,6 +571,9 @@ module.exports = {
   DEMO_STORE_ID,
   isMerchantDemoMode,
   isDemoEntityId,
+  hasRealMerchantShop,
+  promptDemoGuestBlocked,
+  promptDemoInsuranceBlocked,
   clearDemoRuntimeData,
   ensureDemoData,
   resetDemoData,

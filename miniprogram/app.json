@@ -3,15 +3,27 @@
     "pages/index/index",
     "pages/butler/butler",
     "pages/orders/orders",
-    "pages/daily/daily",
-    "pages/merchant/tab-daily/tab-daily",
-    "pages/merchant/tab-statistics/tab-statistics",
-    "pages/merchant/tab-guide/tab-guide",
-    "pages/merchant/tab-store/tab-store",
-    "pages/share/store-landing/store-landing",
-    "pages/merchant/apply/apply"
+    "pages/daily/daily"
   ],
   "subPackages": [
+    {
+      "root": "pages/merchant",
+      "name": "packageMerchant",
+      "pages": [
+        "tab-daily/tab-daily",
+        "tab-statistics/tab-statistics",
+        "tab-guide/tab-guide",
+        "tab-store/tab-store",
+        "apply/apply"
+      ]
+    },
+    {
+      "root": "pages/share",
+      "name": "packageShare",
+      "pages": [
+        "store-landing/store-landing"
+      ]
+    },
     {
       "root": "packageUser",
       "name": "packageUser",
@@ -54,6 +66,7 @@
         "pickup-manage/pickup-manage",
         "holiday-pricing/holiday-pricing",
         "insurance-promotion/insurance-promotion",
+        "boarding-insurance/boarding-insurance",
         "share-guest/share-guest",
         "service-record/service-record"
       ]

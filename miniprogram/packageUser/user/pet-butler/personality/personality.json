@@ -1,4 +1,6 @@
 {
-  "navigationBarTitleText": "宠物MBTI",
+  "navigationBarTitleText": "测测宠物16型",
+  "navigationBarBackgroundColor": "#FFF7F0",
+  "backgroundColor": "#FFF5EC",
   "usingComponents": {}
 }

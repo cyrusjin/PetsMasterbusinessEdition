@@ -1137,7 +1137,7 @@ function getTools(options = {}) {
     {
       id: 'personality',
       title: '宠物MBTI',
-      desc: '测测它是霸总还是咸鱼',
+      desc: '20 题测出它的 16 型人格',
       emoji: '🧠',
       path: '/packageUser/user/pet-butler/personality/personality',
       color: '#C47B9A'

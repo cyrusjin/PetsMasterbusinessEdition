@@ -1,0 +1,213 @@
+page {
+  background: #FFF7F1;
+}
+
+.insurance-guide {
+  min-height: 100vh;
+  padding: 28rpx 32rpx 60rpx;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(247, 190, 146, .32), transparent 42%),
+    #FFF7F1;
+}
+
+.demo-banner {
+  background: #FFF1E7;
+  border: 1rpx solid #F2C39E;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.demo-banner-text {
+  font-size: 24rpx;
+  color: #F57C00;
+  line-height: 1.6;
+}
+
+.welfare-banner {
+  position: relative;
+  margin-bottom: 22rpx;
+  padding: 36rpx 32rpx 32rpx;
+  border-radius: 32rpx;
+  overflow: hidden;
+  background: linear-gradient(135deg, #FF8A3A 0%, #E85B18 58%, #D94A12 100%);
+  box-shadow: 0 18rpx 40rpx rgba(232, 91, 24, .28);
+}
+
+.welfare-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, .22);
+  color: #FFFFFF;
+  font-size: 22rpx;
+  font-weight: 800;
+  letter-spacing: 1rpx;
+}
+
+.welfare-title {
+  display: block;
+  color: #FFFFFF;
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.welfare-sub {
+  display: block;
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, .92);
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.insurance-guide-card {
+  padding: 58rpx 38rpx 42rpx;
+  border: 2rpx solid rgba(255, 255, 255, .9);
+  border-radius: 40rpx;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 24rpx 70rpx rgba(111, 75, 53, .1);
+  text-align: center;
+}
+
+.insurance-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132rpx;
+  height: 132rpx;
+  margin: 0 auto 24rpx;
+  border-radius: 42rpx;
+  background: linear-gradient(145deg, #FFF1E6, #FFE0CB);
+}
+
+.insurance-logo {
+  width: 88rpx;
+  height: 88rpx;
+}
+
+.insurance-brand {
+  display: block;
+  color: #E85B18;
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+
+.insurance-guide-title {
+  display: block;
+  margin-top: 10rpx;
+  color: #3D2B1F;
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.insurance-guide-desc {
+  display: block;
+  margin: 18rpx 8rpx 28rpx;
+  color: #887568;
+  font-size: 26rpx;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.highlight-list {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 8rpx 0 4rpx;
+  text-align: left;
+}
+
+.highlight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.highlight-check {
+  flex-shrink: 0;
+  color: #E85B18;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.highlight-text {
+  color: #4B3022;
+  font-size: 26rpx;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.insurance-guide-note {
+  display: block;
+  margin: 4rpx 16rpx 0;
+  color: #4B3022;
+  font-size: 24rpx;
+  font-weight: 650;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.insurance-buy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 92rpx;
+  margin-top: 28rpx;
+  border: none;
+  border-radius: 999rpx;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #F09A69, #D96F43);
+  box-shadow: 0 16rpx 32rpx rgba(217, 111, 67, .22);
+  font-size: 29rpx;
+  font-weight: 700;
+}
+
+.insurance-buy-btn::after { border: none; }
+.insurance-buy-btn:active { transform: scale(.985); }
+
+.insurance-copy-btn {
+  margin: 18rpx auto 0;
+  padding: 8rpx 20rpx;
+  width: auto;
+  display: inline-block;
+  background: transparent;
+  color: #927B6C;
+  font-size: 23rpx;
+  line-height: 1.6;
+}
+.insurance-copy-btn::after { border: none; }
+
+.insurance-guide-provider {
+  display: block;
+  margin: 30rpx 8rpx 0;
+  color: #A08D80;
+  font-size: 20rpx;
+  line-height: 1.7;
+  text-align: left;
+}
+
+.insurance-phone {
+  color: #E85B18;
+  font-weight: 700;
+}
+
+.insurance-cs-hint {
+  margin-top: 18rpx;
+  color: #A08D80;
+  font-size: 22rpx;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.insurance-cs-link {
+  color: #E85B18;
+  font-weight: 700;
+}

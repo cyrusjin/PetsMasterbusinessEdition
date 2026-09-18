@@ -11,8 +11,8 @@ const {
 const timePicker = require('../../utils/timePicker');
 const { buildPetSnapshot } = require('../../../utils/petSnapshot');
 const { formatAgeText } = require('../../../utils/petAge');
-const { buildContractDraft } = require('../../../utils/boardingContract');
-const { showValidationAlert } = require('../../../utils/formAlert');
+const { buildContractDraft } = require('../../utils/boardingContract');
+const { showValidationAlert } = require('../../utils/formAlert');
 const {
   loadReserveContact,
   saveReserveContact,
@@ -1896,8 +1896,11 @@ Page({
       pickupDrivingDistanceKm, pickupDistanceMode, serviceLine
     } = this.data;
     const rules = app.getStoreBillingRules();
-    const chargeSummary = buildChargeSummary(rules);
     const pickupFlags = this._getPickupFlags();
+    const chargeSummary = buildChargeSummary(rules, {
+      needPickup,
+      pickupIncludeReturn: pickupFlags.pickupIncludeReturn
+    });
     const feeToken = (this._feeCalcToken = (this._feeCalcToken || 0) + 1);
     const pets = Array.isArray(selectedPets) ? selectedPets.filter(Boolean) : [];
 
@@ -1930,7 +1933,9 @@ Page({
       startTime,
       endTime,
       petRoomTypes,
-      extrasFeePerDay
+      extrasFeePerDay,
+      needPickup,
+      pickupIncludeReturn: pickupFlags.pickupIncludeReturn
     });
     this._multiPetFeeResult = multiResult;
 
@@ -2704,7 +2709,9 @@ Page({
         startTime,
         endTime,
         petRoomTypes,
-        extrasFeePerDay: 0
+        extrasFeePerDay: 0,
+        needPickup,
+        pickupIncludeReturn: this._getPickupFlags().pickupIncludeReturn
       });
       this._multiPetFeeResult = multiResult;
     }

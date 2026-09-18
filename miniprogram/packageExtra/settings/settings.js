@@ -1,11 +1,14 @@
 const app = getApp();
 const { copyText } = require('../../utils/clipboard');
+const { shouldSkipMerchantReland } = require('../../utils/shell');
 
 Page({
   data: { shop: {}, billingMode: 'weight', weightPricing: [], roomPricing: {} },
 
   onShow() {
+    if (this._choosingLogo || shouldSkipMerchantReland()) return;
     app.ensureCloudAndLogin().then(() => {
+      if (this._choosingLogo || shouldSkipMerchantReland()) return;
       if (app.globalData.isMerchant) {
         wx.reLaunch({ url: '/pages/merchant/tab-store/tab-store' });
         return;

@@ -4,6 +4,7 @@ const {
   createPetInsuranceShare,
   buildPetInsuranceShareConfig
 } = require('../../utils/petInsurance');
+const merchantDemo = require('../../utils/merchantDemo');
 
 function pad2(value) {
   return String(value).padStart(2, '0');
@@ -41,6 +42,14 @@ Page({
   onLoad() {
     if (wx.showShareMenu) {
       wx.showShareMenu({ menus: ['shareAppMessage'] });
+    }
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      this.setData({
+        preparing: false,
+        prepareError: '开通店铺后即可购买保险并生成推广链接'
+      });
+      merchantDemo.promptDemoInsuranceBlocked();
+      return;
     }
     this._prepareShareLink();
   },
@@ -130,6 +139,13 @@ Page({
   },
 
   onShareAppMessage() {
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoInsuranceBlocked();
+      return {
+        title: '萌宠寄养体验',
+        path: '/pages/merchant/tab-daily/tab-daily'
+      };
+    }
     const expired = !this.data.expireAt || Number(this.data.expireAt) <= Date.now();
     if (!this.data.shareToken || this.data.linkExpired || expired) {
       if (expired && !this.data.linkExpired) this.setData({ linkExpired: true, remainingText: '已过期' });

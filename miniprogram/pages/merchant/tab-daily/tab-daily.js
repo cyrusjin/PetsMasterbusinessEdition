@@ -5,22 +5,22 @@ const { openProxyGuestPicker, preloadProxyGuestPicker } = require('../../../util
 const {
   buildBoardingListWithDailyStats,
   countUncheckedBoardingPets
-} = require('../../../utils/dailyStats');
+} = require('../utils/dailyStats');
 const { filterDailyCheckableOrders } = require('../../../utils/dailyCheckable');
 const badgeUtil = require('../../../utils/badge');
 const merchantDemo = require('../../../utils/merchantDemo');
-const { countPendingPickupTasks } = require('../../../utils/pickupManage');
+const { countPendingPickupTasks } = require('../utils/pickupManage');
 const { hideHomeButton, getCustomNavMetrics } = require('../../../utils/navBar');
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
 const { startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../../utils/orderRefresh');
 const { isMerchantRejected } = require('../../../utils/role');
-const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed } = require('../../../utils/shell');
-const announcementApi = require('../../../utils/announcements');
+const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed, redirectToUserIfClientMode } = require('../../../utils/shell');
+const announcementApi = require('../utils/announcements');
 const { getPromotionStats } = require('../../../utils/growth');
 
 const STAFF_COUNT_TTL = 60 * 1000;
 const DAILY_POLL_MS = 60 * 1000;
-const merchantOnboarding = require('../../../utils/merchantOnboarding');
+const merchantOnboarding = require('../utils/merchantOnboarding');
 
 function parseStaffInviteStoreId(options) {
   if (!options) return '';
@@ -264,12 +264,11 @@ Page({
       app.globalData.pendingStaffInviteStoreId = '';
     }
 
-    if (app.isUserClientMode && app.isUserClientMode()) {
-      wx.switchTab({ url: '/pages/index/index' });
+    if (redirectToUserIfClientMode()) {
       return;
     }
 
-    // 未入驻不再提供日常管理演示，统一回门店授权
+    // 未开通店铺：展示示例数据，不强制回门店授权
     if (redirectToStoreAuthIfNeeded()) return;
 
     app.ensureCloudAndLogin({}).then(() => {
@@ -649,6 +648,7 @@ Page({
 
   onShareAppMessage(res) {
     if (this.data.isDemoMode) {
+      merchantDemo.promptDemoGuestBlocked();
       return { title: '萌宠寄养体验', path: '/pages/merchant/tab-daily/tab-daily' };
     }
     const shareType = res && res.target && res.target.dataset && res.target.dataset.shareType;
@@ -678,7 +678,7 @@ Page({
 
   onShareToGuest() {
     if (this.data.isDemoMode) {
-      wx.showToast({ title: '体验模式不可分享给客人', icon: 'none' });
+      merchantDemo.promptDemoGuestBlocked();
       return;
     }
     if (!this._guardMerchantFeature()) return;
@@ -688,6 +688,10 @@ Page({
   },
 
   onProxyOrder() {
+    if (this.data.isDemoMode) {
+      merchantDemo.promptDemoGuestBlocked();
+      return;
+    }
     if (!this._guardMerchantFeature()) return;
     const cards = listGuestShareCards(this.data.shop);
     if (!cards.length) {
@@ -698,6 +702,10 @@ Page({
   },
 
   onServiceRecord() {
+    if (this.data.isDemoMode) {
+      merchantDemo.promptDemoGuestBlocked();
+      return;
+    }
     if (!this._guardMerchantFeature()) return;
     wx.navigateTo({ url: '/packageBiz/service-record/service-record' });
   },
@@ -766,13 +774,17 @@ Page({
     if (!this._guardMerchantFeature()) return;
     wx.navigateTo({ url: '/packageExtra/customers/customers' });
   },
-  onGoLedger() {
+  onGoBoardingInsurance() {
+    if (this.data.isDemoMode) {
+      merchantDemo.promptDemoInsuranceBlocked();
+      return;
+    }
     if (!this._guardMerchantFeature()) return;
-    wx.navigateTo({ url: '/packageExtra/ledger/ledger' });
+    wx.navigateTo({ url: '/packageBiz/boarding-insurance/boarding-insurance' });
   },
   onGoInsurancePromotion() {
     if (this.data.isDemoMode) {
-      wx.showToast({ title: '体验模式不可生成推广链接', icon: 'none' });
+      merchantDemo.promptDemoInsuranceBlocked();
       return;
     }
     if (!this._guardMerchantFeature()) return;

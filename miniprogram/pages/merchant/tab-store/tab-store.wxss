@@ -470,6 +470,48 @@
   border-radius: 12rpx;
 }
 
+.pickup-return-full-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding: 20rpx;
+  background: #fff;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 16rpx;
+}
+
+.pickup-return-full-check.mode-active {
+  background: #FFF1E7;
+  border-color: #E98657;
+}
+
+.pickup-return-full-check checkbox {
+  flex-shrink: 0;
+  margin-top: 4rpx;
+}
+
+.pickup-return-full-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.pickup-return-full-title {
+  display: block;
+  font-size: 28rpx;
+  color: #333333;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.pickup-return-full-desc {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #999999;
+  line-height: 1.5;
+}
+
 .holiday-pricing-entry {
   margin-bottom: 0;
 }

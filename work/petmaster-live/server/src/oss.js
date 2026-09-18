@@ -101,6 +101,46 @@ function isVideoMedia(url) {
   return VIDEO_EXT_PATTERN.test(String(url || ''));
 }
 
+const pendingCoverJobs = new Set();
+let coverQueue = Promise.resolve();
+
+function peekVideoCoverUrl(videoUrl) {
+  if (!videoUrl || !isVideoMedia(videoUrl)) return '';
+  const videoKey = extractObjectKey(videoUrl);
+  if (!videoKey) return '';
+  const coverKey = coverKeyForVideoKey(videoKey);
+  try {
+    if (fs.existsSync(absolutePathForKey(coverKey))) {
+      return buildPublicUrl(coverKey);
+    }
+  } catch (_) {
+    return '';
+  }
+  return '';
+}
+
+function derivedVideoCoverUrl(videoUrl) {
+  if (!videoUrl || !isVideoMedia(videoUrl)) return '';
+  const videoKey = extractObjectKey(videoUrl);
+  if (!videoKey) return '';
+  try {
+    return buildPublicUrl(coverKeyForVideoKey(videoKey));
+  } catch (_) {
+    return '';
+  }
+}
+
+function scheduleVideoCoverGeneration(videoUrl) {
+  const videoKey = extractObjectKey(videoUrl);
+  if (!videoKey || pendingCoverJobs.has(videoKey)) return;
+  pendingCoverJobs.add(videoKey);
+  coverQueue = coverQueue
+    .then(() => ensureVideoCoverUrl(videoUrl))
+    .catch((err) => {
+      console.warn('[oss] background video cover failed', videoKey, (err && err.message) || err);
+    });
+}
+
 async function ensureVideoCoverUrl(videoUrl) {
   if (!videoUrl || !isVideoMedia(videoUrl)) return '';
 
@@ -141,7 +181,13 @@ async function resolveVideoCoverUrl(videoUrl, storedCoverUrl) {
     ? await resolveMediaUrl(storedCoverUrl)
     : '';
   if (cover) return cover;
-  return ensureVideoCoverUrl(videoUrl);
+  const existing = peekVideoCoverUrl(videoUrl);
+  if (existing) return existing;
+  // 打卡保存/列表不能同步等 ffmpeg（单次最长 30s，列表会叠加到客户端超时）
+  if (videoUrl && isVideoMedia(videoUrl)) {
+    scheduleVideoCoverGeneration(videoUrl);
+  }
+  return derivedVideoCoverUrl(videoUrl);
 }
 
 /** 兼容旧名：返回小程序直传本地 API 所需字段 */

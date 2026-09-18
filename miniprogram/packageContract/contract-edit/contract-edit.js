@@ -1,5 +1,5 @@
 const app = getApp();
-const { DEFAULT_TEMPLATE } = require('../../utils/boardingContract');
+const { DEFAULT_TEMPLATE } = require('../utils/boardingContract');
 
 Page({
   data: { template: '' },

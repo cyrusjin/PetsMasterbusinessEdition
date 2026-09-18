@@ -6,22 +6,22 @@ const MBTI_TYPE_IDS = [
 ];
 
 const MBTI_TYPE_NAMES = {
-  ISTJ: '家委会主任',
-  ISFJ: '隐形保姆',
-  INFJ: '窗边哲学家',
-  INTJ: '暗中观察CEO',
-  ISTP: '拆家工程师',
-  ISFP: '行走的艺术品',
-  INFP: '修仙咸鱼',
-  INTP: '理论派干饭人',
-  ESTP: '全场焦点运动员',
-  ESFP: '派对永动机',
-  ENFP: '快乐遥控器',
-  ENTP: '抬杠小天才',
-  ESTJ: '项目经理修狗',
-  ESFJ: '居委会热心肠',
-  ENFJ: '灵魂治愈师',
-  ENTJ: '霸总本霸'
+  ISTJ: '物流师',
+  ISFJ: '守卫者',
+  INFJ: '提倡者',
+  INTJ: '建筑师',
+  ISTP: '鉴赏家',
+  ISFP: '探险家',
+  INFP: '调停者',
+  INTP: '逻辑学家',
+  ESTP: '企业家',
+  ESFP: '表演者',
+  ENFP: '竞选者',
+  ENTP: '辩论家',
+  ESTJ: '总经理',
+  ESFJ: '执政官',
+  ENFJ: '主人公',
+  ENTJ: '指挥官'
 };
 
 function clipText(value, max) {
@@ -51,6 +51,7 @@ function normalizePersonality(raw) {
     typeId,
     typeName,
     typeShort: clipText(raw.typeShort || typeId, 8) || typeId.slice(0, 8),
+    tag: clipText(raw.tag, 20),
     subtitle: clipText(raw.subtitle, 80),
     summary: clipText(raw.summary, 400),
     careTips: clipTips(raw.careTips),

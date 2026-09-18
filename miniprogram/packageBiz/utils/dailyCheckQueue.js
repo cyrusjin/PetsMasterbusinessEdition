@@ -1,5 +1,6 @@
 const { isRemotePhoto, isLocalTempPath } = require('../../utils/photoPath');
 const dailyMedia = require('./dailyMedia');
+const { retry } = require('../../utils/upload');
 
 const USER_DIR = () => (wx.env && wx.env.USER_DATA_PATH) || '';
 const STATE_KEY = 'dailyCheckUpload';
@@ -134,7 +135,7 @@ function submitLogs(job, cloudImages, cloudVideos, cloudVideoCovers) {
 
   if (job.editMode) {
     const order = job.selectedOrders[0];
-    return app.updateDailyLog({
+    return retry(() => app.updateDailyLog({
       id: job.editLogId,
       log_id: job.editLogId,
       orderId: order.id,
@@ -152,7 +153,7 @@ function submitLogs(job, cloudImages, cloudVideos, cloudVideoCovers) {
       scheduledAt: job.scheduledAt,
       isScheduled: true,
       status: 'scheduled'
-    }).then((res) => [res]);
+    }), 3, 1000).then((res) => [res]);
   }
 
   return Promise.all(job.selectedOrders.map((order) => {
@@ -175,7 +176,7 @@ function submitLogs(job, cloudImages, cloudVideos, cloudVideoCovers) {
       payload.isScheduled = true;
       payload.status = 'scheduled';
     }
-    return app.saveDailyLog(payload);
+    return retry(() => app.saveDailyLog(payload), 3, 1000);
   }));
 }
 

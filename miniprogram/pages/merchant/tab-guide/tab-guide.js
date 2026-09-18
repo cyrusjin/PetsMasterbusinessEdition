@@ -1,8 +1,9 @@
 const app = getApp();
 const { categories, filterArticles, groupArticles } = require('./content');
 const { hideHomeButton } = require('../../../utils/navBar');
-const { ensureMerchantPageAllowed, redirectToStoreAuthIfNeeded } = require('../../../utils/shell');
+const { ensureMerchantPageAllowed, redirectToStoreAuthIfNeeded, redirectToUserIfClientMode } = require('../../../utils/shell');
 const { openProxyGuestPicker } = require('../../../utils/proxyOrder');
+const merchantDemo = require('../../../utils/merchantDemo');
 const destinations = {
   record: '/packageBiz/service-record/service-record',
   invite: '/packageBiz/share-guest/share-guest',
@@ -40,8 +41,7 @@ Page({
     hideHomeButton();
     ensureMerchantPageAllowed().then(blocked => {
       if (blocked) return;
-      if (app.isUserClientMode && app.isUserClientMode()) {
-        wx.switchTab({ url: '/pages/index/index' });
+      if (redirectToUserIfClientMode()) {
         return;
       }
       if (redirectToStoreAuthIfNeeded()) return;
@@ -65,6 +65,15 @@ Page({
   onAction(e) {
     if (!this.data.ready) return;
     const action = e.currentTarget.dataset.action;
+    const demo = !!(app.isMerchantDemoMode && app.isMerchantDemoMode());
+    if (demo && (action === 'proxy' || action === 'invite' || action === 'record')) {
+      merchantDemo.promptDemoGuestBlocked();
+      return;
+    }
+    if (demo && action === 'insurance') {
+      merchantDemo.promptDemoInsuranceBlocked();
+      return;
+    }
     if (action === 'proxy') { openProxyGuestPicker(); return; }
     const url = destinations[action];
     if (!url) return;

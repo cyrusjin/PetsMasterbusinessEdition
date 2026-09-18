@@ -3,13 +3,13 @@ const util = require('../../utils/util');
 const dailyMedia = require('../utils/dailyMedia');
 const dailyApi = require('../../utils/daily');
 const merchantDemo = require('../../utils/merchantDemo');
-const { buildDailyCheckOrderOptions } = require('../../utils/dailyStats');
+const { buildDailyCheckOrderOptions } = require('../utils/dailyStats');
 const {
   filterDailyCheckableOrders,
   getDefaultCheckItems,
   getDailyCheckItemsForOrders
 } = require('../../utils/dailyCheckable');
-const { showValidationAlert } = require('../../utils/formAlert');
+const { showValidationAlert } = require('../utils/formAlert');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const dailyQuickPhrases = require('../utils/dailyQuickPhrases');
 const dailyCheckQueue = require('../utils/dailyCheckQueue');
@@ -454,7 +454,7 @@ Page({
     if (remainSlots <= 0) return;
 
     // 压缩前硬上限：过大视频即使再压也难通过服务端限制
-    const MAX_VIDEO_PICK_BYTES = 200 * 1024 * 1024;
+    const MAX_VIDEO_PICK_BYTES = dailyMedia.MAX_VIDEO_PICK_BYTES;
 
     wx.chooseMedia({
       count: remainSlots,

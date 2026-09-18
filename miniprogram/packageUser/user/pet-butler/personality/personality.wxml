@@ -1,9 +1,9 @@
 <view class="page">
   <view wx:if="{{step === 'intro'}}">
     <view class="hero">
-      <text class="hero-kicker">宠物 MBTI</text>
-      <text class="hero-title">它到底是哪种怪咖</text>
-      <text class="hero-sub">8 道灵魂拷问，测出它是霸总、咸鱼，还是家里的项目经理。纯属娱乐，请勿拿去跟它对质。</text>
+      <text class="hero-kicker">宠物 16 型人格</text>
+      <text class="hero-title">测测它更接近哪一种</text>
+      <text class="hero-sub">20 道日常观察题，从社交、关注、情感和作息四个维度，看看它的相处偏好。请按平时真实表现来选。</text>
     </view>
 
     <view class="card" wx:if="{{pets.length}}">
@@ -15,6 +15,7 @@
       </view>
       <view class="existing-box" wx:if="{{existing}}">
         <text class="existing-label">上次测出来是</text>
+        <text class="existing-tag" wx:if="{{existing.tag}}">{{existing.tag}}</text>
         <text class="existing-code">{{existing.typeId}}</text>
         <text class="existing-name">{{existing.typeName}}</text>
         <text class="existing-sub">{{existing.subtitle}}</text>
@@ -23,70 +24,99 @@
 
     <view class="card empty-card" wx:else>
       <text class="empty-title">还没有宠物档案</text>
-      <text class="empty-sub">先把毛孩子加进来，再测它是哪门子人格。</text>
+      <text class="empty-sub">先把毛孩子加进来，再测它的 16 型人格。</text>
     </view>
 
     <view class="card tips">
       <text class="tips-title">怎么答</text>
       <text class="tips-line">选更像它平时的那个，不要选你希望它成为的样子。</text>
-      <text class="tips-line">没有标准答案，只有更离谱的答案。</text>
+      <text class="tips-line">每题 5 个程度，从「非常不符合」到「非常符合」。</text>
     </view>
 
-    <button class="btn-primary start-btn" bindtap="onStart">{{pets.length ? (existing ? '再测一次' : '开始灵魂拷问') : '去添加宠物'}}</button>
+    <button class="btn-primary start-btn" bindtap="onStart">{{pets.length ? (existing ? '再测一次' : '开始测试') : '去添加宠物'}}</button>
     <view class="ghost-btn" wx:if="{{existing}}" bindtap="onViewExisting">看上次结果</view>
   </view>
 
   <view wx:elif="{{step === 'quiz'}}" class="quiz">
-    <view class="quiz-head">
-      <text class="quiz-back" bindtap="onPrevQuestion">{{qIndex === 0 ? '退出' : '上一题'}}</text>
-      <text class="quiz-progress">{{progressText}}</text>
-    </view>
-    <view class="progress-track">
-      <view class="progress-fill" style="width: {{progressPercent}}%;"></view>
-    </view>
-    <view class="question-card" wx:if="{{currentQuestion}}">
-      <text class="question-dim">{{currentQuestion.dimLabel}}</text>
-      <text class="question-text">{{currentQuestion.prompt}}</text>
-    </view>
-    <view class="option-list" wx:if="{{currentQuestion}}">
-      <view
-        class="option-item {{answers[qIndex] === item.letter ? 'on' : ''}}"
-        wx:for="{{currentQuestion.options}}"
-        wx:key="letter"
-        bindtap="onSelectOption"
-        data-letter="{{item.letter}}"
-      >
-        <text class="option-tag">{{item.tag}}</text>
-        <text class="option-text">{{item.text}}</text>
+    <view class="quiz-progress-row">
+      <text class="quiz-total">共{{totalCount}}题</text>
+      <view class="segment-track">
+        <view
+          class="segment {{item.on ? 'on' : ''}}"
+          wx:for="{{segments}}"
+          wx:key="id"
+        ></view>
       </view>
+      <text class="quiz-page">{{progressText}}</text>
+    </view>
+
+    <view class="question-list">
+      <view class="q-card" wx:for="{{pageQuestions}}" wx:key="id">
+        <view class="q-head">
+          <view class="q-no">{{item.no}}</view>
+          <text class="q-text">{{item.prompt}}</text>
+        </view>
+        <view class="scale-row">
+          <view
+            class="scale-item {{item.answer === opt.value ? 'on' : ''}}"
+            wx:for="{{scaleOptions}}"
+            wx:for-item="opt"
+            wx:for-index="optIndex"
+            wx:key="value"
+            bindtap="onSelectScale"
+            data-index="{{item.globalIndex}}"
+            data-value="{{opt.value}}"
+          >
+            <view class="paw">
+              <view class="paw-toe t1"></view>
+              <view class="paw-toe t2"></view>
+              <view class="paw-toe t3"></view>
+              <view class="paw-toe t4"></view>
+              <view class="paw-pad"></view>
+            </view>
+            <text class="scale-label">{{opt.label}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="quiz-footer-space"></view>
+    <view class="quiz-footer">
+      <view class="nav-btn nav-prev" bindtap="onPrevPage">上一页</view>
+      <view class="nav-btn nav-next" bindtap="onNextPage">{{nextLabel}}</view>
     </view>
   </view>
 
   <view wx:elif="{{step === 'result' && result}}" class="result-page">
-    <view class="result-hero">
-      <text class="result-kicker">{{petName}} 的宠物 MBTI</text>
+    <view class="result-sheet">
+      <view class="result-fold"></view>
+      <view class="result-photo-wrap">
+        <image wx:if="{{petPhoto}}" class="result-photo" src="{{petPhoto}}" mode="aspectFill" />
+        <view wx:else class="result-photo result-photo-fallback">{{petNameInitial}}</view>
+      </view>
+      <view class="result-tag" wx:if="{{result.tag}}">{{result.tag}}</view>
+      <text class="result-kicker">{{petName}}的 16 型人格</text>
       <text class="result-code">{{result.typeId}}</text>
       <text class="result-name">{{result.typeName}}</text>
-      <text class="result-sub">{{result.subtitle}}</text>
       <text class="result-summary">{{result.summary}}</text>
       <text class="saving-hint" wx:if="{{saving}}">正在写进档案…</text>
     </view>
 
     <view class="card">
-      <text class="card-title">给铲屎官的吐槽</text>
+      <text class="card-title">相处建议</text>
       <text class="tip-line" wx:for="{{result.careTips}}" wx:key="*this">{{item}}</text>
     </view>
 
     <view class="card">
-      <text class="card-title">寄养店员工须知</text>
+      <text class="card-title">寄养到店须知</text>
       <text class="tip-line" wx:for="{{result.boardingTips}}" wx:key="*this">{{item}}</text>
     </view>
 
     <view class="card disclaimer">
-      <text class="disclaimer-text">这是玩梗版宠物 MBTI，不是心理学鉴定，也不是训宠方案。测完请继续好好投喂。</text>
+      <text class="disclaimer-text">结果仅供了解相处偏好，不能替代专业行为评估或训宠方案。</text>
     </view>
 
     <button class="btn-primary start-btn" open-type="share">分享给好友</button>
-    <view class="ghost-btn" bindtap="onRetake">我不服，再测</view>
+    <view class="ghost-btn" bindtap="onRetake">重新测试</view>
   </view>
 </view>

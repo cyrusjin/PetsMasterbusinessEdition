@@ -1,5 +1,5 @@
 const app = getApp();
-const ledgerApi = require('../../utils/ledger');
+const ledgerApi = require('../utils/ledger');
 const { redirectToStoreAuthIfNeeded } = require('../../utils/shell');
 
 Page({

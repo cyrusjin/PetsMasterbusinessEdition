@@ -1,6 +1,6 @@
 const app = getApp();
-const ledgerApi = require('../../utils/ledger');
-const { redirectToStoreAuthIfNeeded } = require('../../utils/shell');
+const ledgerApi = require('../utils/ledger');
+const { redirectToStoreAuthIfNeeded, reLaunchMerchantHomeIfNoBackend } = require('../../utils/shell');
 
 Page({
   data: {
@@ -77,8 +77,7 @@ Page({
 
     return Promise.resolve()
       .then(() => {
-        if (!app.canAccessMerchantBackend() && !isDemoMode) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+        if (reLaunchMerchantHomeIfNoBackend(app)) {
           return null;
         }
         if (isDemoMode) return ledgerApi.fetchLedgerEntries(app, { force });

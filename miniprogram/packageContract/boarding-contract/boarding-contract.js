@@ -1,5 +1,5 @@
 const app = getApp();
-const { buildContractDraft, buildContractFromOrder, ensureContractPetInfo } = require('../../utils/boardingContract');
+const { buildContractDraft, buildContractFromOrder, ensureContractPetInfo } = require('../utils/boardingContract');
 
 Page({
   data: {

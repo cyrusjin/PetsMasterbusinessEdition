@@ -39,6 +39,100 @@ function isUserTabRoute(route) {
   return USER_TAB_ROUTES.includes(route || getCurrentRoute());
 }
 
+/** 商家正在操作的业务页：选图/定位/预览返回时必须留在当前页 */
+function isMerchantStayRoute(route) {
+  const r = String(route || '');
+  return (
+    r.indexOf('pages/merchant/') === 0
+    || r.indexOf('packageBiz/') === 0
+    || r.indexOf('packageExtra/') === 0
+    || r.indexOf('packageContract/') === 0
+    || r.indexOf('packageUser/') === 0
+    || r.indexOf('pages/share/') === 0
+  );
+}
+
+function pageStackHasMerchantStay() {
+  try {
+    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+    return (pages || []).some((page) => isMerchantStayRoute(page && page.route));
+  } catch (err) {
+    return false;
+  }
+}
+
+/** 选图/定位/预览/切后台返回：商家业务页不要被落地逻辑清栈 */
+function shouldSkipMerchantReland() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    return !!(app && app._resumeKeepPage);
+  } catch (err) {
+    return false;
+  }
+}
+
+function markMerchantPickerStay() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (!app) return;
+    app._resumeKeepPage = true;
+    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+    if (pages && pages.length) {
+      app._hiddenRoute = pages[pages.length - 1].route || app._hiddenRoute || '';
+    }
+  } catch (err) {
+    // ignore
+  }
+}
+
+function installMerchantPickerStayGuard() {
+  const names = [
+    'chooseMedia',
+    'chooseImage',
+    'chooseVideo',
+    'chooseLocation',
+    'chooseMessageFile',
+    'previewImage',
+    'previewMedia'
+  ];
+  names.forEach((name) => {
+    const orig = wx[name];
+    if (typeof orig !== 'function' || orig._petmasterStayWrapped) return;
+    const wrapped = function (opts) {
+      markMerchantPickerStay();
+      return orig.call(wx, opts);
+    };
+    wrapped._petmasterStayWrapped = true;
+    wx[name] = wrapped;
+  });
+}
+
+function redirectToUserIfClientMode() {
+  try {
+    const app = getApp();
+    if (!app || !(app.isUserClientMode && app.isUserClientMode())) return false;
+    if (shouldSkipMerchantReland()) return false;
+    wx.switchTab({ url: USER_HOME });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function reLaunchMerchantHomeIfNoBackend(app) {
+  try {
+    const current = app || getApp();
+    if (!current) return false;
+    if (current.canAccessMerchantBackend && current.canAccessMerchantBackend()) return false;
+    if (current.isMerchantDemoMode && current.isMerchantDemoMode()) return false;
+    if (shouldSkipMerchantReland()) return false;
+    wx.reLaunch({ url: getMerchantLandingUrl() });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 function getAppShopSafe() {
   try {
     const app = getApp();
@@ -149,10 +243,12 @@ function hasActiveMembershipAccess(membership) {
 }
 
 function ensureMembershipAccess(app) {
+  if (shouldSkipMerchantReland()) return Promise.resolve(false);
   if (!app || (app.isMerchantDemoMode && app.isMerchantDemoMode())) return Promise.resolve(false);
   if (!app.isMerchantApproved || !app.isMerchantApproved()) return Promise.resolve(false);
   if (typeof app.ensureMerchantStore !== 'function') return Promise.resolve(false);
   return app.ensureMerchantStore({ force: false }).then((shop) => {
+    if (shouldSkipMerchantReland()) return false;
     if (!shop || !shop.store_id) return false;
     const membership = shop.membership;
     if (!isMembershipAccessKnown(membership) || hasActiveMembershipAccess(membership)) return false;
@@ -168,12 +264,14 @@ function ensureMembershipAccess(app) {
 function ensureMerchantPageAllowed() {
   const app = typeof getApp === 'function' ? getApp() : null;
   if (redirectToUserIfMerchantUiBlocked()) return Promise.resolve(true);
+  if (shouldSkipMerchantReland()) return Promise.resolve(false);
   // 启动时已拉过开关且允许进入，切 Tab 不再重复打远程接口
   if (app && app.globalData && app.globalData.merchantSwitchEnabled === true) {
     return ensureMembershipAccess(app);
   }
   return fetchMerchantSwitchEnabled({ force: false }).then((enabled) => {
     applyMerchantSwitchToApp(app, enabled);
+    if (shouldSkipMerchantReland()) return false;
     if (!enabled || isMerchantUiBlocked()) {
       try {
         if (app && app._enterUserClientMode) {
@@ -195,6 +293,12 @@ function hasMerchantStore() {
 
 function getMerchantLandingUrl() {
   if (hasCompletedBasicSetup()) return MERCHANT_HOME;
+  try {
+    const app = getApp();
+    if (app && app.isMerchantDemoMode && app.isMerchantDemoMode()) return MERCHANT_HOME;
+  } catch (err) {
+    // fall through
+  }
   return MERCHANT_APPLY_HOME;
 }
 
@@ -206,6 +310,8 @@ function redirectToStoreAuthIfNeeded() {
     if (!app) return false;
     if (app.isUserClientMode && app.isUserClientMode()) return false;
     if (app.isMerchantDisabled && app.isMerchantDisabled()) return false;
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) return false;
+    if (shouldSkipMerchantReland()) return false;
     if (hasCompletedBasicSetup()) return false;
     const route = getCurrentRoute();
     if (route === 'pages/merchant/tab-store/tab-store') return false;
@@ -240,6 +346,10 @@ function guardUserTabPage() {
     const app = getApp();
     if (!app) return false;
     if (app.isUserClientMode && app.isUserClientMode()) return false;
+    // 打卡/代下单等业务页选图回来，系统可能短暂落到用户 Tab；不要清栈回商家主页
+    if (shouldSkipMerchantReland() || pageStackHasMerchantStay()) {
+      return false;
+    }
     if (app.canAccessMerchantBackend && app.canAccessMerchantBackend() && !(app.isUserClientMode && app.isUserClientMode())) {
       wx.reLaunch({ url: getMerchantLandingUrl() });
       return true;
@@ -260,6 +370,12 @@ module.exports = {
   MERCHANT_TAB_ROUTES,
   isMerchantTabRoute,
   isUserTabRoute,
+  isMerchantStayRoute,
+  pageStackHasMerchantStay,
+  shouldSkipMerchantReland,
+  installMerchantPickerStayGuard,
+  redirectToUserIfClientMode,
+  reLaunchMerchantHomeIfNoBackend,
   hasMerchantStore,
   hasMerchantBackendAccess,
   canUseMerchantShell,

@@ -2,10 +2,11 @@ const { isRemotePhoto, isLocalTempPath } = require('../../utils/photoPath');
 const { uploadFileToServer } = require('../../utils/upload');
 const { deriveVideoCoverUrl } = require('../../utils/mediaUrl');
 
-const MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024;
-const SKIP_COMPRESS_BELOW_BYTES = 20 * 1024 * 1024;
+const MAX_VIDEO_UPLOAD_BYTES = 200 * 1024 * 1024;
+const MAX_VIDEO_PICK_BYTES = 300 * 1024 * 1024;
+const SKIP_COMPRESS_BELOW_BYTES = 8 * 1024 * 1024;
 const VIDEO_TOO_LARGE_MSG = '视频过大，请换短一点的';
-const VIDEO_UPLOAD_CONCURRENCY = 3;
+const VIDEO_UPLOAD_CONCURRENCY = 1;
 
 function compressImage(filePath) {
   if (!filePath || isRemotePhoto(filePath)) {
@@ -35,7 +36,7 @@ function getLocalFileSize(filePath) {
   });
 }
 
-function compressVideoOnce(filePath) {
+function compressVideoOnce(filePath, quality) {
   return new Promise((resolve) => {
     if (typeof wx.compressVideo !== 'function') {
       resolve(filePath);
@@ -43,7 +44,7 @@ function compressVideoOnce(filePath) {
     }
     wx.compressVideo({
       src: filePath,
-      quality: 'medium',
+      quality: quality || 'medium',
       success: (res) => resolve(res.tempFilePath || filePath),
       fail: () => resolve(filePath)
     });
@@ -58,7 +59,21 @@ function compressVideoIfNeeded(filePath) {
     if (size > 0 && size <= SKIP_COMPRESS_BELOW_BYTES) {
       return filePath;
     }
-    return compressVideoOnce(filePath);
+    return compressVideoOnce(filePath, 'medium').then((mediumPath) => (
+      getLocalFileSize(mediumPath).then((mediumSize) => {
+        if (mediumSize > 0 && mediumSize <= MAX_VIDEO_UPLOAD_BYTES) {
+          return mediumPath;
+        }
+        return compressVideoOnce(filePath, 'low').then((lowPath) => (
+          getLocalFileSize(lowPath).then((lowSize) => {
+            if (lowSize > 0 && lowSize <= MAX_VIDEO_UPLOAD_BYTES) return lowPath;
+            if (mediumSize > 0 && mediumSize <= MAX_VIDEO_UPLOAD_BYTES) return mediumPath;
+            if (size > 0 && size <= MAX_VIDEO_UPLOAD_BYTES) return filePath;
+            return lowPath || mediumPath || filePath;
+          })
+        ));
+      })
+    ));
   });
 }
 
@@ -79,13 +94,14 @@ function buildFolder(storeId, orderId) {
   return `daily/${store}/${order}`;
 }
 
-function uploadDailyImages(images, storeId, orderId) {
+function uploadDailyImages(images, storeId, orderId, concurrency) {
   const folder = buildFolder(storeId, orderId);
   const list = (images || []).filter(Boolean);
   if (!list.length) return Promise.resolve([]);
 
-  return Promise.all(list.map((image) => compressImage(image)
-    .then((compressed) => uploadToCloud(compressed, folder))));
+  const limit = Math.max(1, Number(concurrency) || 1);
+  return mapPool(list, limit, (image) => compressImage(image)
+    .then((compressed) => uploadToCloud(compressed, folder)));
 }
 
 function uploadDailyVideo(videoPath, storeId, orderId, options = {}) {
@@ -145,26 +161,28 @@ function normalizeVideoInputs(videoOrVideos, videoThumbOrThumbs, videoSkipCompre
 }
 
 function uploadOneDailyVideoPair(videoPath, thumbPath, storeId, orderId, skipCompress) {
-  return Promise.all([
-    uploadDailyVideo(videoPath, storeId, orderId, { skipCompress: !!skipCompress }),
-    shouldUploadVideoCover(videoPath, thumbPath)
-      ? uploadDailyVideoCover(thumbPath, storeId, orderId)
-      : Promise.resolve('')
-  ]).then(([uploadedVideo, uploadedCover]) => {
-    if (videoPath && uploadedVideo && !isUploadedUrl(uploadedVideo)) {
-      return Promise.reject(new Error('视频上传失败，请检查网络后重试'));
-    }
-    const safeVideo = uploadedVideo && isUploadedUrl(uploadedVideo) ? uploadedVideo : '';
-    if (!safeVideo) {
-      return Promise.reject(new Error('视频上传失败，请检查网络后重试'));
-    }
-    const safeCover = uploadedCover && isUploadedUrl(uploadedCover) ? uploadedCover : '';
-    const fallbackCover = safeCover || deriveVideoCoverUrl(safeVideo) || '';
-    return {
-      video: safeVideo,
-      videoCover: fallbackCover && isUploadedUrl(fallbackCover) ? fallbackCover : ''
-    };
-  });
+  return uploadDailyVideo(videoPath, storeId, orderId, { skipCompress: !!skipCompress })
+    .then((uploadedVideo) => {
+      const coverTask = shouldUploadVideoCover(videoPath, thumbPath)
+        ? uploadDailyVideoCover(thumbPath, storeId, orderId).catch(() => '')
+        : Promise.resolve('');
+      return coverTask.then((uploadedCover) => [uploadedVideo, uploadedCover]);
+    })
+    .then(([uploadedVideo, uploadedCover]) => {
+      if (videoPath && uploadedVideo && !isUploadedUrl(uploadedVideo)) {
+        return Promise.reject(new Error('视频上传失败，请检查网络后重试'));
+      }
+      const safeVideo = uploadedVideo && isUploadedUrl(uploadedVideo) ? uploadedVideo : '';
+      if (!safeVideo) {
+        return Promise.reject(new Error('视频上传失败，请检查网络后重试'));
+      }
+      const safeCover = uploadedCover && isUploadedUrl(uploadedCover) ? uploadedCover : '';
+      const fallbackCover = safeCover || deriveVideoCoverUrl(safeVideo) || '';
+      return {
+        video: safeVideo,
+        videoCover: fallbackCover && isUploadedUrl(fallbackCover) ? fallbackCover : ''
+      };
+    });
 }
 
 function mapPool(items, concurrency, worker) {
@@ -203,14 +221,10 @@ function resolveUploadConcurrency() {
       success: (res) => {
         const type = String((res && res.networkType) || '').toLowerCase();
         if (type === 'wifi') {
-          resolve(4);
+          resolve(2);
           return;
         }
-        if (type === '5g' || type === '4g') {
-          resolve(3);
-          return;
-        }
-        resolve(2);
+        resolve(1);
       },
       fail: () => resolve(VIDEO_UPLOAD_CONCURRENCY)
     });
@@ -231,7 +245,11 @@ function uploadDailyVideos(videoOrVideos, storeId, orderId, videoThumbOrThumbs, 
   let doneCount = 0;
   onProgress && onProgress({ done: 0, total: videos.length });
 
-  return resolveUploadConcurrency().then((concurrency) => (
+  const concurrencyPromise = options.concurrency
+    ? Promise.resolve(Math.max(1, Number(options.concurrency) || 1))
+    : resolveUploadConcurrency();
+
+  return concurrencyPromise.then((concurrency) => (
     mapPool(videos, concurrency, (videoPath, index) => {
       const prepare = typeof options.prepareItem === 'function'
         ? Promise.resolve()
@@ -272,11 +290,17 @@ function uploadDailyVideos(videoOrVideos, storeId, orderId, videoThumbOrThumbs, 
 }
 
 function uploadDailyMedia(images, videoOrVideos, storeId, orderId, videoThumbOrThumbs, options = {}) {
-  // 图片与视频并行上传，缩短总等待
-  return Promise.all([
-    uploadDailyImages(images, storeId, orderId),
-    uploadDailyVideos(videoOrVideos, storeId, orderId, videoThumbOrThumbs, options)
-  ]).then(([uploadedImages, videoResult]) => {
+  // 4G 下图和视频一起狂传会把微信 uploadFile 打到 60s 超时；先图后视频，并限制并发
+  return resolveUploadConcurrency().then((concurrency) => (
+    uploadDailyImages(images, storeId, orderId, concurrency)
+      .then((uploadedImages) => uploadDailyVideos(
+        videoOrVideos,
+        storeId,
+        orderId,
+        videoThumbOrThumbs,
+        { ...options, concurrency }
+      ).then((videoResult) => [uploadedImages, videoResult]))
+  )).then(([uploadedImages, videoResult]) => {
     const cloudImages = uploadedImages.filter((item) => isUploadedUrl(item));
     if ((images || []).filter(Boolean).length && !cloudImages.length) {
       return Promise.reject(new Error('图片上传失败，请检查网络后重试'));
@@ -298,5 +322,6 @@ module.exports = {
   uploadDailyVideos,
   uploadDailyMedia,
   MAX_VIDEO_UPLOAD_BYTES,
+  MAX_VIDEO_PICK_BYTES,
   VIDEO_TOO_LARGE_MSG
 };

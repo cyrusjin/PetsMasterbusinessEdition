@@ -2,8 +2,8 @@
  * 宠物寄养电子协议文案与构建
  */
 
-const { buildContractPetInfoLines } = require('./petSnapshot');
-const { formatHomeVisitTimeText } = require('./homeVisitAddress');
+const { buildContractPetInfoLines } = require('../../../utils/petSnapshot');
+const { formatHomeVisitTimeText } = require('../../../utils/homeVisitAddress');
 
 function formatCompensationLimit(store) {
   const raw = store && (store.compensationLimit ?? store.contractCompensationLimit);

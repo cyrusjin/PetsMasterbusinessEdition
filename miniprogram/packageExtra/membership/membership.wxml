@@ -6,7 +6,7 @@
     <view class="hero-card {{membership.statusType}}">
       <view class="hero-orbit orbit-one"></view>
       <view class="hero-orbit orbit-two"></view>
-      <image class="hero-pets" src="/images/membership/membership-hero-gold.webp" mode="aspectFit" />
+      <image class="hero-pets" src="/images/membership/membership-hero-gold.png" mode="aspectFit" />
       <view class="hero-bar">
         <view class="brand-lockup">
           <view class="brand-mark">P</view>

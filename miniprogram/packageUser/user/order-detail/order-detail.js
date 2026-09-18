@@ -1,7 +1,7 @@
 const orderPayment = require('../../utils/orderPayment');
 const app = getApp();
 const badgeUtil = require('../../../utils/badge');
-const { normalizeOrderFees } = require('../../../utils/orderFees');
+const { normalizeOrderFees } = require('../../utils/orderFees');
 const { loadOrderFeeDetail, buildOrderFeeDetail } = require('../../utils/orderFeeDetail');
 const { refreshSingleOrder } = require('../../../utils/orderRefresh');
 const { formatServiceStatus } = require('../../../utils/dailyCheckable');

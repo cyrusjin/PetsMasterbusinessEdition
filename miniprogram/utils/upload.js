@@ -1,6 +1,30 @@
 const { requestUploadSign, getToken } = require('./api');
 const { isRemotePhoto } = require('./photoPath');
 
+const UPLOAD_TIMEOUT_MS = 300000;
+const UPLOAD_RETRY_TIMES = 3;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableUploadError(err) {
+  const raw = String((err && (err.message || err.errMsg)) || '');
+  if (/过大|违规|未登录|过期|无权|LIMIT_FILE_SIZE/i.test(raw)) return false;
+  return /timeout|超时|fail|网络|ECONN|502|503|504|HTTP 5/i.test(raw);
+}
+
+function retry(task, times, delay) {
+  return Promise.resolve()
+    .then(task)
+    .catch((err) => {
+      if (times <= 1 || !isRetryableUploadError(err)) {
+        return Promise.reject(err);
+      }
+      return wait(delay).then(() => retry(task, times - 1, Math.min(delay + 800, 4000)));
+    });
+}
+
 function uploadLocalImage(localPath, folder) {
   if (!localPath || isRemotePhoto(localPath)) {
     return Promise.resolve(localPath || '');
@@ -9,7 +33,7 @@ function uploadLocalImage(localPath, folder) {
   return uploadFileToServer(localPath, folder || 'uploads', ext);
 }
 
-function uploadFileToServer(filePath, folder, ext) {
+function uploadFileToServerOnce(filePath, folder, ext) {
   return requestUploadSign(folder, ext).then((res) => {
     if (!res.success || !res.upload) {
       return Promise.reject(new Error((res && res.errMsg) || '获取上传签名失败'));
@@ -22,6 +46,7 @@ function uploadFileToServer(filePath, folder, ext) {
         filePath,
         name: 'file',
         header: token ? { Authorization: `Bearer ${token}` } : {},
+        timeout: UPLOAD_TIMEOUT_MS,
         formData: {
           key: form.key
         },
@@ -51,14 +76,25 @@ function uploadFileToServer(filePath, folder, ext) {
           reject(new Error(detail || `上传失败 HTTP ${status}`));
         },
         fail: (err) => {
-          reject(new Error((err && (err.errMsg || err.message)) || '文件上传失败'));
+          const raw = (err && (err.errMsg || err.message)) || '文件上传失败';
+          if (/timeout/i.test(raw)) {
+            reject(new Error('上传超时，请换短一点的视频或切到 WiFi 后重试'));
+            return;
+          }
+          reject(new Error(raw));
         }
       });
     });
   });
 }
 
+function uploadFileToServer(filePath, folder, ext) {
+  return retry(() => uploadFileToServerOnce(filePath, folder, ext), UPLOAD_RETRY_TIMES, 800);
+}
+
 module.exports = {
   uploadLocalImage,
-  uploadFileToServer
+  uploadFileToServer,
+  retry,
+  isRetryableUploadError
 };

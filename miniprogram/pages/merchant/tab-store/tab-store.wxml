@@ -89,7 +89,7 @@
       <view class="store-luxury-orbit orbit-two"></view>
       <view class="store-luxury-spark spark-one">✦</view>
       <view class="store-luxury-spark spark-two">✦</view>
-      <image class="store-luxury-pets" src="/images/membership/membership-hero-gold.webp" mode="aspectFit" />
+      <image class="store-luxury-pets" src="/images/membership/membership-hero-gold.png" mode="aspectFit" />
       <view class="store-luxury-topline">
         <view class="store-luxury-brand"><text class="store-luxury-crown">✦</text><text>熠森宠物 · VIP</text></view>
       </view>
@@ -717,6 +717,15 @@
               <view class="time-picker-value">{{departureCharge.fullFrom}}</view>
             </picker>
           </view>
+          <checkbox-group bindchange="onPickupReturnFullDepartureChange">
+            <label class="pickup-return-full-check {{pickupReturnFullDeparture ? 'mode-active' : ''}}">
+              <checkbox value="1" checked="{{pickupReturnFullDeparture}}" color="#E98657" />
+              <view class="pickup-return-full-copy">
+                <text class="pickup-return-full-title">接送含「送」时离店当天全价</text>
+                <text class="pickup-return-full-desc">勾选后，用户预约了接送且包含送宠离店时，离店当天按全价计，不再按上方时间段规则</text>
+              </view>
+            </label>
+          </checkbox-group>
         </block>
 
         <view class="charge-summary">{{chargeSummary}}</view>

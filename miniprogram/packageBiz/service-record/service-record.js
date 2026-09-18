@@ -1,5 +1,6 @@
 const app = getApp();
 const { listGuestShareCards, resolveShareImageUrl } = require('../../utils/storeShare');
+const merchantDemo = require('../../utils/merchantDemo');
 
 function today() {
   const d = new Date();
@@ -42,6 +43,11 @@ Page({
   },
 
   onLoad() {
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/merchant/tab-daily/tab-daily' }) });
+      return;
+    }
     const services = listGuestShareCards(app.getShop() || {});
     const serviceNames = services.map((item) => item.pickerTitle || item.name || '宠物服务');
     this.setData({
@@ -117,6 +123,10 @@ Page({
   },
 
   onShareAppMessage() {
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      return { title: '萌宠寄养体验', path: '/pages/merchant/tab-daily/tab-daily' };
+    }
     const order = this.data.createdOrder || this._shareOrder || {};
     const shop = app.getShop() || {};
     const name = order.petName ? `${order.petName}的服务记录` : '服务完成记录';

@@ -1,6 +1,6 @@
 const { isStoreOpenForUsers } = require('./storeStatus');
 const { formatReceptionRangeText, normalizeReceptionRange } = require('./receptionRange');
-const { normalizeDepartureCharge } = require('./billing');
+const { normalizeDepartureCharge, normalizePickupReturnFullDeparture } = require('./billing');
 const { formatLocationAddress } = require('./location');
 const { resolveStoreDisplayUrls, isCloudFileId } = require('./mediaResolve');
 const { normalizeWeightPricing } = require('./weightPricing');
@@ -33,6 +33,8 @@ function mergeBillingRules(store, defaults) {
     billingMode: fromStore.billingMode || defaults.billingMode,
     checkInDayCharge: fromStore.checkInDayCharge || defaults.checkInDayCharge,
     departureDayCharge: fromStore.departureDayCharge || defaults.departureDayCharge,
+    pickupReturnFullDeparture: (fromStore.departureDayCharge || defaults.departureDayCharge) === 'half'
+      && normalizePickupReturnFullDeparture(fromStore.pickupReturnFullDeparture),
     departureCharge: normalizeDepartureCharge({
       ...defaults.departureCharge,
       ...(fromStore.departureCharge || {})

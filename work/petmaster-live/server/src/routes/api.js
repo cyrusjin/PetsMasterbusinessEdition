@@ -96,7 +96,7 @@ const upload = multer({
       cb(null, `${Date.now()}_${crypto.randomBytes(8).toString('hex')}`);
     }
   }),
-  limits: { fileSize: 100 * 1024 * 1024 }
+  limits: { fileSize: 200 * 1024 * 1024 }
 });
 
 const uploadRouter = express.Router();
@@ -169,27 +169,21 @@ uploadRouter.post('/', authRequired, (req, res, next) => {
       }
     }
     const publicUrl = oss.saveUploadedFile(key, req.file.path);
-    const isVideo = oss.isVideoMedia(publicUrl);
-
-    // 视频：先返回上传成功，抽帧与安审放到后台，避免拖慢小程序上传
-    if (isVideo) {
-      setImmediate(() => {
-        mediaCheckService.moderateUploadedMedia({
-          publicUrl,
-          req,
-          folder: String(key).split('/')[0] || ''
-        }).catch((err) => {
-          console.warn('[upload] async video moderate failed', publicUrl, err && err.message || err);
-        });
+    const moderateReq = {
+      client: req.client,
+      openid: req.openid,
+      auth: req.auth
+    };
+    const folder = String(key).split('/')[0] || '';
+    // 图片/视频都先返回，安审放到后台。同步 imgSecCheck + ffmpeg 会超过小程序 uploadFile 60s。
+    setImmediate(() => {
+      mediaCheckService.moderateUploadedMedia({
+        publicUrl,
+        req: moderateReq,
+        folder
+      }).catch((err) => {
+        console.warn('[upload] async moderate failed', publicUrl, (err && err.message) || err);
       });
-      return res.status(200).json({ success: true, url: publicUrl });
-    }
-
-    // 图片仍同步安审，违规可立刻拦截
-    await mediaCheckService.moderateUploadedMedia({
-      publicUrl,
-      req,
-      folder: String(key).split('/')[0] || ''
     });
     return res.status(200).json({ success: true, url: publicUrl });
   } catch (err) {

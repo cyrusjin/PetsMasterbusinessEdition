@@ -8,6 +8,7 @@ const {
 const { openProxyGuestPicker } = require('../../utils/proxyOrder');
 const { hideHomeButton } = require('../../utils/navBar');
 const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked } = require('../../utils/shell');
+const merchantDemo = require('../../utils/merchantDemo');
 
 Page({
   data: {
@@ -20,6 +21,11 @@ Page({
 
   onLoad(options) {
     hideHomeButton();
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/merchant/tab-daily/tab-daily' }) });
+      return;
+    }
     enableStoreShareMenu();
     const isProxy = String((options && options.mode) || '') === 'proxy';
     this._isProxy = isProxy;
@@ -38,6 +44,11 @@ Page({
   onShow() {
     hideHomeButton();
     if (redirectToUserIfMerchantUiBlocked()) return;
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/merchant/tab-daily/tab-daily' }) });
+      return;
+    }
     if (redirectToStoreAuthIfNeeded()) return;
     this._refreshCards();
   },
@@ -70,6 +81,10 @@ Page({
   },
 
   onShareAppMessage(res) {
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      return { title: '萌宠寄养体验', path: '/pages/merchant/tab-daily/tab-daily' };
+    }
     const serviceLine = res && res.target && res.target.dataset && res.target.dataset.serviceLine;
     return buildMerchantShareConfig(this, { serviceLine });
   }

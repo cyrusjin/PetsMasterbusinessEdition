@@ -6,6 +6,7 @@ const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const { deriveVideoCoverUrl, normalizeLogVideos } = require('../../utils/mediaUrl');
 const dailyApi = require('../../utils/daily');
+const { shouldSkipMerchantReland } = require('../../utils/shell');
 
 const DEFAULT_SHARE_IMAGE = '/images/default-avatar.png';
 const DAILY_SHARE_TITLE = '快来看看宠物动态';
@@ -240,12 +241,14 @@ Page({
     datePickerIndex: 0,
     selectedDateKey: 'all',
     selectedDateLabel: '全部',
-    deleting: false
+    deleting: false,
+    isDemoMode: false
   },
 
   onLoad(options) {
     this._prefillOrderId = (options && options.orderId) || '';
     this._hasLoadedOnce = false;
+    this.setData({ isDemoMode: !!(app.isMerchantDemoMode && app.isMerchantDemoMode()) });
     enableDailyLogShareMenu();
     this._paintFromLocal();
   },
@@ -260,6 +263,7 @@ Page({
     this._paintFromLocal();
     app.ensureCloudAndLogin({ silent: true }).then(() => {
       if (!app.canAccessMerchantBackend()) {
+        if (shouldSkipMerchantReland()) return;
         wx.navigateBack();
         return;
       }
@@ -601,6 +605,10 @@ Page({
   },
 
   onShareAppMessage(res) {
+    if (app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      return { title: '萌宠寄养体验', path: '/pages/merchant/tab-daily/tab-daily' };
+    }
     if (res && res.from === 'button' && res.target) {
       const groupIndex = Number(res.target.dataset.groupIndex);
       const logIndex = Number(res.target.dataset.logIndex);

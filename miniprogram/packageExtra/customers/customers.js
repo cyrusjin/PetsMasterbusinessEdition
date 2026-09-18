@@ -1,7 +1,7 @@
 const app = getApp();
 const { buildCustomersFromOrders, filterCustomers, findCustomerById, decorateCustomerTags } = require('../utils/customers');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
-const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked } = require('../../utils/shell');
+const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, reLaunchMerchantHomeIfNoBackend } = require('../../utils/shell');
 const { listGuestShareCards } = require('../../utils/storeShare');
 const { listCustomerTags, updateCustomerTags } = require('../../utils/growth');
 const {
@@ -11,6 +11,7 @@ const {
   buildUnassignedGuest,
   UNASSIGNED_GUEST_ID
 } = require('../../utils/proxyOrder');
+const merchantDemo = require('../../utils/merchantDemo');
 
 function mapGuestRows(list) {
   return (Array.isArray(list) ? list : []).map((item) => {
@@ -49,6 +50,11 @@ Page({
 
   onShow() {
     if (this._isProxy && redirectToUserIfMerchantUiBlocked()) return;
+    if (this._isProxy && app.isMerchantDemoMode && app.isMerchantDemoMode()) {
+      merchantDemo.promptDemoGuestBlocked();
+      wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/merchant/tab-daily/tab-daily' }) });
+      return;
+    }
     if (redirectToStoreAuthIfNeeded()) return;
     if (this._isProxy) {
       // 先用商家日常页已缓存的订单渲染客人列表，网络刷新在后台完成。
@@ -133,8 +139,7 @@ Page({
     }
     return refreshMerchantOrders(app, { force })
       .then(() => {
-        if (!app.canAccessMerchantBackend() && !app.isMerchantDemoMode()) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+        if (reLaunchMerchantHomeIfNoBackend(app)) {
           return;
         }
         this._applyFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
@@ -160,8 +165,7 @@ Page({
     if (showLoading) this.setData({ loading: true });
     return refreshMerchantOrders(app, { force })
       .then(() => {
-        if (!app.canAccessMerchantBackend() && !app.isMerchantDemoMode()) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+        if (reLaunchMerchantHomeIfNoBackend(app)) {
           return;
         }
         this._applyGuestFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));

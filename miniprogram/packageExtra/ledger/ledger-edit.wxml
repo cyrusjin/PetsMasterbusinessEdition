@@ -1,6 +1,6 @@
 <view class="page">
   <view class="demo-banner" wx:if="{{isDemoMode}}">
-    <text class="demo-banner-text">体验模式 · 数据仅保存在本地</text>
+    <text class="demo-banner-text">展示数据 · 记账仅保存在本地</text>
   </view>
 
   <view class="card">

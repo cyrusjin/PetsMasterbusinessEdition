@@ -1,0 +1,37 @@
+<view class="insurance-guide">
+  <view class="demo-banner" wx:if="{{isDemoMode}}">
+    <text class="demo-banner-text">展示数据 · 开通店铺后即可购买保险</text>
+  </view>
+  <view class="welfare-banner">
+    <view class="welfare-tag">平台福利</view>
+    <text class="welfare-title">投保有礼，宠粮相赠</text>
+    <text class="welfare-sub">本页保险产品不限款式，成功投保均可获赠一包宠粮</text>
+  </view>
+
+  <view class="insurance-guide-card">
+    <view class="insurance-logo-wrap">
+      <image class="insurance-logo" src="/images/insurance/pingan-logo.png" mode="aspectFit" />
+    </view>
+    <text class="insurance-brand">中国平安 · 宠无忧</text>
+    <text class="insurance-guide-title">商家寄养保</text>
+    <text class="insurance-guide-desc">为在店寄养宠物提供意外伤害及第三者责任保障。</text>
+
+    <view class="highlight-list">
+      <view class="highlight-item" wx:for="{{highlights}}" wx:key="*this">
+        <text class="highlight-check">✓</text>
+        <text class="highlight-text">{{item}}</text>
+      </view>
+    </view>
+    <text class="insurance-guide-note">（建议给每只宠物都投保，避免因无保障宠物互伤造成理赔纠纷）</text>
+
+    <button class="insurance-buy-btn" bindtap="onBuyInsurance">前往小程序投保</button>
+    <button class="insurance-copy-btn" bindtap="onCopyInsuranceLink">复制购买链接</button>
+    <text class="insurance-guide-provider">本平台仅提供保险购买渠道，不参与保险销售。产品承保、理赔及售后由中国平安相关保险机构负责，相关问题请咨询平安客服 <text class="insurance-phone" bindtap="onCallPingAn">95511</text>，与本平台无关。保障范围、免责条款及投保须知请以平安官方页面为准。</text>
+    <view class="insurance-cs-hint">
+      <text>投保后请</text>
+      <text class="insurance-cs-link" bindtap="onContactService">联系客服</text>
+      <text>登记地址，以便寄送宠粮。</text>
+    </view>
+  </view>
+</view>
+<cs-contact id="boardingInsuranceContact" showEntry="{{false}}" />

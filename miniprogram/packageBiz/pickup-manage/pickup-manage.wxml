@@ -1,7 +1,7 @@
 <view class="merchant-page pickup-page">
   <view class="container">
     <view class="demo-banner" wx:if="{{isDemoMode}}">
-      <text class="demo-banner-text">体验模式 · 以下为演示接送任务</text>
+      <text class="demo-banner-text">展示数据 · 以下为示例接送任务</text>
     </view>
 
     <view class="leg-tabs">

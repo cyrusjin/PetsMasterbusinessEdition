@@ -54,7 +54,11 @@ function calcOrderFee(order, rules) {
     order.endDate,
     order.startTime,
     order.endTime,
-    rules
+    rules,
+    {
+      needPickup: !!(order && order.needPickup),
+      pickupIncludeReturn: order && order.pickupIncludeReturn
+    }
   );
   let baseFee = days * basePrice;
   let holidayFee = 0, overtimeFee = 0, extrasFee = 0;

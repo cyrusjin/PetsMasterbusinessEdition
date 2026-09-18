@@ -6,7 +6,7 @@ const {
   LEG_RETURN,
   buildPickupList,
   countPendingPickupTasks
-} = require('../../utils/pickupManage');
+} = require('../utils/pickupManage');
 const { refreshMerchantOrders, startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../utils/orderRefresh');
 const { redirectToStoreAuthIfNeeded } = require('../../utils/shell');
 

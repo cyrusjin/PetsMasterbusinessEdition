@@ -1,4 +1,4 @@
-const announcementApi = require('../../utils/announcements');
+const announcementApi = require('../utils/announcements');
 
 Page({
   data: {

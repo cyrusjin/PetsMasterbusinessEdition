@@ -1,17 +1,17 @@
 const { callApiService } = require('./api');
 const { dedupeDailyLogs } = require('./dailyLogUtil');
 
-function callDailyService(action, data = {}) {
-  return callApiService('dailyService', { action, ...data });
+function callDailyService(action, data = {}, options = {}) {
+  return callApiService('dailyService', { action, ...data }, options);
 }
 
 function saveDailyLog(log) {
-  return callDailyService('saveDailyLog', { log });
+  return callDailyService('saveDailyLog', { log }, { timeout: 60000 });
 }
 
 function updateDailyLog(log) {
   const logId = log && (log.id || log.log_id);
-  return callDailyService('updateDailyLog', { logId, log });
+  return callDailyService('updateDailyLog', { logId, log }, { timeout: 60000 });
 }
 
 function deleteDailyLog(logId) {
@@ -59,14 +59,19 @@ function fetchDailyLogsForOrders(orderIds) {
       }
       const errMsg = (res && res.errMsg) || '';
       if (!res || !res.success) {
-        console.warn('[打卡] 批量接口不可用，改逐单拉取', errMsg);
-        return fetchOneByOne();
+        // 超时/网络错误再逐单打会把已经慢的服务端打满；仅旧服务缺批量接口时降级
+        if (/未知操作/.test(errMsg)) {
+          console.warn('[打卡] 批量接口不可用，改逐单拉取', errMsg);
+          return fetchOneByOne();
+        }
+        console.warn('[打卡] 批量拉取失败', errMsg);
+        return [];
       }
       return [];
     })
     .catch((err) => {
-      console.error('[打卡] 批量拉取服务端记录失败，改逐单拉取', err);
-      return fetchOneByOne();
+      console.error('[打卡] 批量拉取服务端记录失败', err);
+      return [];
     });
 }
 

@@ -6,7 +6,7 @@ const { buildOrderListPetMeta } = require('../../utils/petSnapshot');
 const { canMerchantModifyOrder } = require('../utils/orderActions');
 const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders, startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../utils/orderRefresh');
-const { redirectToStoreAuthIfNeeded } = require('../../utils/shell');
+const { redirectToStoreAuthIfNeeded, reLaunchMerchantHomeIfNoBackend } = require('../../utils/shell');
 const { buildPendingEditLines, getPendingEditTotalFee } = require('../utils/pendingEdit');
 const { formatHomeVisitTimeText } = require('../../utils/homeVisitAddress');
 const { normalizeServiceLines, SERVICE_LINE_DEFS } = require('../../utils/serviceLines');
@@ -176,8 +176,7 @@ Page({
 
     return refreshMerchantOrders(app, { force })
       .then(() => {
-        if (!app.canAccessMerchantBackend()) {
-          wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+        if (reLaunchMerchantHomeIfNoBackend(app)) {
           return;
         }
         const shop = app.getShop();

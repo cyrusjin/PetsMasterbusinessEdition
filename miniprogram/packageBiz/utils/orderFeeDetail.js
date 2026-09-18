@@ -1,6 +1,6 @@
 const util = require('../../utils/util');
 const { calcStayFeeBreakdown, formatMoney } = require('../../utils/billing');
-const { normalizeOrderFees } = require('../../utils/orderFees');
+const { normalizeOrderFees } = require('./orderFees');
 
 function parseDeposit(value) {
   const num = parseFloat(value);
@@ -203,7 +203,11 @@ function buildOrderFeeDetail(order, rules, options = {}) {
     order.startTime,
     order.endTime,
     rules,
-    basePrice
+    basePrice,
+    {
+      needPickup,
+      pickupIncludeReturn: order && order.pickupIncludeReturn
+    }
   );
 
   const priceAdjusted = breakdown.ready

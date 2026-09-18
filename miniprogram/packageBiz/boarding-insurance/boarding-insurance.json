@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "商家寄养保",
+  "usingComponents": {
+    "cs-contact": "/components/cs-contact/cs-contact"
+  }
+}

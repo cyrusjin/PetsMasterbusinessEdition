@@ -70,7 +70,7 @@
                   class="tag {{log.userViewed ? 'tag-viewed' : 'tag-unviewed'}}"
                 >{{log.viewLabel}}</text>
                 <button
-                  wx:if="{{!log.isScheduled}}"
+                  wx:if="{{!log.isScheduled && !isDemoMode}}"
                   class="timeline-share-btn"
                   open-type="share"
                   data-group-index="{{groupIdx}}"

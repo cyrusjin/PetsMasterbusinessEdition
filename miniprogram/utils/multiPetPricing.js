@@ -94,16 +94,20 @@ function calcMultiPetBoardingFees({
   endTime,
   roomType,
   petRoomTypes,
-  extrasFeePerDay = 0
+  extrasFeePerDay = 0,
+  needPickup,
+  pickupIncludeReturn,
+  pickupOptions
 }) {
   const list = Array.isArray(pets) ? pets.filter(Boolean) : [];
   const discount = normalizeMultiPetDiscount(rules && rules.multiPetDiscount);
   const longTermDiscount = normalizeLongTermDiscount(rules && rules.longTermDiscount);
+  const stayPickup = pickupOptions || { needPickup, pickupIncludeReturn };
   const draft = list.map((pet, sourceIndex) => {
     const petRoomType = resolvePetRoomType(pet, roomType, petRoomTypes);
     const basePrice = getPetBasePrice(rules, pet.weight, petRoomType);
     const breakdown = calcStayFeeBreakdown(
-      startDate, endDate, startTime, endTime, rules, basePrice
+      startDate, endDate, startTime, endTime, rules, basePrice, stayPickup
     );
     const extrasFee = roundMoney((parseFloat(extrasFeePerDay) || 0) * (breakdown.days || 0));
     const originalBoardingFee = roundMoney((breakdown.baseFee || 0) + extrasFee);
@@ -139,7 +143,7 @@ function calcMultiPetBoardingFees({
         : Math.max(0, 1 - (discount.percent / 100)));
     const fixedBreakdown = usesFixedPrice
       ? calcStayFeeBreakdown(
-        startDate, endDate, startTime, endTime, rules, discount.amount
+        startDate, endDate, startTime, endTime, rules, discount.amount, stayPickup
       )
       : null;
     const appliedBreakdown = fixedBreakdown || item.breakdown;

@@ -15,7 +15,7 @@ const { resolveStorePickupDrivingDistance } = require('../../utils/mapDistance')
 const { choosePickupLocation, formatLocationAddress, getPickupLocationValidationMessage } = require('../../../utils/location');
 const { isOrderEditTimeOnly } = require('../../utils/orderActions');
 const { getOrderServiceKind } = require('../../../utils/dailyCheckable');
-const { showValidationAlert } = require('../../../utils/formAlert');
+const { showValidationAlert } = require('../../utils/formAlert');
 const { getPetBookingConflictMessage, toRangeMs } = require('../../utils/bookingOverlap');
 const { calcMultiPetBoardingFees } = require('../../../utils/multiPetPricing');
 
@@ -337,6 +337,7 @@ Page({
       const key = o.petId || o.id;
       if (key != null) petRoomTypes[key] = o.roomType || '';
     });
+    const pickupFlags = this._getPickupFlags();
     const multiResult = calcMultiPetBoardingFees({
       pets,
       rules,
@@ -345,7 +346,9 @@ Page({
       startTime: useStartTime,
       endTime,
       petRoomTypes,
-      extrasFeePerDay: 0
+      extrasFeePerDay: 0,
+      needPickup: !!needPickup,
+      pickupIncludeReturn: pickupFlags.pickupIncludeReturn
     });
     const currentPetKey = order.petId || order.id;
     const myItem = (multiResult.items || []).find((item) => (
@@ -360,7 +363,6 @@ Page({
     const basePrice = myItem.basePrice;
     const chargePickup = !!(canEditPickup && needPickup);
     const storeView = store || {};
-    const pickupFlags = this._getPickupFlags();
     const isDistanceMode = storeView.pickupPricingMode === 'distance';
     const storeHasLocation = !!parseStoreCoords(storeView);
     const hasPickupCoords = !!(pickupLatitude && pickupLongitude);
