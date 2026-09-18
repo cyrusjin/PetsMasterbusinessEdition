@@ -139,6 +139,23 @@
   margin-bottom: 16rpx;
 }
 
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.sort-row:last-child {
+  margin-bottom: 0;
+}
+
+.sort-label {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #666666;
+}
+
 .date-preset {
   padding: 8rpx 18rpx;
   font-size: 24rpx;
@@ -209,4 +226,48 @@
   background: #FFF1E7;
   padding: 2rpx 10rpx;
   border-radius: 8rpx;
+}
+
+.visit-address-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #F2DEC9;
+}
+
+.visit-address-label {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: #999999;
+  line-height: 1.6;
+}
+
+.visit-address-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 22rpx;
+  color: #666666;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.visit-nav-btn {
+  flex-shrink: 0;
+  height: 44rpx;
+  line-height: 44rpx;
+  padding: 0 16rpx;
+  font-size: 20rpx;
+  color: #E98657;
+  background: #FFF1E7;
+  border: 1rpx solid #F2C39E;
+  border-radius: 22rpx;
+  font-weight: 600;
+}
+
+.visit-nav-btn.disabled {
+  color: #CCCCCC;
+  background: #F7F8FA;
+  border-color: #EEEEEE;
 }

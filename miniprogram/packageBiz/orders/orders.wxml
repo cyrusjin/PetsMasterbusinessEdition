@@ -1,4 +1,14 @@
 <view class="container">
+  <view class="service-tabs" wx:if="{{showServiceTabs}}">
+    <view
+      class="service-tab {{serviceTab === item.key ? 'active' : ''}}"
+      wx:for="{{serviceTabs}}"
+      wx:key="key"
+      bindtap="onServiceTab"
+      data-tab="{{item.key}}"
+    >{{item.label}}</view>
+  </view>
+
   <view class="order-tabs">
     <view class="order-tab {{tab === 'all' ? 'active' : ''}}" bindtap="onTab" data-tab="all">全部</view>
     <view class="order-tab {{tab === 'pending' ? 'active' : ''}}" bindtap="onTab" data-tab="pending">
@@ -10,35 +20,32 @@
     <view class="order-tab {{tab === 'completed' ? 'active' : ''}}" bindtap="onTab" data-tab="completed">已完成</view>
   </view>
 
-  <view class="service-tabs" wx:if="{{showServiceTabs}}">
-    <view
-      class="service-tab {{serviceTab === item.key ? 'active' : ''}}"
-      wx:for="{{serviceTabs}}"
-      wx:key="key"
-      bindtap="onServiceTab"
-      data-tab="{{item.key}}"
-    >{{item.label}}</view>
-  </view>
-
   <view class="date-filter">
-    <view class="date-preset-row">
-      <view class="date-preset {{datePreset === 'today' ? 'active' : ''}}" bindtap="onDatePreset" data-key="today">今天</view>
-      <view class="date-preset {{datePreset === 'week' ? 'active' : ''}}" bindtap="onDatePreset" data-key="week">本周</view>
-      <view class="date-preset {{datePreset === 'month' ? 'active' : ''}}" bindtap="onDatePreset" data-key="month">本月</view>
-      <view
-        class="date-preset-clear {{filterStartDate || filterEndDate ? '' : 'disabled'}}"
-        bindtap="onClearDateFilter"
-      >清除</view>
+    <view class="sort-row" wx:if="{{showHomeVisitSort}}">
+      <text class="sort-label">排序</text>
+      <view class="date-preset {{homeVisitSort === 'time' ? 'active' : ''}}" bindtap="onHomeVisitSort" data-key="time">上门时间</view>
+      <view class="date-preset {{homeVisitSort === 'distance' ? 'active' : ''}}" bindtap="onHomeVisitSort" data-key="distance">距离</view>
     </view>
-    <view class="date-range-row">
-      <picker mode="date" value="{{filterStartDate || todayDate}}" bindchange="onFilterStartDate">
-        <view class="date-range-box {{filterStartDate ? '' : 'placeholder'}}">{{filterStartDate || '开始日期'}}</view>
-      </picker>
-      <text class="date-range-sep">至</text>
-      <picker mode="date" value="{{filterEndDate || todayDate}}" bindchange="onFilterEndDate">
-        <view class="date-range-box {{filterEndDate ? '' : 'placeholder'}}">{{filterEndDate || '结束日期'}}</view>
-      </picker>
-    </view>
+    <block wx:if="{{!showHomeVisitSort}}">
+      <view class="date-preset-row">
+        <view class="date-preset {{datePreset === 'today' ? 'active' : ''}}" bindtap="onDatePreset" data-key="today">今天</view>
+        <view class="date-preset {{datePreset === 'week' ? 'active' : ''}}" bindtap="onDatePreset" data-key="week">本周</view>
+        <view class="date-preset {{datePreset === 'month' ? 'active' : ''}}" bindtap="onDatePreset" data-key="month">本月</view>
+        <view
+          class="date-preset-clear {{filterStartDate || filterEndDate ? '' : 'disabled'}}"
+          bindtap="onClearDateFilter"
+        >清除</view>
+      </view>
+      <view class="date-range-row">
+        <picker mode="date" value="{{filterStartDate || todayDate}}" bindchange="onFilterStartDate">
+          <view class="date-range-box {{filterStartDate ? '' : 'placeholder'}}">{{filterStartDate || '开始日期'}}</view>
+        </picker>
+        <text class="date-range-sep">至</text>
+        <picker mode="date" value="{{filterEndDate || todayDate}}" bindchange="onFilterEndDate">
+          <view class="date-range-box {{filterEndDate ? '' : 'placeholder'}}">{{filterEndDate || '结束日期'}}</view>
+        </picker>
+      </view>
+    </block>
   </view>
 
   <view wx:if="{{loading}}" class="loading-wrap">
@@ -60,6 +67,7 @@
             <text class="text-gray order-subline">品种：{{item.petBreed || '--'}} · {{item.petGender || '--'}} · {{item.petAgeText}}</text>
             <text class="text-gray order-subline">下单：{{item.createTimeText}}</text>
             <text class="text-gray order-subline">{{item.serviceTimeLabel}}：{{item.serviceTimeText}}</text>
+            <text class="text-gray order-subline" wx:if="{{item.serviceKind === 'homeFeeding'}}">距离：{{item.visitDistanceText || '--'}}</text>
             <text class="text-gray order-subline" wx:if="{{item.userNickName}}">宠主：{{item.userNickName}}</text>
           </view>
         </view>
@@ -72,6 +80,15 @@
           <text wx:elif="{{item.status === 'cancelled'}}">已取消</text>
           <text wx:else>{{item.statusLabel || '已取消'}}</text>
         </view>
+      </view>
+      <view class="visit-address-row" wx:if="{{item.serviceKind === 'homeFeeding'}}">
+        <text class="visit-address-label">地址</text>
+        <text class="visit-address-text">{{item.visitAddressText || '--'}}</text>
+        <view
+          class="visit-nav-btn {{item.hasVisitCoords ? '' : 'disabled'}}"
+          catchtap="onOpenVisitNav"
+          data-id="{{item.id}}"
+        >导航</view>
       </view>
       <view class="order-info">
         <view class="order-info-texts">
@@ -105,6 +122,6 @@
 
   <view wx:else class="empty-state">
     <text class="empty-icon">📋</text>
-    <text class="empty-text">{{loadError || ((tab !== 'all' || serviceTab !== 'all' || filterStartDate || filterEndDate) ? '暂无符合筛选条件的订单' : '暂无订单')}}</text>
+    <text class="empty-text">{{loadError || ((tab !== 'all' || serviceTab !== 'all' || (!showHomeVisitSort && (filterStartDate || filterEndDate))) ? '暂无符合筛选条件的订单' : '暂无订单')}}</text>
   </view>
 </view>

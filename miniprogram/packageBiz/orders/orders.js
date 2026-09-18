@@ -8,8 +8,9 @@ const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders, startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../utils/orderRefresh');
 const { redirectToStoreAuthIfNeeded, reLaunchMerchantHomeIfNoBackend } = require('../../utils/shell');
 const { buildPendingEditLines, getPendingEditTotalFee } = require('../utils/pendingEdit');
-const { formatHomeVisitTimeText } = require('../../utils/homeVisitAddress');
+const { formatHomeVisitTimeText, getVisitSnapshot, attachVisitAddressFields } = require('../../utils/homeVisitAddress');
 const { normalizeServiceLines, SERVICE_LINE_DEFS } = require('../../utils/serviceLines');
+const { calcDistanceKm } = require('../../utils/pickupPricing');
 const {
   isDailyCheckableOrder,
   formatServiceStatus,
@@ -100,12 +101,115 @@ function filterMerchantOrders(orders, { tab, serviceTab, filterStartDate, filter
   return list;
 }
 
+function listEnabledServiceKeys(shop) {
+  const lines = normalizeServiceLines(shop && shop.serviceLines);
+  return SERVICE_LINE_DEFS.filter((def) => lines[def.key]).map((def) => def.key);
+}
+
+function isHomeFeedingFilter(serviceTab, shop) {
+  if (serviceTab === 'homeFeeding') return true;
+  if (serviceTab && serviceTab !== 'all') return false;
+  const enabled = listEnabledServiceKeys(shop);
+  return enabled.length === 1 && enabled[0] === 'homeFeeding';
+}
+
+function isDoneStatus(order) {
+  return order && (order.status === 'completed' || order.status === 'cancelled');
+}
+
+function padTimePart(value) {
+  return String(value == null ? '' : value).padStart(2, '0');
+}
+
+function getVisitTimeKey(order) {
+  const date = String((order && order.startDate) || '').trim();
+  if (!date) return '';
+  const match = String((order && order.startTime) || '').trim().match(/^(\d{1,2}):(\d{2})/);
+  const time = match ? `${padTimePart(match[1])}:${match[2]}` : '00:00';
+  return `${date} ${time}`;
+}
+
+function parseDistanceKm(value) {
+  const km = parseFloat(value);
+  if (!Number.isFinite(km) || km < 0) return null;
+  return Math.round(km * 10) / 10;
+}
+
+function hasVisitCoords(order) {
+  const lat = parseFloat(order && order.visitLatitude);
+  const lng = parseFloat(order && order.visitLongitude);
+  return Number.isFinite(lat) && Number.isFinite(lng);
+}
+
+function formatVisitAddressText(order) {
+  const visit = attachVisitAddressFields(order);
+  const address = visit.visitAddress || visit.visitLocationName || '';
+  const room = visit.visitRoomNo;
+  if (address && room) return `${address} ${room}`;
+  return address || room || '';
+}
+
+function getVisitDistanceKm(order, shop) {
+  const fromOrder = parseDistanceKm(order && order.visitDistanceKm);
+  if (fromOrder != null) return fromOrder;
+  const snap = getVisitSnapshot(order);
+  const fromSnap = parseDistanceKm(snap && snap.distanceKm);
+  if (fromSnap != null) return fromSnap;
+  const shopLat = parseFloat(shop && shop.latitude);
+  const shopLng = parseFloat(shop && shop.longitude);
+  const lat = parseFloat(order && order.visitLatitude);
+  const lng = parseFloat(order && order.visitLongitude);
+  if (![shopLat, shopLng, lat, lng].every(Number.isFinite)) return null;
+  return parseDistanceKm(calcDistanceKm(shopLat, shopLng, lat, lng));
+}
+
+function sortMerchantOrders(list, { tab, serviceTab, homeVisitSort, shop }) {
+  const useHome = isHomeFeedingFilter(serviceTab, shop);
+  const sortMode = useHome ? (homeVisitSort === 'distance' ? 'distance' : 'time') : 'createTime';
+  const completedTab = tab === 'completed';
+  const allTab = !tab || tab === 'all';
+
+  return (list || []).slice().sort((a, b) => {
+    const aPend = a.editPendingConfirm ? 1 : 0;
+    const bPend = b.editPendingConfirm ? 1 : 0;
+    if (aPend !== bPend) return bPend - aPend;
+
+    if (useHome && allTab) {
+      const aDone = isDoneStatus(a) ? 1 : 0;
+      const bDone = isDoneStatus(b) ? 1 : 0;
+      if (aDone !== bDone) return aDone - bDone;
+    }
+
+    if (sortMode === 'distance') {
+      const da = a.visitDistanceKm;
+      const db = b.visitDistanceKm;
+      const aMiss = da == null;
+      const bMiss = db == null;
+      if (aMiss !== bMiss) return aMiss ? 1 : -1;
+      if (!aMiss && da !== db) return da - db;
+    } else if (sortMode === 'time') {
+      const ta = a.visitTimeKey || '';
+      const tb = b.visitTimeKey || '';
+      if (ta && tb && ta !== tb) {
+        const reverse = completedTab || (allTab && isDoneStatus(a));
+        const cmp = ta.localeCompare(tb);
+        return reverse ? -cmp : cmp;
+      }
+      if (!!ta !== !!tb) return ta ? -1 : 1;
+    }
+
+    return (b.createTime || 0) - (a.createTime || 0);
+  });
+}
+
 Page({
   data: {
     tab: 'all',
     serviceTab: 'all',
     serviceTabs: [],
     showServiceTabs: false,
+    showHomeVisitSort: false,
+    homeVisitSort: 'time',
     datePreset: '',
     filterStartDate: '',
     filterEndDate: '',
@@ -132,6 +236,10 @@ Page({
     } else {
       extra.serviceTab = 'all';
     }
+    extra.showHomeVisitSort = isHomeFeedingFilter(
+      extra.serviceTab,
+      (typeof app.getShop === 'function' && app.getShop()) || {}
+    );
     this.setData(extra);
   },
 
@@ -223,20 +331,20 @@ Page({
       : 'all';
     return {
       ...state,
-      serviceTab
+      serviceTab,
+      showHomeVisitSort: isHomeFeedingFilter(serviceTab, shop)
     };
   },
 
   load() {
+    const shop = (typeof app.getShop === 'function' && app.getShop()) || {};
     const orders = app.getOrders()
-      .sort((a, b) => {
-        const aPend = a.editPendingConfirm ? 1 : 0;
-        const bPend = b.editPendingConfirm ? 1 : 0;
-        if (aPend !== bPend) return bPend - aPend;
-        return (b.createTime || 0) - (a.createTime || 0);
-      })
       .map((order) => {
         const serviceKind = getOrderServiceKind(order);
+        const visit = serviceKind === 'homeFeeding' ? attachVisitAddressFields(order) : order;
+        const visitDistanceKm = serviceKind === 'homeFeeding'
+          ? getVisitDistanceKm(order, shop)
+          : null;
         return {
           ...order,
           ...buildOrderListPetMeta(order),
@@ -249,7 +357,14 @@ Page({
           serviceKind,
           serviceLabel: getOrderServiceLabel(serviceKind),
           serviceTimeLabel: getServiceTimeLabel(serviceKind),
-          serviceTimeText: formatOrderServiceTime(order, serviceKind)
+          serviceTimeText: formatOrderServiceTime(order, serviceKind),
+          visitTimeKey: serviceKind === 'homeFeeding' ? getVisitTimeKey(order) : '',
+          visitDistanceKm,
+          visitDistanceText: visitDistanceKm != null ? `约 ${visitDistanceKm} 公里` : '',
+          visitAddressText: serviceKind === 'homeFeeding' ? formatVisitAddressText(visit) : '',
+          visitLocationName: serviceKind === 'homeFeeding' ? (visit.visitLocationName || '') : '',
+          visitAddress: serviceKind === 'homeFeeding' ? (visit.visitAddress || '') : '',
+          hasVisitCoords: serviceKind === 'homeFeeding' && hasVisitCoords(order)
         };
       });
     const serviceFilter = this._resolveServiceFilterState();
@@ -274,7 +389,19 @@ Page({
   onServiceTab(e) {
     const serviceTab = e.currentTarget.dataset.tab;
     if (!serviceTab || serviceTab === this.data.serviceTab) return;
-    this.setData({ serviceTab });
+    const shop = (typeof app.getShop === 'function' && app.getShop()) || {};
+    this.setData({
+      serviceTab,
+      showHomeVisitSort: isHomeFeedingFilter(serviceTab, shop)
+    });
+    this.filter();
+  },
+
+  onHomeVisitSort(e) {
+    const key = e.currentTarget.dataset.key;
+    if (key !== 'time' && key !== 'distance') return;
+    if (key === this.data.homeVisitSort) return;
+    this.setData({ homeVisitSort: key });
     this.filter();
   },
 
@@ -331,11 +458,19 @@ Page({
   },
 
   _applyFilters(orders) {
-    return filterMerchantOrders(orders || [], {
+    const shop = (typeof app.getShop === 'function' && app.getShop()) || {};
+    const homeVisitList = isHomeFeedingFilter(this.data.serviceTab, shop);
+    const list = filterMerchantOrders(orders || [], {
       tab: this.data.tab,
       serviceTab: this.data.serviceTab,
-      filterStartDate: this.data.filterStartDate,
-      filterEndDate: this.data.filterEndDate
+      filterStartDate: homeVisitList ? '' : this.data.filterStartDate,
+      filterEndDate: homeVisitList ? '' : this.data.filterEndDate
+    });
+    return sortMerchantOrders(list, {
+      tab: this.data.tab,
+      serviceTab: this.data.serviceTab,
+      homeVisitSort: this.data.homeVisitSort,
+      shop
     });
   },
 
@@ -521,5 +656,26 @@ Page({
 
   onCopyOrderNo(e) {
     copyText(e.currentTarget.dataset.no, '已复制订单号');
+  },
+
+  onOpenVisitNav(e) {
+    const id = e.currentTarget.dataset.id;
+    const order = (this.data.orders || []).find((item) => (item.id || item.order_id) === id)
+      || this._getOrderById(id);
+    if (!order) return;
+    const latitude = parseFloat(order.visitLatitude);
+    const longitude = parseFloat(order.visitLongitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      wx.showToast({ title: '暂无地图定位', icon: 'none' });
+      return;
+    }
+    const visit = attachVisitAddressFields(order);
+    wx.openLocation({
+      latitude,
+      longitude,
+      name: visit.visitLocationName || visit.visitAddress || '上门地址',
+      address: [visit.visitAddress, visit.visitRoomNo].filter(Boolean).join(' '),
+      scale: 16
+    });
   }
 });
