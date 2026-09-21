@@ -131,7 +131,45 @@
 .quick-ops-card {
   overflow: visible;
 }
-.quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; width: 100%; box-sizing: border-box; overflow: visible; }
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; width: 100%; box-sizing: border-box; overflow: visible; }
+.quick-icon-v2 { position: relative; display: flex; align-items: center; justify-content: center; width: 70rpx; height: 70rpx; margin-bottom: 12rpx; overflow: hidden; border-radius: 22rpx; color: #fff; box-shadow: 0 9rpx 18rpx rgba(94, 70, 55, .14); }
+.quick-icon-v2::after { content: ''; position: absolute; width: 48rpx; height: 48rpx; top: -20rpx; right: -15rpx; border-radius: 50%; background: rgba(255,255,255,.24); }
+.quick-symbol { position: relative; z-index: 1; display: block; color: #fff; box-sizing: border-box; }
+.symbol-orders { width: 30rpx; height: 36rpx; border: 3rpx solid currentColor; border-radius: 5rpx; }
+.symbol-orders::before { content: ''; position: absolute; left: 6rpx; top: 7rpx; width: 13rpx; height: 3rpx; border-radius: 3rpx; background: currentColor; box-shadow: 0 8rpx 0 currentColor, 0 16rpx 0 currentColor; }
+.symbol-check { width: 38rpx; height: 38rpx; border: 3rpx solid currentColor; border-radius: 50%; }
+.symbol-check::after { content: ''; position: absolute; left: 9rpx; top: 8rpx; width: 15rpx; height: 8rpx; border-left: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor; transform: rotate(-45deg); }
+.symbol-pickup { width: 39rpx; height: 19rpx; margin-top: 10rpx; border: 3rpx solid currentColor; border-radius: 6rpx; }
+.symbol-pickup::before { content: ''; position: absolute; left: 7rpx; top: -13rpx; width: 21rpx; height: 12rpx; border: 3rpx solid currentColor; border-bottom: 0; border-radius: 8rpx 8rpx 0 0; }
+.symbol-pickup::after { content: ''; position: absolute; left: 5rpx; bottom: -8rpx; width: 7rpx; height: 7rpx; border-radius: 50%; background: currentColor; box-shadow: 19rpx 0 0 currentColor; }
+.symbol-logs { width: 34rpx; height: 36rpx; border: 3rpx solid currentColor; border-radius: 6rpx; }
+.symbol-logs::before { content: ''; position: absolute; left: 5rpx; right: 5rpx; top: 8rpx; height: 3rpx; border-radius: 3rpx; background: currentColor; box-shadow: 0 8rpx 0 currentColor, 0 16rpx 0 currentColor; }
+.symbol-logs::after { content: ''; position: absolute; left: 7rpx; top: -7rpx; width: 3rpx; height: 9rpx; border-radius: 3rpx; background: currentColor; box-shadow: 14rpx 0 0 currentColor; }
+.symbol-customers { width: 14rpx; height: 14rpx; margin-left: -15rpx; margin-top: -15rpx; border: 3rpx solid currentColor; border-radius: 50%; }
+.symbol-customers::before { content: ''; position: absolute; left: 18rpx; top: -1rpx; width: 11rpx; height: 11rpx; border: 3rpx solid currentColor; border-radius: 50%; }
+.symbol-customers::after { content: ''; position: absolute; left: -6rpx; top: 17rpx; width: 39rpx; height: 16rpx; border: 3rpx solid currentColor; border-bottom: 0; border-radius: 22rpx 22rpx 0 0; }
+.symbol-poster { width: 39rpx; height: 32rpx; border: 3rpx solid currentColor; border-radius: 5rpx; overflow: hidden; }
+.symbol-poster::before { content: ''; position: absolute; left: 7rpx; bottom: -9rpx; width: 22rpx; height: 22rpx; border-left: 3rpx solid currentColor; border-top: 3rpx solid currentColor; transform: rotate(45deg); }
+.symbol-poster::after { content: ''; position: absolute; right: 6rpx; top: 5rpx; width: 6rpx; height: 6rpx; border-radius: 50%; background: currentColor; }
+.symbol-guide { width: 40rpx; height: 30rpx; }
+.symbol-guide::before, .symbol-guide::after { content: ''; position: absolute; top: 0; width: 18rpx; height: 29rpx; border: 3rpx solid currentColor; box-sizing: border-box; }
+.symbol-guide::before { left: 1rpx; border-radius: 7rpx 2rpx 2rpx 7rpx; }
+.symbol-guide::after { right: 1rpx; border-radius: 2rpx 7rpx 7rpx 2rpx; }
+.symbol-insurance { width: 32rpx; height: 37rpx; border: 3rpx solid currentColor; border-radius: 7rpx 7rpx 15rpx 15rpx; }
+.symbol-insurance::after { content: ''; position: absolute; left: 8rpx; top: 8rpx; width: 11rpx; height: 6rpx; border-left: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(-45deg); }
+.symbol-staff-share { width: 14rpx; height: 14rpx; margin-left: -17rpx; margin-top: -14rpx; border: 3rpx solid currentColor; border-radius: 50%; }
+.symbol-staff-share::before { content: ''; position: absolute; left: -6rpx; top: 17rpx; width: 24rpx; height: 15rpx; border: 3rpx solid currentColor; border-bottom: 0; border-radius: 18rpx 18rpx 0 0; }
+.symbol-staff-share::after { content: ''; position: absolute; left: 25rpx; top: 9rpx; width: 18rpx; height: 18rpx; background: linear-gradient(#fff,#fff) center/18rpx 3rpx no-repeat, linear-gradient(#fff,#fff) center/3rpx 18rpx no-repeat; }
+.quick-icon-orders { background: linear-gradient(145deg, #ff9a72, #ec7656); }
+.quick-icon-check { background: linear-gradient(145deg, #78c895, #4dab75); }
+.quick-icon-pickup { background: linear-gradient(145deg, #7eb6e9, #568fd0); }
+.quick-icon-logs { background: linear-gradient(145deg, #a693dc, #826fc3); }
+.quick-icon-customers { background: linear-gradient(145deg, #f2be69, #df9840); }
+.quick-icon-poster { background: linear-gradient(145deg, #ed92a7, #d96f8b); }
+.quick-icon-guide { background: linear-gradient(145deg, #6fc8c4, #45aaa8); }
+.quick-icon-insurance { background: linear-gradient(145deg, #f07b73, #d9504c); }
+.quick-icon-staff-share { background: linear-gradient(145deg, #79b5df, #528fbe); }
+.quick-icon-staff-manage { background: linear-gradient(145deg, #9b91d5, #786bc0); }
 
 .guest-invite-card {
   position: relative;
@@ -387,12 +425,13 @@
   text-align: center;
   box-sizing: border-box;
 }
-.quick-item { display: flex; flex-direction: column; align-items: center; padding: 24rpx 0 20rpx; background: linear-gradient(145deg, #FFF9F3, #FFF0E5); border: 1rpx solid rgba(238, 207, 183, .72); border-radius: 22rpx; font-size: 24rpx; color: #765B4A; box-sizing: border-box; box-shadow: 0 8rpx 18rpx rgba(130, 86, 54, .07); }
+.quick-item { display: flex; flex-direction: column; align-items: center; padding: 21rpx 0 18rpx; background: #fff; border: 1rpx solid rgba(230, 218, 210, .78); border-radius: 22rpx; font-size: 21rpx; font-weight: 600; color: #665147; box-sizing: border-box; box-shadow: 0 8rpx 20rpx rgba(97, 72, 56, .06); }
+.quick-item:active { opacity: .82; transform: scale(.98); }
 .quick-item-badge-wrap { position: relative; overflow: visible; }
 .quick-badge {
   position: absolute;
   top: 12rpx;
-  right: 20rpx;
+  right: 9rpx;
   min-width: 32rpx;
   height: 32rpx;
   line-height: 32rpx;

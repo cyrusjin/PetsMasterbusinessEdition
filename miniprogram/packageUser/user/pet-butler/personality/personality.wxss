@@ -127,9 +127,8 @@ page {
   font-size: 22rpx;
 }
 
-.empty-card {
-  text-align: center;
-  padding: 48rpx 28rpx;
+.quick-pet-card {
+  padding: 32rpx 28rpx;
 }
 
 .empty-title {
@@ -144,6 +143,61 @@ page {
   margin-top: 10rpx;
   color: #A98972;
   font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.quick-field {
+  margin-top: 28rpx;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 12rpx;
+  color: #5B4535;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.quick-input {
+  height: 88rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #F2D8D2;
+  border-radius: 16rpx;
+  background: #FFF9F3;
+  color: #4E3729;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.pet-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.pet-type-chip {
+  min-width: 116rpx;
+  padding: 18rpx 20rpx;
+  border: 2rpx solid #F2D8D2;
+  border-radius: 999rpx;
+  background: #FFF9F3;
+  color: #7A5A45;
+  font-size: 24rpx;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.pet-type-chip.on {
+  border-color: #E98657;
+  background: #E98657;
+  color: #fff;
+  box-shadow: 0 8rpx 18rpx rgba(233, 134, 87, 0.22);
+}
+
+.quick-existing {
+  margin-top: 26rpx;
 }
 
 .tips-title {
@@ -488,4 +542,28 @@ page {
 .disclaimer-text {
   color: #A98972;
   font-size: 22rpx;
+}
+
+.share-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+
+.share-row .share-action {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  font-size: 28rpx;
+  padding: 20rpx 12rpx;
+}
+
+.share-poster-canvas {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 750px;
+  height: 1200px;
+  opacity: 0;
+  pointer-events: none;
 }

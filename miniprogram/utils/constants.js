@@ -31,6 +31,7 @@ const STORAGE_KEYS = {
   RESERVE_CONTACT: 'pet_reserve_contact',
   PET_BUTLER: 'pet_butler',
   PET_PERSONALITY: 'pet_personality',
+  PET_PERSONALITY_DRAFT: 'pet_personality_draft',
   AI_CONSULT: 'pet_ai_consult',
   ANNOUNCEMENT_READ: 'pet_announcement_read',
   ANNOUNCEMENT_CACHE: 'pet_announcement_cache',

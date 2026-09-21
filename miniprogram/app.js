@@ -674,7 +674,7 @@ App({
       if (sceneParam.includes('store_id=')) {
         return sceneParam.split('store_id=')[1].split('&')[0];
       }
-      if (sceneParam.startsWith('store_')) return sceneParam;
+      if (sceneParam.startsWith('store_')) return sceneParam.split('|')[0];
     }
 
     const scene = options.scene;
@@ -684,7 +684,7 @@ App({
       if (decoded.includes('store_id=')) {
         return decoded.split('store_id=')[1].split('&')[0];
       }
-      if (decoded.startsWith('store_')) return decoded;
+      if (decoded.startsWith('store_')) return decoded.split('|')[0];
     }
     return '';
   },

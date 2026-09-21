@@ -34,11 +34,13 @@
   color: #E98657;
 }
 
-.tab-icon-img {
-  width: 44rpx;
-  height: 44rpx;
-  display: block;
-}
+.tab-icon-v2 { display: flex; align-items: center; justify-content: center; width: 44rpx; height: 44rpx; border-radius: 14rpx; color: #a9988c; background: #f1ebe6; transition: all .18s ease; }
+.tab-symbol { position: relative; display: block; color: inherit; box-sizing: border-box; }
+.tab-icon-daily .tab-symbol { width: 7rpx; height: 7rpx; margin: -9rpx 9rpx 9rpx -9rpx; border-radius: 2rpx; background: currentColor; box-shadow: 13rpx 0 0 currentColor, 0 13rpx 0 currentColor, 13rpx 13rpx 0 currentColor; }
+.tab-icon-statistics .tab-symbol { width: 6rpx; height: 13rpx; margin: 10rpx 18rpx 0 0; border-radius: 2rpx 2rpx 0 0; background: currentColor; box-shadow: 9rpx -7rpx 0 currentColor, 18rpx -14rpx 0 currentColor; }
+.tab-icon-store .tab-symbol { width: 25rpx; height: 20rpx; margin-top: 8rpx; border: 3rpx solid currentColor; border-top: 0; border-radius: 0 0 4rpx 4rpx; }
+.tab-icon-store .tab-symbol::before { content: ''; position: absolute; left: 2rpx; top: -10rpx; width: 15rpx; height: 15rpx; border-left: 3rpx solid currentColor; border-top: 3rpx solid currentColor; transform: rotate(45deg); }
+.tab-item.active .tab-icon-v2 { color: #fff; background: linear-gradient(145deg, #f09b72, #df734f); box-shadow: 0 6rpx 14rpx rgba(218, 103, 69, .24); transform: translateY(-1rpx); }
 
 .tab-text {
   font-size: 22rpx;

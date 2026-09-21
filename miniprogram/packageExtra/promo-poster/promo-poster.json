@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "宣传海报",
+  "navigationBarBackgroundColor": "#FFF8F2",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#F7F3EF",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
+}

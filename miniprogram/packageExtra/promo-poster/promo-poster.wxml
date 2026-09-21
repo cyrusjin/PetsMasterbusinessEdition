@@ -1,0 +1,58 @@
+<view class="poster-page">
+  <view class="intro-row">
+    <view>
+      <text class="intro-title">一键生成店铺宣传图</text>
+      <text class="intro-desc">选择服务，自动匹配专属海报和预约二维码</text>
+    </view>
+  </view>
+
+  <view class="service-section">
+    <text class="section-label">选择宣传服务</text>
+    <view class="service-tabs">
+      <view
+        class="service-tab {{serviceLine === item.key ? 'active service-' + item.key : ''}}"
+        wx:for="{{serviceOptions}}"
+        wx:key="key"
+        data-key="{{item.key}}"
+        bindtap="onSelectService"
+      >
+        <text class="service-emoji">{{item.emoji}}</text>
+        <view><text class="service-name">{{item.name}}</text><text class="service-desc">{{item.desc}}</text></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="poster-stage">
+    <canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>
+    <view class="poster-loading" wx:if="{{rendering}}"><view class="loading-dot"></view><text>{{qrLoading ? '正在生成预约二维码' : '正在生成海报'}}</text></view>
+  </view>
+
+  <view class="copy-section">
+    <view class="section-head"><text class="section-label">文案模板</text><view class="change-background" bindtap="onChooseBackground">自选背景</view></view>
+    <scroll-view class="copy-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="copy-row">
+        <view
+          class="copy-chip {{selectedCopyId === item.id ? 'active' : ''}}"
+          wx:for="{{copyTemplates}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="onSelectCopy"
+        >{{item.name}}</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="editor-card">
+    <view class="editor-title-row"><text class="editor-title">自定义内容</text><text class="editor-tip">实时预览</text></view>
+    <view class="field"><text class="field-label">主标题</text><input value="{{headline}}" maxlength="18" data-field="headline" bindinput="onFieldInput" placeholder="输入醒目的主标题" /></view>
+    <view class="field"><text class="field-label">宣传语</text><textarea value="{{copyText}}" maxlength="54" auto-height data-field="copyText" bindinput="onFieldInput" placeholder="说说店铺的特色服务" /></view>
+    <view class="field"><text class="field-label">联系信息</text><input value="{{contactText}}" maxlength="30" data-field="contactText" bindinput="onFieldInput" placeholder="电话或微信号" /></view>
+    <view class="field last"><text class="field-label">地址</text><input value="{{addressText}}" maxlength="36" data-field="addressText" bindinput="onFieldInput" placeholder="店铺地址（选填）" /></view>
+  </view>
+
+  <view class="action-bar-safe"></view>
+  <view class="action-bar">
+    <button class="action-btn save-btn" bindtap="onSavePoster" loading="{{saving}}">保存图片</button>
+    <button class="action-btn share-btn" bindtap="onSharePoster" loading="{{sharing}}">分享给好友 / 朋友圈</button>
+  </view>
+</view>

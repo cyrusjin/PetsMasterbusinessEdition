@@ -74,10 +74,6 @@ Component({
     onTabStore() {
       if (this.data.active === 'store') return;
       wx.redirectTo({ url: '/pages/merchant/tab-store/tab-store' });
-    },
-    onTabGuide() {
-      if (this.data.active === 'guide') return;
-      wx.redirectTo({ url: '/pages/merchant/tab-guide/tab-guide' });
     }
   }
 });

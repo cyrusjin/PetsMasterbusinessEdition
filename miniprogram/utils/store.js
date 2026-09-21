@@ -47,6 +47,14 @@ function getStoreOaShareLink(storeId) {
   return callStoreService('getStoreOaShareLink', { store_id: storeId || '' });
 }
 
+function getStoreQrCode(storeId, serviceLine, envVersion) {
+  return callStoreService('getStoreQrCode', {
+    store_id: storeId || '',
+    service_line: serviceLine || 'boarding',
+    env_version: envVersion || 'trial'
+  });
+}
+
 function discoverGuestStores(payload = {}) {
   return callStoreService('discoverGuestStores', payload);
 }
@@ -83,6 +91,7 @@ module.exports = {
   listStoreStaff,
   removeStoreStaff,
   acceptStaffInvite,
+  getStoreQrCode,
   getStoreOaShareLink,
   discoverGuestStores,
   getMembershipStatus,

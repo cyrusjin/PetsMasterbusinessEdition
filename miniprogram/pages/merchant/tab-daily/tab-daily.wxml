@@ -95,30 +95,38 @@
       <view class="card-title">快捷操作</view>
       <view class="quick-grid">
         <view class="quick-item quick-item-badge-wrap" bindtap="onGoMerchantOrders">
-          <image class="quick-icon-img" src="/images/card/card-orders.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-orders"><view class="quick-symbol symbol-orders"></view></view>
           <text>订单管理</text>
           <view class="quick-badge" wx:if="{{pendingOrderCount > 0}}">{{pendingOrderCount > 99 ? '99+' : pendingOrderCount}}</view>
         </view>
         <view class="quick-item quick-item-badge-wrap" bindtap="onGoDailyCheck">
-          <image class="quick-icon-img" src="/images/card/card-check.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-check"><view class="quick-symbol symbol-check"></view></view>
           <text>日常打卡</text>
           <view class="quick-badge" wx:if="{{uncheckedPetCount > 0}}">{{uncheckedPetCount > 99 ? '99+' : uncheckedPetCount}}</view>
         </view>
         <view class="quick-item quick-item-badge-wrap" bindtap="onGoPickupManage">
-          <image class="quick-icon-img" src="/images/card/card-reserve.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-pickup"><view class="quick-symbol symbol-pickup"></view></view>
           <text>接送管理</text>
           <view class="quick-badge" wx:if="{{pickupPendingCount > 0}}">{{pickupPendingCount > 99 ? '99+' : pickupPendingCount}}</view>
         </view>
         <view class="quick-item" bindtap="onGoDailyLogs">
-          <image class="quick-icon-img" src="/images/card/card-camera.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-logs"><view class="quick-symbol symbol-logs"></view></view>
           <text>打卡记录</text>
         </view>
         <view class="quick-item" bindtap="onGoCustomers">
-          <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-customers"><view class="quick-symbol symbol-customers"></view></view>
           <text>客户管理</text>
         </view>
+        <view class="quick-item quick-poster-item" bindtap="onGoPromoPoster">
+          <view class="quick-icon-v2 quick-icon-poster"><view class="quick-symbol symbol-poster"></view></view>
+          <text>宣传海报</text>
+        </view>
+        <view class="quick-item" bindtap="onGoGuide">
+          <view class="quick-icon-v2 quick-icon-guide"><view class="quick-symbol symbol-guide"></view></view>
+          <text>使用指南</text>
+        </view>
         <view class="quick-item quick-item-badge-wrap" bindtap="onGoBoardingInsurance">
-          <image class="quick-icon-img" src="/images/insurance/pingan-logo.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-insurance"><view class="quick-symbol symbol-insurance"></view></view>
           <text>商家寄养保</text>
           <view class="quick-gift-badge">
             <text class="quick-gift-badge-text">免费送宠粮</text>
@@ -157,7 +165,7 @@
       <view class="card-title">员工协作</view>
       <view class="staff-collab-row">
         <view class="staff-collab-item share-item-wrap">
-          <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-staff-share"><view class="quick-symbol symbol-staff-share"></view></view>
           <text class="staff-collab-text">分享给员工</text>
           <button
             class="share-hit-btn"
@@ -167,7 +175,7 @@
           ></button>
         </view>
         <view class="staff-collab-item" bindtap="onGoStaffManage">
-          <image class="quick-icon-img" src="/images/card/card-pets.png" mode="aspectFit" />
+          <view class="quick-icon-v2 quick-icon-staff-manage"><view class="quick-symbol symbol-customers"></view></view>
           <text class="staff-collab-text">员工管理</text>
           <text class="staff-collab-badge" wx:if="{{staffCount > 0}}">{{staffCount}}人</text>
         </view>

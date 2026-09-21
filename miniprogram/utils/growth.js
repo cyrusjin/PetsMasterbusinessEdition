@@ -24,6 +24,18 @@ function parseOfflineTableCardScene(scene) {
   return '';
 }
 
+/** 宠物 16 型人格海报小程序码：scene 为 `p` 或 `store_xxx|p` */
+function parsePersonalityShareScene(scene) {
+  const decoded = decodeScene(scene);
+  if (!decoded) return null;
+  if (decoded === 'p' || decoded === 'personality') {
+    return { storeId: '', source: 'personality' };
+  }
+  const match = decoded.match(/^(store_[^|]+)\|p$/i);
+  if (!match) return null;
+  return { storeId: match[1], source: 'personality' };
+}
+
 function getStoreId() {
   try {
     const app = getApp();
@@ -50,9 +62,20 @@ function readPromotionContext() {
 
 function capturePromotionEntry(options = {}) {
   const offlineStoreId = parseOfflineTableCardScene(options.scene);
-  const storeId = String(options.store_id || options.storeId || offlineStoreId || '').trim();
+  const personalityScene = parsePersonalityShareScene(options.scene);
+  const storeId = String(
+    options.store_id
+    || options.storeId
+    || offlineStoreId
+    || (personalityScene && personalityScene.storeId)
+    || ''
+  ).trim();
   const shareCode = String(options.shareCode || '').trim();
-  const source = String(options.source || (offlineStoreId ? OFFLINE_TABLE_CARD_SOURCE : '')).trim();
+  const source = String(
+    options.source
+    || (personalityScene && personalityScene.source)
+    || (offlineStoreId ? OFFLINE_TABLE_CARD_SOURCE : '')
+  ).trim();
   if (!storeId || (!shareCode && !source)) return readPromotionContext();
   const context = { store_id: storeId, shareCode: shareCode.slice(0, 80), source: source.slice(0, 40), at: Date.now() };
   try { wx.setStorageSync(CONTEXT_KEY, context); } catch (err) {}
@@ -85,6 +108,7 @@ module.exports = {
   OFFLINE_TABLE_CARD_PREFIX,
   OFFLINE_TABLE_CARD_SOURCE,
   parseOfflineTableCardScene,
+  parsePersonalityShareScene,
   createShareCode,
   capturePromotionEntry,
   getPromotionContext,

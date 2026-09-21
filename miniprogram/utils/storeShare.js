@@ -206,6 +206,17 @@ function buildStoreShareConfig(shop, storeId, serviceLine, tracking) {
   };
 }
 
+function buildUserHomeTimelineShareConfig(extra = {}) {
+  const appMessage = buildUserHomeShareConfig(extra);
+  const path = String(appMessage.path || '');
+  const queryIndex = path.indexOf('?');
+  return {
+    title: appMessage.title,
+    query: queryIndex >= 0 ? path.slice(queryIndex + 1) : '',
+    imageUrl: appMessage.imageUrl
+  };
+}
+
 function buildUserHomeShareConfig(extra = {}) {
   let app = null;
   try {
@@ -417,6 +428,7 @@ module.exports = {
   resolveShareStoreId,
   buildStoreShareConfig,
   buildUserHomeShareConfig,
+  buildUserHomeTimelineShareConfig,
   buildStaffShareConfig,
   buildTimelineShareConfig,
   buildMerchantShareConfig,

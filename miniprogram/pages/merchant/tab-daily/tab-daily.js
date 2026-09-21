@@ -779,6 +779,13 @@ Page({
     if (!this._guardMerchantFeature()) return;
     wx.navigateTo({ url: '/packageExtra/customers/customers' });
   },
+  onGoPromoPoster() {
+    if (!this._guardMerchantFeature()) return;
+    wx.navigateTo({ url: '/packageExtra/promo-poster/promo-poster' });
+  },
+  onGoGuide() {
+    wx.navigateTo({ url: '/pages/merchant/tab-guide/tab-guide' });
+  },
   onGoBoardingInsurance() {
     if (this.data.isDemoMode) {
       merchantDemo.promptDemoInsuranceBlocked();

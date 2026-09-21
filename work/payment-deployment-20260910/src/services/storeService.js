@@ -2192,24 +2192,33 @@ async function acceptStaffInvite(event, openid) {
 }
 
 async function getStoreQrCode(event, openid) {
-  const storeId = event.store_id;
+  const storeId = String(event.store_id || '').trim();
   const envVersion = event.env_version;
+  const requestedLine = String(event.service_line || event.serviceLine || 'boarding').trim();
+  const lineCodeMap = { boarding: 'b', wash: 'w', homeFeeding: 'h' };
+  const lineCode = lineCodeMap[requestedLine];
   if (!storeId) {
     return { success: false, errMsg: '缺少 store_id' };
   }
   if (!openid) {
     return { success: false, errMsg: '无法获取用户身份' };
   }
+  if (!lineCode) {
+    return { success: false, errMsg: '不支持的服务类型' };
+  }
 
   const data = await db.findMany('stores', { store_id: storeId }, { limit: 1 });
   if (!data.length) {
     return { success: false, errMsg: '店铺不存在' };
   }
-  if (data[0].ownerOpenid !== openid) {
+  if (!(await canManageStoreDoc(data[0], openid))) {
     return { success: false, errMsg: '无权生成该店铺二维码' };
   }
 
-  const scene = String(storeId).slice(0, 32);
+  const scene = `${storeId}|${lineCode}`;
+  if (Buffer.byteLength(scene, 'utf8') > 32) {
+    return { success: false, errMsg: '店铺编号过长，无法生成二维码' };
+  }
   const version = envVersion === 'release' || envVersion === 'develop' || envVersion === 'trial'
     ? envVersion
     : 'trial';
@@ -2218,17 +2227,18 @@ async function getStoreQrCode(event, openid) {
     // 店铺码面向宠主，必须用宠主端小程序凭证生成
     const buffer = await wechat.getUnlimitedQrCode({
       scene,
-      page: 'pages/index/index',
+      page: 'packageUser/user/reserve/reserve',
       envVersion: version,
       width: 430,
       client: 'user'
     });
-    const objectKey = `store-qrcodes/${storeId}.png`;
+    const objectKey = `store-qrcodes/${storeId}-${lineCode}.png`;
     const publicUrl = await oss.uploadBuffer(objectKey, buffer, 'image/png');
     return {
       success: true,
       fileID: publicUrl,
-      tempFileURL: publicUrl
+      tempFileURL: publicUrl,
+      serviceLine: requestedLine
     };
   } catch (err) {
     console.error('getStoreQrCode failed', err);

@@ -6,7 +6,7 @@
       <text class="hero-sub">20 道日常观察题，从社交、关注、情感和作息四个维度，看看它的相处偏好。请按平时真实表现来选。</text>
     </view>
 
-    <view class="card" wx:if="{{pets.length}}">
+    <view class="card" wx:if="{{hasSavedPets}}">
       <view class="form-group">
         <text class="form-label">今天测谁</text>
         <picker mode="selector" range="{{petNames}}" value="{{petIndex}}" bindchange="onPetChange">
@@ -22,9 +22,36 @@
       </view>
     </view>
 
-    <view class="card empty-card" wx:else>
-      <text class="empty-title">还没有宠物档案</text>
-      <text class="empty-sub">先把毛孩子加进来，再测它的 16 型人格。</text>
+    <view class="card quick-pet-card" wx:else>
+      <text class="empty-title">先告诉我它是谁</text>
+      <text class="empty-sub">只填名称和类别就能开始，预约或寄养时再补全档案。</text>
+      <view class="quick-field">
+        <text class="form-label">宠物名称</text>
+        <input
+          class="quick-input"
+          maxlength="20"
+          placeholder="例如：栗子"
+          value="{{quickPetName}}"
+          bindinput="onQuickPetNameInput"
+        />
+      </view>
+      <view class="quick-field">
+        <text class="form-label">宠物类别</text>
+        <view class="pet-type-grid">
+          <view
+            class="pet-type-chip {{quickPetType === item.value ? 'on' : ''}}"
+            wx:for="{{petTypeOptions}}"
+            wx:key="value"
+            data-value="{{item.value}}"
+            bindtap="onQuickPetTypeTap"
+          >{{item.label}}</view>
+        </view>
+      </view>
+      <view class="existing-box quick-existing" wx:if="{{existing}}">
+        <text class="existing-label">上次测出来是</text>
+        <text class="existing-code">{{existing.typeId}}</text>
+        <text class="existing-name">{{existing.typeName}}</text>
+      </view>
     </view>
 
     <view class="card tips">
@@ -33,7 +60,7 @@
       <text class="tips-line">每题 5 个程度，从「非常不符合」到「非常符合」。</text>
     </view>
 
-    <button class="btn-primary start-btn" bindtap="onStart">{{pets.length ? (existing ? '再测一次' : '开始测试') : '去添加宠物'}}</button>
+    <button class="btn-primary start-btn" bindtap="onStart">{{existing ? '再测一次' : '开始测试'}}</button>
     <view class="ghost-btn" wx:if="{{existing}}" bindtap="onViewExisting">看上次结果</view>
   </view>
 
@@ -116,7 +143,11 @@
       <text class="disclaimer-text">结果仅供了解相处偏好，不能替代专业行为评估或训宠方案。</text>
     </view>
 
-    <button class="btn-primary start-btn" open-type="share">分享给好友</button>
+    <view class="share-row">
+      <button class="btn-primary share-action" open-type="share">分享给好友</button>
+      <button class="btn-outline share-action" bindtap="onShareToTimeline" loading="{{sharingPoster}}" disabled="{{sharingPoster}}">分享到朋友圈</button>
+    </view>
     <view class="ghost-btn" bindtap="onRetake">重新测试</view>
   </view>
+  <canvas type="2d" id="sharePosterCanvas" class="share-poster-canvas"></canvas>
 </view>

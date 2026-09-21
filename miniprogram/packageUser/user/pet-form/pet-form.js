@@ -102,7 +102,14 @@ Page({
         return;
       }
     }
-    this.setData(createDefaultHealthFields());
+    const personalityDraft = this._proxyMode ? null : personalityUtil.getDraftPet();
+    this._fromPersonalityDraft = !!personalityDraft;
+    this.setData({
+      ...createDefaultHealthFields(),
+      name: personalityDraft ? personalityDraft.name : '',
+      petType: personalityDraft ? normalizePetType(personalityDraft.type) : '',
+      personality: personalityDraft ? personalityDraft.personality : null
+    });
     this._refreshBreedSuggestions('', '', false);
   },
 
@@ -316,7 +323,18 @@ Page({
 
     Promise.resolve(uploadThenSave)
       .then((photo) => persist(photo))
-      .then(() => {
+      .then((saved) => {
+        if (!this._proxyMode && this._fromPersonalityDraft) {
+          if (saved && saved.id && (saved.personality || this.data.personality)) {
+            personalityUtil.saveLocal(
+              saved.id,
+              saved.personality || this.data.personality,
+              saved.type || this.data.petType
+            );
+          }
+          personalityUtil.clearDraftPet();
+          this._fromPersonalityDraft = false;
+        }
         wx.hideLoading();
         wx.showToast({ title: '保存成功', icon: 'success' });
         setTimeout(() => {

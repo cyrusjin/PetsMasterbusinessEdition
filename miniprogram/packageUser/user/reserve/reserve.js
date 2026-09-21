@@ -86,6 +86,21 @@ const { openPetInsurance, recordPetInsuranceEvent } = require('../../../utils/pe
 /** 超过该字数时预览截断，点击查看完整 */
 const NOTICE_EXPAND_CHARS = 90;
 
+function parsePosterQrScene(options) {
+  const raw = options && options.scene;
+  if (!raw) return { storeId: '', serviceLine: '' };
+  let scene = '';
+  try {
+    scene = decodeURIComponent(String(raw)).trim();
+  } catch (err) {
+    scene = String(raw).trim();
+  }
+  const match = scene.match(/^(store_[^|]+)\|([bwh])$/);
+  if (!match) return { storeId: '', serviceLine: '' };
+  const lineMap = { b: 'boarding', w: 'wash', h: 'homeFeeding' };
+  return { storeId: match[1], serviceLine: lineMap[match[2]] || '' };
+}
+
 function snapshotWashValueAdded(quote) {
   return ((quote && quote.items) || []).map((item) => ({
     id: item.id,
@@ -596,10 +611,13 @@ Page({
     this._pickupTimeTouched = false;
     this._pageReady = false;
     this._choosingPickupLocation = false;
-    const storeId = String((options && options.store_id) || '').trim();
+    const qrEntry = parsePosterQrScene(options);
+    const storeId = String((options && options.store_id) || qrEntry.storeId || '').trim();
     capturePromotionEntry(options || {});
     this._entryStoreId = storeId;
-    this._entryServiceLine = String((options && (options.serviceLine || options.line)) || '').trim();
+    this._entryServiceLine = String(
+      (options && (options.serviceLine || options.line)) || qrEntry.serviceLine || ''
+    ).trim();
     this._proxyMode = String((options && options.proxy) || '') === '1';
     this._proxyClaimToken = '';
     this._submitting = false;

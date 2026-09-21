@@ -2,6 +2,7 @@ const { STORAGE_KEYS } = require('./constants');
 
 const VERSION = 3;
 const PAGE_SIZE = 5;
+const DRAFT_PET_ID = 'personality_draft_pet';
 
 const AXIS = {
   EI: { label: '社交能量', letters: ['E', 'I'] },
@@ -594,6 +595,66 @@ function saveLocal(petId, personality, petType) {
   return normalized;
 }
 
+function formatDraftPet(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const name = String(raw.name || '').trim();
+  const type = String(raw.type || '').trim();
+  if (!name || !type) return null;
+  const result = normalizePersonality(raw.personality, type);
+  return {
+    ...raw,
+    id: DRAFT_PET_ID,
+    pet_id: DRAFT_PET_ID,
+    name,
+    type,
+    personality: result,
+    personalityName: result ? result.typeName : '',
+    personalityShort: result ? result.typeShort || result.typeId : '',
+    personalitySubtitle: result ? result.subtitle : '',
+    isPersonalityDraft: true
+  };
+}
+
+function getDraftPet() {
+  try {
+    const raw = wx.getStorageSync(STORAGE_KEYS.PET_PERSONALITY_DRAFT);
+    return formatDraftPet(raw);
+  } catch (err) {
+    return null;
+  }
+}
+
+function saveDraftPet(pet) {
+  const source = pet || {};
+  const name = String(source.name || '').trim().slice(0, 20);
+  const type = String(source.type || source.petType || '').trim();
+  if (!name || !type) return null;
+  const draft = {
+    id: DRAFT_PET_ID,
+    pet_id: DRAFT_PET_ID,
+    name,
+    type,
+    photo: source.photo || '',
+    personality: normalizePersonality(source.personality, type),
+    isPersonalityDraft: true,
+    updateTime: Date.now()
+  };
+  try {
+    wx.setStorageSync(STORAGE_KEYS.PET_PERSONALITY_DRAFT, draft);
+  } catch (err) {
+    // ignore quota
+  }
+  return formatDraftPet(draft);
+}
+
+function clearDraftPet() {
+  try {
+    wx.removeStorageSync(STORAGE_KEYS.PET_PERSONALITY_DRAFT);
+  } catch (err) {
+    // ignore storage errors
+  }
+}
+
 function getPersonality(pet) {
   if (!pet) return null;
   const fromPet = normalizePersonality(pet.personality, pet.type);
@@ -659,5 +720,8 @@ module.exports = {
   classifyScores,
   normalizePersonality,
   saveLocal,
+  getDraftPet,
+  saveDraftPet,
+  clearDraftPet,
   persistToPet
 };

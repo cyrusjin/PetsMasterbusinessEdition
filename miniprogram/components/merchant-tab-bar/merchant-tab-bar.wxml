@@ -9,22 +9,17 @@
 
 <view class="merchant-tab-bar" wx:if="{{showBizTabs}}">
   <view class="tab-item {{active === 'daily' ? 'active' : ''}}">
-    <image class="tab-icon-img" src="{{active === 'daily' ? '/images/tab/tab-order-active.png' : '/images/tab/tab-order.png'}}" mode="aspectFit" />
+    <view class="tab-icon-v2 tab-icon-daily"><view class="tab-symbol"></view></view>
     <view class="tab-text">日常管理</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabDaily" />
   </view>
   <view class="tab-item {{active === 'statistics' ? 'active' : ''}}">
-    <image class="tab-icon-img" src="/images/card/card-stats.png" mode="aspectFit" />
+    <view class="tab-icon-v2 tab-icon-statistics"><view class="tab-symbol"></view></view>
     <view class="tab-text">营收统计</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStatistics" />
   </view>
-  <view class="tab-item {{active === 'guide' ? 'active' : ''}}">
-    <image class="tab-icon-img" src="{{active === 'guide' ? '/images/tab/tab-guide-active.png' : '/images/tab/tab-guide.png'}}" mode="aspectFit" />
-    <view class="tab-text">使用指南</view>
-    <view class="tab-hit" hover-class="none" catchtap="onTabGuide" />
-  </view>
   <view class="tab-item {{active === 'store' ? 'active' : ''}}">
-    <image class="tab-icon-img" src="{{active === 'store' ? '/images/tab/tab-shop-active.png' : '/images/tab/tab-shop.png'}}" mode="aspectFit" />
+    <view class="tab-icon-v2 tab-icon-store"><view class="tab-symbol"></view></view>
     <view class="tab-text">我的门店</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStore" />
   </view>

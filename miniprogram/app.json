@@ -98,7 +98,8 @@
         "ledger/ledger",
         "ledger/ledger-edit",
         "membership/membership",
-        "promotion-tasks/promotion-tasks"
+        "promotion-tasks/promotion-tasks",
+        "promo-poster/promo-poster"
       ]
     }
   ],
