@@ -1,7 +1,8 @@
 <view class="container" wx:if="{{order.id}}">
   <view class="summary-card">
-    <text class="summary-label">修改后合计</text>
+    <text class="summary-label">{{order.status === 'completed' ? '结算价格' : '修改后合计'}}</text>
     <text class="summary-total">¥{{totalFeeText}}</text>
+    <text class="summary-final-hint" wx:if="{{order.status === 'completed'}}">仅用于商家记账，不会通知宠主</text>
     <view class="summary-breakdown">
       <text wx:if="{{showVisitFee}}">上门喂养费：¥{{visitFeeText}}</text>
       <text wx:if="{{showBoardingFee}}">寄养费用：¥{{boardingFeeText}}</text>

@@ -206,7 +206,8 @@ async function deliverTemplate({
 
 function formatOrderServiceTime(order) {
   const date = String((order && order.startDate) || '').trim();
-  const time = String((order && order.startTime) || '').trim();
+  const slot = String((order && order.visitTimeSlot) || '').trim();
+  const time = slot || String((order && order.startTime) || '').trim();
   if (date && time) {
     const match = date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
     if (match) {

@@ -3,6 +3,7 @@ const {
   aggregateDauTrend,
   normalizeRole,
   recordsFromExistingApiData,
+  NATURAL_TRAFFIC_NAME,
   UNBOUND_STORE_NAME
 } = require('../src/services/userActivityStats');
 
@@ -156,6 +157,111 @@ function main() {
   assert.equal(byDay[1].merchantCount, 1);
   assert.equal(byDay[2].guestCount, 1);
   assert.equal(byDay[2].guests[0].storeName, '汪汪之家');
+
+  assert.equal(NATURAL_TRAFFIC_NAME, '自然量');
+  assert.equal(UNBOUND_STORE_NAME, '自然量');
+
+  const classified = aggregateDauTrend([
+    {
+      day: '2026-09-18',
+      userKey: 'browser',
+      role: 'merchant',
+      storeId: '',
+      merchantRole: 'owner',
+      displayName: '只进商家端',
+      openid: 'browser_1'
+    },
+    {
+      day: '2026-09-18',
+      userKey: 'owner_same',
+      role: 'merchant',
+      storeId: '',
+      merchantRole: 'owner',
+      openid: 'owner_same'
+    },
+    {
+      day: '2026-09-18',
+      userKey: 'owner_same',
+      role: 'merchant',
+      storeId: 'store_a',
+      storeName: '汪汪之家',
+      merchantRole: 'owner',
+      openid: 'owner_same'
+    },
+    {
+      day: '2026-09-18',
+      userKey: 'owner_same',
+      role: 'guest',
+      storeId: 'store_a',
+      storeName: '汪汪之家',
+      openid: 'owner_same'
+    },
+    {
+      day: '2026-09-18',
+      userKey: 'guest_named',
+      role: 'guest',
+      storeId: 'store_a',
+      storeName: '汪汪之家',
+      openid: 'guest_named'
+    },
+    {
+      day: '2026-09-18',
+      userKey: 'guest_organic',
+      role: 'guest',
+      storeId: '',
+      openid: 'guest_organic'
+    }
+  ], { dayKeys: ['2026-09-18'] });
+
+  assert.equal(classified[0].merchantCount, 1);
+  assert.equal(classified[0].merchants[0].storeName, '汪汪之家');
+  assert.equal(classified[0].merchants[0].ownerCount, 1);
+  assert.equal(classified[0].merchants.some((item) => item.storeName === NATURAL_TRAFFIC_NAME), false);
+  assert.equal(classified[0].guestCount, 3);
+  assert.equal(classified[0].guests[0].storeName, '汪汪之家');
+  assert.equal(classified[0].guests[classified[0].guests.length - 1].storeName, NATURAL_TRAFFIC_NAME);
+  assert.equal(classified[0].guests[classified[0].guests.length - 1].count, 2);
+
+  const dayKeyFn = (ts) => new Date(ts + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const fromUsers = recordsFromExistingApiData({
+    users: [
+      {
+        _id: 'u_loose',
+        openid: 'loose_owner',
+        nickName: '未开店',
+        isMerchant: true,
+        updateTime: Date.parse('2026-09-18T09:00:00+08:00')
+      },
+      {
+        _id: 'u_real',
+        openid: 'real_owner',
+        nickName: '真店主',
+        isMerchant: true,
+        merchantStoreId: 'store_a',
+        updateTime: Date.parse('2026-09-18T09:00:00+08:00')
+      },
+      {
+        _id: 'u_organic',
+        openid: 'organic_guest',
+        nickName: '自然客',
+        updateTime: Date.parse('2026-09-18T09:00:00+08:00')
+      }
+    ],
+    dayStart: Date.parse('2026-09-18T00:00:00+08:00'),
+    now: Date.parse('2026-09-18T15:00:00+08:00'),
+    dayKeyFn,
+    storeById: {
+      store_a: { store_id: 'store_a', name: '汪汪之家', ownerOpenid: 'real_owner' }
+    },
+    userByOpenid: new Map(),
+    merchantOpenids: ['real_owner']
+  });
+  const fromUsersTrend = aggregateDauTrend(fromUsers, { dayKeys: ['2026-09-18'] });
+  assert.equal(fromUsersTrend[0].merchantCount, 1);
+  assert.equal(fromUsersTrend[0].merchants[0].storeName, '汪汪之家');
+  assert.equal(fromUsersTrend[0].guestCount, 2);
+  assert.equal(fromUsersTrend[0].guests[0].storeName, NATURAL_TRAFFIC_NAME);
+  assert.equal(fromUsersTrend[0].guests[0].count, 2);
 
   console.log('user-activity.test.js ok');
 }

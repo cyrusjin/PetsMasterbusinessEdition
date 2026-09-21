@@ -2,6 +2,7 @@ const { request } = require('../../../utils/api');
 const { STORAGE_KEYS } = require('../../../utils/constants');
 
 const CACHE_TTL = 60 * 1000;
+let pendingRequest = null;
 
 function readReadState() {
   try {
@@ -109,7 +110,10 @@ function fetchMerchantAnnouncements(options = {}) {
     }
   }
 
-  return request('/api/config/announcements?audience=merchant&limit=50', {}, {
+  // 页面切换和后台恢复可能同时触发公告刷新，只保留一个网络请求。
+  if (pendingRequest) return pendingRequest;
+
+  pendingRequest = request('/api/config/announcements?audience=merchant&limit=50', {}, {
     method: 'GET',
     auth: false,
     timeout: 8000
@@ -156,7 +160,10 @@ function fetchMerchantAnnouncements(options = {}) {
       };
     }
     return { success: false, errMsg: '网络异常', list: [], unread: false };
+  }).finally(() => {
+    pendingRequest = null;
   });
+  return pendingRequest;
 }
 
 function fetchAnnouncementDetail(id) {

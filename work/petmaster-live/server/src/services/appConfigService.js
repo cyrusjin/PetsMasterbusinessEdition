@@ -123,7 +123,7 @@ async function getGlobalConfig() {
       versions: [
         {
           version: 'default',
-          merchantSwitchEnabled: true,
+          merchantSwitchEnabled: false,
           updateTime: null,
           note: '默认（未匹配到具体版本时）'
         }

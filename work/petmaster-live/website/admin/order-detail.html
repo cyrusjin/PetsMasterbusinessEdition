@@ -178,6 +178,13 @@
     }
 
     function formatStayRange(order) {
+      if ((order.serviceLine || order.serviceKind) === 'homeFeeding' || order.serviceType === '上门喂养') {
+        const date = order.startDate || '';
+        const endDate = order.endDate || '';
+        const dayText = endDate && endDate !== date ? (date + ' ~ ' + endDate) : date;
+        const time = order.visitTimeSlot || order.startTime || '';
+        return [dayText, time].filter(Boolean).join(' ') || '--';
+      }
       const start = [order.startDate, order.startTime].filter(Boolean).join(' ');
       const end = [order.endDate, order.endTime].filter(Boolean).join(' ');
       if (!start && !end) return '--';
@@ -320,7 +327,14 @@
         kvRow('店铺编号', order.storeDisplayNo || order.store_id || '--'),
         kvRow('服务类型', order.serviceType || '寄养预约'),
         kvRow('房间', order.roomName || order.roomType || '--'),
-        kvRow('寄养时间', formatStayRange(order)),
+        kvRow(
+          (order.serviceLine || order.serviceKind) === 'homeFeeding' || order.serviceType === '上门喂养'
+            ? '上门时间'
+            : ((order.serviceLine || order.serviceKind) === 'wash' || order.serviceType === '洗护预约'
+              ? '到店时间'
+              : '寄养时间'),
+          formatStayRange(order)
+        ),
         kvRow('天数', order.days != null ? (order.days + ' 天') : '--'),
         kvRow('特殊需求', order.specialNeeds || '无'),
         kvRow('协议状态', order.contractSigned ? ('已签署' + (order.contractSignTimeText && order.contractSignTimeText !== '--' ? (' · ' + order.contractSignTimeText) : '')) : (order.contractId || order.contractSnapshot ? '待签署' : '无')),
@@ -359,6 +373,10 @@
         kvRow('洗护费用', order.needWash ? formatMoney(order.washFee) : '未选择洗护'),
         kvRow('押金', formatMoney(order.deposit)),
         kvRow('合计', formatMoney(order.totalFee)),
+        order.merchantPriceAdjusted ? kvRow('结算价格', formatMoney(order.totalFee)) : '',
+        order.merchantPriceAdjusted && order.originalTotalFee != null && Number(order.originalTotalFee) !== Number(order.totalFee)
+          ? kvRow('订单原价', formatMoney(order.originalTotalFee))
+          : '',
         order.pricePendingConfirm ? kvRow('改价状态', '待宠主确认' + (order.priceConfirmedAtText && order.priceConfirmedAtText !== '--' ? '' : '')) : '',
         '</dl>',
         '<h3 class="detail-subtitle">附加项目</h3>',

@@ -232,6 +232,7 @@ function buildContractDraft(input) {
     endDate,
     startTime,
     endTime,
+    visitTimeSlot,
     days,
     totalFee,
     deposit,
@@ -275,7 +276,7 @@ function buildContractDraft(input) {
   const petType = (petTypeLine && petTypeLine.value) || '——';
   const petWeight = (petWeightLine && petWeightLine.value) || '——';
   const timeRange = kind === 'homeFeeding'
-    ? (formatHomeVisitTimeText({ startDate, startTime, endTime }) || '——')
+    ? (formatHomeVisitTimeText({ startDate, startTime, endTime, visitTimeSlot }) || '——')
     : `${startDate || '——'} ${startTime || ''} 至 ${endDate || '——'} ${endTime || ''}`.trim();
   const feeText = totalFee != null ? `¥${totalFee}` : '——';
   const depositText = deposit != null ? `¥${deposit}` : '¥0';
@@ -385,6 +386,7 @@ function buildContractFromOrder(order, user, store) {
     endDate: order.endDate,
     startTime: order.startTime,
     endTime: order.endTime,
+    visitTimeSlot: order.visitTimeSlot,
     days: order.days,
     totalFee: order.totalFee,
     deposit: 0,

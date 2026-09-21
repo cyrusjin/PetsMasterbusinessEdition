@@ -15,7 +15,7 @@
     <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="寄养天数" value="{{order.days}}天" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'wash'}}" label="到店时间" value="{{order.startDate}} {{order.startTime}}" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'wash' && order.roomName}}" label="洗护项目" value="{{order.roomName}}" />
-    <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding'}}" label="上门时间" value="{{order.startDate}}{{order.endDate && order.endDate !== order.startDate ? ' ~ ' + order.endDate : ''}} {{order.startTime}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding'}}" label="上门时间" value="{{order.homeVisitTimeText}}" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding' && order.roomName}}" label="服务项目" value="{{order.roomName}}" />
     <copyable-detail-row wx:if="{{order.needPickup}}" label="接送服务" value="需要" />
     <copyable-detail-row wx:if="{{order.needWash && order.serviceLine !== 'wash'}}" label="洗护服务" value="需要" />

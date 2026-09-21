@@ -28,30 +28,6 @@
   "libVersion": "3.5.5",
   "packOptions": {
     "ignore": [
-      {
-        "type": "file",
-        "value": "images/home/reserve-art-v2.webp"
-      },
-      {
-        "type": "file",
-        "value": "images/home/home-hero-pet-v2.webp"
-      },
-      {
-        "type": "file",
-        "value": "images/home/orders-art.webp"
-      },
-      {
-        "type": "file",
-        "value": "images/booking/service-picker-art.webp"
-      },
-      {
-        "type": "file",
-        "value": "images/insurance/pet-insurance-qr.png"
-      },
-      {
-        "type": "file",
-        "value": "images/membership/membership-hero-gold.webp"
-      }
     ],
     "include": [
       {

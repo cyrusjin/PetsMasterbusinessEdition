@@ -2,7 +2,8 @@ Component({
   properties: {
     startDate: { type: String, value: '' },
     endDate: { type: String, value: '' },
-    minDate: { type: String, value: '' }
+    minDate: { type: String, value: '' },
+    enabledWeekdays: { type: Array, value: [] }
   },
   data: { year: 2026, month: 6, cells: [], _s: null, _e: null, _minDate: '' },
   lifetimes: {
@@ -17,7 +18,7 @@ Component({
     }
   },
   observers: {
-    'startDate,endDate,minDate'(s, e, minDate) {
+    'startDate,endDate,minDate,enabledWeekdays'(s, e, minDate) {
       this.setData({
         _s: s || null,
         _e: e || null,
@@ -30,6 +31,21 @@ Component({
     _getTodayStr() {
       const today = new Date();
       return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    },
+    _weekdayFromDateStr(ds) {
+      const parts = String(ds || '').split('-');
+      if (parts.length !== 3) return 0;
+      const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      if (Number.isNaN(date.getTime())) return 0;
+      const dow = date.getDay();
+      return dow === 0 ? 7 : dow;
+    },
+    _isClosedDate(ds) {
+      const enabled = Array.isArray(this.data.enabledWeekdays) ? this.data.enabledWeekdays : [];
+      if (!enabled.length) return false;
+      const weekday = this._weekdayFromDateStr(ds);
+      if (!weekday) return false;
+      return enabled.map((item) => parseInt(item, 10)).indexOf(weekday) < 0;
     },
     _render() {
       const { year, month, _s, _e, _minDate } = this.data;
@@ -50,7 +66,7 @@ Component({
       for (let d = 1; d <= dim; d++) {
         const ds = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         let cls = '';
-        const disabled = ds < minDate;
+        const disabled = ds < minDate || this._isClosedDate(ds);
         if (disabled) cls += ' disabled';
         if (ds === todayStr) cls += ' today';
         if (_s && _e) {
@@ -75,7 +91,7 @@ Component({
           const m = month === 12 ? 1 : month + 1;
           const y = month === 12 ? year + 1 : year;
           const ds = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          const disabled = ds < minDate;
+          const disabled = ds < minDate || this._isClosedDate(ds);
           cells.push({
             day: d,
             dateStr: ds,

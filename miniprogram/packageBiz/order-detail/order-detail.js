@@ -8,7 +8,7 @@ const { loadOrderFeeDetail, buildOrderFeeDetail } = require('../utils/orderFeeDe
 const { exportAndShareOrderDetail } = require('../utils/orderDetailExport');
 const { resolveImageUrl } = require('../../utils/imageCache');
 const { refreshSingleOrder } = require('../../utils/orderRefresh');
-const { canMerchantModifyOrder } = require('../utils/orderActions');
+const { canMerchantModifyOrder, canMerchantEditPrice } = require('../utils/orderActions');
 const { attachOrderDisplayNo } = require('../../utils/displayNo');
 const { formatOrderCreateTime } = require('../../utils/util');
 const { buildPendingEditLines, getPendingEditTotalFee } = require('../utils/pendingEdit');
@@ -42,6 +42,7 @@ Page({
     canMerchantOperate: true,
     canDailyCheck: false,
     canShareProxy: false,
+    canEditPrice: false,
     completeActionLabel: '结束寄养'
   },
 
@@ -50,6 +51,10 @@ Page({
     prefetchStoreShareImage(app.getShop());
     this._loadOrder();
     this._refreshOrder({ force: false });
+  },
+
+  onShow() {
+    if (this.orderId) this._loadOrder();
   },
 
   onPullDownRefresh() {
@@ -104,6 +109,7 @@ Page({
       pendingEditLines: order.editPendingConfirm ? buildPendingEditLines(order) : [],
       pendingEditTotalFee: order.editPendingConfirm ? getPendingEditTotalFee(order) : null,
       canMerchantOperate: canMerchantModifyOrder(order),
+      canEditPrice: canMerchantEditPrice(order),
       canShareProxy: !app.isMerchantDemoMode() && canShareProxyOrder(order)
     });
     this._resolvePetPhoto(petView.photo);
@@ -147,8 +153,13 @@ Page({
   onEditPrice() {
     const order = this.data.order;
     if (!order || !order.id) return;
-    if (order.pricePendingConfirm) {
-      wx.showToast({ title: '价格待用户确认，暂不可改价', icon: 'none' });
+    if (!canMerchantEditPrice(order)) {
+      wx.showToast({
+        title: order.pricePendingConfirm
+          ? '价格待用户确认，暂不可改价'
+          : (order.paymentMode === 'online' ? '在线付款后不可直接改价' : '当前状态不可改价'),
+        icon: 'none'
+      });
       return;
     }
     wx.navigateTo({ url: `/packageBiz/order-price/order-price?id=${order.id}` });

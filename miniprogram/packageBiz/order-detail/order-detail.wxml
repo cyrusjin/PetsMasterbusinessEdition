@@ -32,7 +32,7 @@
     <copyable-detail-row wx:if="{{order.emergencyPhone}}" label="紧急联系电话" value="{{order.emergencyPhone}}" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="寄养时间" value="{{order.startDate}} {{order.startTime}} ~ {{order.endDate}} {{order.endTime}}" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'wash'}}" label="到店时间" value="{{order.startDate}} {{order.startTime}}" />
-    <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding'}}" label="上门时间" value="{{order.startDate}}{{order.endDate && order.endDate !== order.startDate ? ' ~ ' + order.endDate : ''}} {{order.startTime}}" />
+    <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding'}}" label="上门时间" value="{{order.homeVisitTimeText}}" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'homeFeeding' && order.roomName}}" label="服务项目" value="{{order.roomName}}" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'wash' && order.roomName}}" label="洗护项目" value="{{order.roomName}}" />
     <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="{{order.billingMode === 'custom' ? '收费项目' : '房间'}}" value="{{order.roomName}}" />
@@ -53,6 +53,7 @@
     />
     <copyable-detail-row wx:if="{{order.serviceLine === 'boarding' || !order.serviceLine}}" label="天数" value="{{order.days}}天" />
     <copyable-detail-row label="特殊需求" value="{{order.specialNeeds}}" stack="{{true}}" />
+    <copyable-detail-row wx:if="{{order.merchantPriceAdjusted}}" label="结算价格" value="¥{{feeDetail.totalFeeText || feeSummary.totalFee}}" />
     <copyable-detail-row wx:if="{{(order.contractSigned || order.contractSnapshot || order.contractId) && (order.serviceLine === 'boarding' || !order.serviceLine)}}" label="协议状态" value="{{order.contractSigned ? '已签署' : '待签署'}}" />
   </view>
 
@@ -133,17 +134,17 @@
           bindtap="onGoContract"
         >查看寄养协议</view>
       </view>
-      <view class="detail-action-row" wx:if="{{(canMerchantOperate || order.editPendingConfirm) && (order.status === 'boarding' || order.status === 'pending' || order.status === 'awaiting_arrival')}}">
+      <view class="detail-action-row" wx:if="{{((canMerchantOperate || order.editPendingConfirm) && (order.status === 'boarding' || order.status === 'pending' || order.status === 'awaiting_arrival')) || canEditPrice}}">
         <view
           wx:if="{{canMerchantOperate && (order.status === 'boarding' || canDailyCheck)}}"
           class="detail-action-btn detail-action-danger"
           bindtap="onComplete"
         >{{completeActionLabel || '结束寄养'}}</view>
         <view
-          wx:if="{{!order.pricePendingConfirm && (order.status === 'pending' || order.status === 'awaiting_arrival' || order.status === 'boarding')}}"
+          wx:if="{{canEditPrice}}"
           class="detail-action-btn detail-action-warning"
           bindtap="onEditPrice"
-        >修改价格</view>
+        >{{order.status === 'completed' ? '修改结算价格' : '修改价格'}}</view>
       </view>
       <view
         class="detail-action-btn detail-action-primary detail-action-full {{exporting ? 'is-disabled' : ''}}"

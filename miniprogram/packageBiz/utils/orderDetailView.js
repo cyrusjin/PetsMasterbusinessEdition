@@ -98,7 +98,15 @@ function buildOrderDetailSections(order, petView, feeSummary, feeDetail) {
   }
 
   orderRows.push(
-    ['费用合计', `¥${feeSummary.totalFee}`],
+    ['费用合计', `¥${feeSummary.totalFee}`]
+  );
+  if (order.merchantPriceAdjusted) {
+    orderRows.push(['结算价格', `¥${feeSummary.totalFee}`]);
+    if (order.originalTotalFee != null && Math.abs(Number(order.originalTotalFee) - Number(feeSummary.totalFee)) > 0.01) {
+      orderRows.push(['订单原价', `¥${order.originalTotalFee}`]);
+    }
+  }
+  orderRows.push(
     ['特殊需求', displayText(order.specialNeeds)]
   );
 

@@ -42,9 +42,35 @@ Component({
 
   lifetimes: {
     attached() {
+      // 远程图片只有接近视口时才解析/下载，避免列表初次渲染触发整页并发下载。
+      this._visible = false;
+      if (typeof this.createIntersectionObserver === 'function') {
+        this._imageObserver = this.createIntersectionObserver({
+          observeAll: false,
+          thresholds: [0]
+        });
+        this._imageObserver
+          .relativeToViewport({ top: 240, bottom: 240 })
+          .observe('.cached-image-box', (res) => {
+            if (res && res.intersectionRatio > 0) {
+              this._visible = true;
+              if (this._imageObserver) {
+                this._imageObserver.disconnect();
+                this._imageObserver = null;
+              }
+              this._updateDisplaySrc();
+            }
+          });
+      } else {
+        this._visible = true;
+      }
       this._updateDisplaySrc();
     },
     detached() {
+      if (this._imageObserver) {
+        this._imageObserver.disconnect();
+        this._imageObserver = null;
+      }
       // 使未完成的异步解析失效，避免组件销毁后继续 setData。
       this._resolveTaskSeq = (this._resolveTaskSeq || 0) + 1;
     }
@@ -67,6 +93,13 @@ Component({
 
       if (isLocalImagePath(source) || source.startsWith('/')) {
         this._setDisplaySrc(source);
+        return;
+      }
+
+      // 非可见组件保留已有缓存/占位图，但不启动网络请求。
+      if (!this._visible) {
+        const cached = peekCachedPath(source, { skipTouch: true });
+        if (cached) this._setDisplaySrc(cached);
         return;
       }
 

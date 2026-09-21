@@ -6,6 +6,7 @@ const notifyService = require('./notifyService');
 const crypto = require('crypto');
 const membershipService = require('./membershipService');
 const { normalizePersonality, pickPersonality } = require('./petPersonality');
+const { resolveHomeVisitOrderTimes } = require('../utils/homeVisitSlots');
 
 const INSURANCE_SHARE_COLLECTION = 'insurance_share_links';
 const INSURANCE_EVENT_COLLECTION = 'insurance_events';
@@ -77,12 +78,12 @@ function normalizeIsMerchant(value) {
 }
 
 const ORDER_STATUSES = ['pending', 'confirmed', 'awaiting_arrival', 'boarding', 'toPay', 'completed', 'cancelled'];
-const EDITABLE_PRICE_STATUSES = ['pending', 'confirmed', 'awaiting_arrival', 'boarding'];
+const EDITABLE_PRICE_STATUSES = ['pending', 'confirmed', 'awaiting_arrival', 'boarding', 'completed'];
 const MERCHANT_PATCH_FIELDS = ['pickupOutboundDone', 'pickupReturnDone'];
 const USER_CANCEL_STATUSES = ['pending', 'confirmed', 'awaiting_arrival'];
 const USER_EDIT_STATUSES = ['pending', 'confirmed', 'awaiting_arrival', 'boarding'];
 const USER_EDIT_FIELDS_FULL = [
-  'startDate', 'endDate', 'startTime', 'endTime', 'days',
+  'startDate', 'endDate', 'startTime', 'endTime', 'visitTimeSlot', 'days',
   'contactName', 'contactPhone', 'contactIdCard', 'emergencyPhone', 'specialNeeds',
   'needPickup', 'pickupAddress', 'pickupLocationName', 'pickupLatitude', 'pickupLongitude',
   'pickupContactPhone', 'pickupTime', 'pickupIncludeOutbound', 'pickupIncludeReturn',
@@ -299,12 +300,16 @@ function formatOrder(doc, petDoc) {
     endDate: doc.endDate || '',
     startTime: doc.startTime || '',
     endTime: doc.endTime || '',
+    visitTimeSlot: doc.visitTimeSlot || '',
     days: doc.days != null ? doc.days : 0,
     boardingFee: fees.boardingFee,
     shippingFee: fees.shippingFee,
     washFee: fees.washFee,
     visitFee: fees.visitFee,
     totalFee: fees.totalFee,
+    originalTotalFee: doc.originalTotalFee != null ? parseFee(doc.originalTotalFee, 0) : null,
+    merchantPriceAdjusted: !!doc.merchantPriceAdjusted,
+    merchantPriceAdjustedAt: doc.merchantPriceAdjustedAt || 0,
     basePrice: doc.basePrice != null ? doc.basePrice : 0,
     deposit: doc.deposit != null ? doc.deposit : 0,
     feeSnapshot: doc.feeSnapshot || null,
@@ -501,6 +506,7 @@ function buildOrderData(order, userOpenid, merchantOpenid, userProfile, storeDis
     endDate: order.endDate,
     startTime: order.startTime,
     endTime: order.endTime,
+    visitTimeSlot: order.visitTimeSlot || '',
     days: parseFloat(order.days) || 0,
     boardingFee: fees.boardingFee,
     shippingFee: fees.shippingFee,
@@ -585,6 +591,21 @@ async function createOrder(event, openid) {
   const receptionErr = payload.serviceRecord ? '' : validateOrderReceptionRange(payload, store);
   if (receptionErr) return { success: false, errMsg: receptionErr };
 
+  const orderPayload = payload.serviceRecord ? {
+    ...payload,
+    startDate: payload.startDate || new Date().toISOString().slice(0, 10),
+    endDate: payload.endDate || payload.startDate || new Date().toISOString().slice(0, 10),
+    startTime: payload.startTime || '00:00',
+    endTime: payload.endTime || '23:59',
+    status: 'completed',
+    placedByMerchant: true
+  } : { ...payload };
+  if (!payload.serviceRecord) {
+    const resolved = resolveHomeVisitOrderTimes(orderPayload, store);
+    if (resolved.errMsg) return { success: false, errMsg: resolved.errMsg };
+    Object.assign(orderPayload, resolved.patch || {});
+  }
+
   await db.ensureCollections(['orders']);
 
   let merchantOpenid = store.ownerOpenid || '';
@@ -599,15 +620,7 @@ async function createOrder(event, openid) {
   }
 
   const orderData = buildOrderData(
-    payload.serviceRecord ? {
-      ...payload,
-      startDate: payload.startDate || new Date().toISOString().slice(0, 10),
-      endDate: payload.endDate || payload.startDate || new Date().toISOString().slice(0, 10),
-      startTime: payload.startTime || '00:00',
-      endTime: payload.endTime || '23:59',
-      status: 'completed',
-      placedByMerchant: true
-    } : payload,
+    orderPayload,
     openid,
     merchantOpenid,
     event.userProfile || {},
@@ -809,7 +822,7 @@ async function updateOrder(event, openid) {
   const isMerchantPriceAdjust = isMerchant && updates.merchantPriceAdjust === true;
   const isUserEditPayload = [
     'feeSnapshot', 'basePrice', 'days',
-    'endDate', 'endTime', 'startDate', 'startTime',
+    'endDate', 'endTime', 'startDate', 'startTime', 'visitTimeSlot',
     'contactName', 'contactPhone', 'contactIdCard', 'emergencyPhone', 'specialNeeds',
     'needPickup', 'pickupAddress', 'pickupLocationName', 'pickupLatitude', 'pickupLongitude',
     'pickupContactPhone', 'pickupTime', 'pickupIncludeOutbound', 'pickupIncludeReturn',
@@ -883,6 +896,19 @@ async function updateOrder(event, openid) {
       );
       if (disallowed.length) {
         return { success: false, errMsg: '当前状态不可修改该信息' };
+      }
+      const touchesVisitTime = ['visitTimeSlot', 'startTime', 'endTime', 'startDate', 'endDate']
+        .some((key) => updates[key] !== undefined);
+      if (touchesVisitTime) {
+        const visitStore = await getStoreById(existing.store_id);
+        const merged = {
+          ...existing,
+          ...updates,
+          serviceLine: getOrderServiceLine({ ...existing, ...updates }) || existing.serviceLine
+        };
+        const resolved = resolveHomeVisitOrderTimes(merged, visitStore);
+        if (resolved.errMsg) return { success: false, errMsg: resolved.errMsg };
+        Object.assign(updates, resolved.patch || {});
       }
       // 用户改单不直接生效，写入待商家确认
       patch.pendingEdit = buildPendingEditPayload(updates, allowedFields);
@@ -975,6 +1001,11 @@ async function updateOrder(event, openid) {
     patch.pricePendingConfirm = false;
     patch.editPendingConfirm = false;
     patch.pendingEdit = null;
+    if (existing.originalTotalFee == null) {
+      patch.originalTotalFee = parseFee(existing.totalFee, 0);
+    }
+    patch.merchantPriceAdjusted = true;
+    patch.merchantPriceAdjustedAt = Date.now();
     if (!existing.merchantOpenid || existing.merchantOpenid !== openid) {
       patch.merchantOpenid = openid;
     }

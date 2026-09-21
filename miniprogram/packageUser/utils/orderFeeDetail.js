@@ -2,6 +2,15 @@ const util = require('../../utils/util');
 const { calcStayFeeBreakdown, formatMoney } = require('../../utils/billing');
 const { normalizeOrderFees } = require('./orderFees');
 
+function buildMerchantPriceAdjustFields() {
+  return {
+    merchantPriceAdjusted: false,
+    originalTotalFee: 0,
+    originalTotalFeeText: '0',
+    showOriginalTotalFee: false
+  };
+}
+
 function parseDeposit(value) {
   const num = parseFloat(value);
   return Number.isFinite(num) && num > 0 ? Math.round(num * 100) / 100 : 0;
@@ -192,7 +201,8 @@ function buildOrderFeeDetail(order, rules, options = {}) {
       showDeposit: deposit > 0,
       priceAdjusted: false,
       isWashLine: !visitFields.isHomeVisit && isWashLineOrder(order),
-      ...visitFields
+      ...visitFields,
+      ...buildMerchantPriceAdjustFields(order, fees)
     };
   }
 
@@ -243,7 +253,8 @@ function buildOrderFeeDetail(order, rules, options = {}) {
     showDeposit: deposit > 0,
     priceAdjusted,
     isWashLine: !visitFields.isHomeVisit && isWashLineOrder(order),
-    ...visitFields
+    ...visitFields,
+    ...buildMerchantPriceAdjustFields(order, fees)
   };
 }
 

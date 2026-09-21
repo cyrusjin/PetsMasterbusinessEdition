@@ -2,6 +2,7 @@ const db = require('../db');
 const identity = require('./identity');
 const userFields = require('./userFields');
 const {
+  NATURAL_TRAFFIC_NAME,
   UNBOUND_STORE_NAME,
   normalizeRole,
   aggregateDauTrend,
@@ -9,7 +10,6 @@ const {
 } = require('./userActivityStats');
 
 const COLLECTION = 'user_activity_daily';
-const UNBOUND_STORE_ID = '';
 
 let indexesReady = false;
 let seen = new Set();
@@ -64,9 +64,20 @@ async function ensureReady() {
   }
 }
 
-function resolveMerchantRole(user, store) {
+function activityOpenids(user, openid) {
+  const set = new Set(identity.collectOpenids(user || openid));
+  if (user && Array.isArray(user.linkedOpenids)) {
+    user.linkedOpenids.forEach((id) => {
+      const value = String(id || '').trim();
+      if (value) set.add(value);
+    });
+  }
+  return [...set];
+}
+
+function resolveMerchantRole(user, store, openid) {
   if (String((user && user.merchantRole) || '').toLowerCase() === 'staff') return 'staff';
-  const openids = new Set(identity.collectOpenids(user));
+  const openids = new Set(activityOpenids(user, openid));
   const staffIds = Array.isArray(store && store.staffOpenids) ? store.staffOpenids : [];
   if (staffIds.some((id) => openids.has(String(id || '').trim()))) return 'staff';
   return 'owner';
@@ -76,7 +87,7 @@ function storeNameOf(store, storeId) {
   if (store && (store.name || store.legalName)) {
     return String(store.name || store.legalName).trim();
   }
-  return storeId || UNBOUND_STORE_NAME;
+  return storeId || NATURAL_TRAFFIC_NAME;
 }
 
 function buildStoreLookup(stores) {
@@ -96,21 +107,36 @@ function buildStoreLookup(stores) {
   return { byId, byOpenid };
 }
 
-function resolveActivityStore(user, role, storeLookup) {
+function resolveActivityStore(user, role, storeLookup, openid) {
   if (role === 'merchant') {
     const explicit = userFields.resolveMerchantStoreId(user);
     if (explicit && storeLookup.byId.has(explicit)) {
       return storeLookup.byId.get(explicit);
     }
-    const hit = identity.collectOpenids(user).map((id) => storeLookup.byOpenid.get(id)).find(Boolean);
-    if (hit) return hit;
-    if (explicit) return { store_id: explicit, name: '' };
-    return null;
+    return activityOpenids(user, openid).map((id) => storeLookup.byOpenid.get(id)).find(Boolean) || null;
   }
   const visitId = userFields.resolveVisitStoreId(user);
   if (visitId && storeLookup.byId.has(visitId)) return storeLookup.byId.get(visitId);
-  if (visitId) return { store_id: visitId, name: '' };
   return null;
+}
+
+function resolveActivityIdentity(user, storeLookup, openid) {
+  const merchantStore = resolveActivityStore(user, 'merchant', storeLookup, openid);
+  const merchantStoreId = merchantStore ? String(merchantStore.store_id || '').trim() : '';
+  if (merchantStoreId) {
+    return {
+      role: 'merchant',
+      store: merchantStore,
+      storeId: merchantStoreId
+    };
+  }
+  const guestStore = resolveActivityStore(user, 'guest', storeLookup, openid);
+  const guestStoreId = guestStore ? String(guestStore.store_id || '').trim() : '';
+  return {
+    role: 'guest',
+    store: guestStore,
+    storeId: guestStoreId
+  };
 }
 
 function activityUserKey(user, openid) {
@@ -119,7 +145,6 @@ function activityUserKey(user, openid) {
 }
 
 async function writeActivity({ openid, client, user, stores }) {
-  const role = normalizeRole(client);
   const now = Date.now();
   const day = cnDayKey(now);
   const userKey = activityUserKey(user, openid);
@@ -127,12 +152,12 @@ async function writeActivity({ openid, client, user, stores }) {
 
   let storeLookup = stores ? buildStoreLookup(stores) : { byId: new Map(), byOpenid: new Map() };
   if (!stores) {
-    const storeIdHint = role === 'merchant'
-      ? userFields.resolveMerchantStoreId(user)
-      : userFields.resolveVisitStoreId(user);
-    const openids = identity.collectOpenids(user || openid);
+    const openids = activityOpenids(user, openid);
     const query = [];
-    if (storeIdHint) query.push({ store_id: storeIdHint });
+    const merchantHint = userFields.resolveMerchantStoreId(user);
+    const visitHint = userFields.resolveVisitStoreId(user);
+    if (merchantHint) query.push({ store_id: merchantHint });
+    if (visitHint && visitHint !== merchantHint) query.push({ store_id: visitHint });
     if (openids.length) {
       query.push({ ownerOpenid: { $in: openids } });
       query.push({ staffOpenids: { $in: openids } });
@@ -143,33 +168,57 @@ async function writeActivity({ openid, client, user, stores }) {
     storeLookup = buildStoreLookup(found);
   }
 
-  const store = resolveActivityStore(user, role, storeLookup);
-  const storeId = store ? String(store.store_id || '').trim() : UNBOUND_STORE_ID;
+  const resolved = resolveActivityIdentity(user, storeLookup, openid);
+  const role = resolved.role;
+  const store = resolved.store;
+  const storeId = resolved.storeId;
+  const cacheKey = `${day}:${userKey}:${role}:${storeId}`;
+  if (!rememberSeen(day, cacheKey)) return null;
+
   const doc = {
     day,
     userKey,
     role,
-    client: role === 'merchant' ? 'merchant' : 'user',
+    client: role === 'merchant' ? 'merchant' : (client === 'merchant' ? 'merchant' : 'user'),
     storeId,
     storeName: storeNameOf(store, storeId),
-    merchantRole: role === 'merchant' ? resolveMerchantRole(user, store) : '',
+    merchantRole: role === 'merchant' ? resolveMerchantRole(user, store, openid) : '',
     displayName: displayNameOf(user),
     openid: String(openid || (user && user.openid) || '').trim(),
-    openids: identity.collectOpenids(user || openid),
+    openids: activityOpenids(user, openid),
     createTime: now
   };
 
   await ensureReady();
   try {
-    await db.collection(COLLECTION).updateOne(
+    const col = db.collection(COLLECTION);
+    await col.updateOne(
       { day, userKey, role },
       {
-        $setOnInsert: doc,
-        $set: { updateTime: now }
+        $setOnInsert: {
+          day,
+          userKey,
+          role,
+          openid: doc.openid,
+          openids: doc.openids,
+          createTime: now
+        },
+        $set: {
+          client: doc.client,
+          storeId: doc.storeId,
+          storeName: doc.storeName,
+          merchantRole: doc.merchantRole,
+          displayName: doc.displayName,
+          openid: doc.openid,
+          openids: doc.openids,
+          updateTime: now
+        }
       },
       { upsert: true }
     );
+    await col.deleteMany({ day, userKey, role: { $ne: role } });
   } catch (err) {
+    forgetSeen(cacheKey);
     if (!(err && err.code === 11000)) throw err;
   }
   return doc;
@@ -178,10 +227,6 @@ async function writeActivity({ openid, client, user, stores }) {
 function recordActivity({ openid, client, user, stores } = {}) {
   const trimmed = String(openid || (user && user.openid) || '').trim();
   if (!trimmed && !(user && user._id)) return;
-  const role = normalizeRole(client);
-  const day = cnDayKey(Date.now());
-  const cacheKey = `${day}:${trimmed || String(user._id)}:${role}`;
-  if (!rememberSeen(day, cacheKey)) return;
 
   Promise.resolve()
     .then(async () => {
@@ -197,7 +242,6 @@ function recordActivity({ openid, client, user, stores } = {}) {
       });
     })
     .catch((err) => {
-      forgetSeen(cacheKey);
       console.warn('[userActivity] record failed', (err && err.message) || err);
     });
 }
@@ -216,19 +260,10 @@ function merchantOpenidSet(stores) {
   return set;
 }
 
-function inferSeedRole(user, merchantIds) {
-  const ids = identity.collectOpenids(user);
-  if (ids.some((id) => merchantIds.has(id))) return 'merchant';
-  if (userFields.isMerchantApprovedFromDoc(user)) return 'merchant';
-  if (String(user.merchantRole || '').toLowerCase() === 'staff') return 'merchant';
-  return 'guest';
-}
-
 async function seedTodayFromUsers({ now = Date.now(), stores = [], excludedOpenids = [] } = {}) {
   const todayStart = cnDayStart(0, now);
   const day = cnDayKey(now);
   if (seededDay === day) return 0;
-  const merchantIds = merchantOpenidSet(stores);
   const excluded = new Set(excludedOpenids || []);
   const users = await db.collection('users')
     .find({
@@ -257,11 +292,12 @@ async function seedTodayFromUsers({ now = Date.now(), stores = [], excludedOpeni
   const ops = [];
 
   users.forEach((user) => {
-    const openids = identity.collectOpenids(user);
+    const openids = activityOpenids(user, user.openid);
     if (openids.some((id) => excluded.has(id))) return;
-    const role = inferSeedRole(user, merchantIds);
-    const store = resolveActivityStore(user, role, storeLookup);
-    const storeId = store ? String(store.store_id || '').trim() : UNBOUND_STORE_ID;
+    const resolved = resolveActivityIdentity(user, storeLookup, user.openid);
+    const role = resolved.role;
+    const store = resolved.store;
+    const storeId = resolved.storeId;
     const userKey = activityUserKey(user, user.openid);
     if (!userKey) return;
     const createTime = now;
@@ -273,19 +309,28 @@ async function seedTodayFromUsers({ now = Date.now(), stores = [], excludedOpeni
             day,
             userKey,
             role,
-            client: role === 'merchant' ? 'merchant' : 'user',
-            storeId,
-            storeName: storeNameOf(store, storeId),
-            merchantRole: role === 'merchant' ? resolveMerchantRole(user, store) : '',
-            displayName: displayNameOf(user),
             openid: String(user.openid || '').trim(),
             openids,
             createTime,
             seeded: true
           },
-          $set: { updateTime: createTime }
+          $set: {
+            client: role === 'merchant' ? 'merchant' : 'user',
+            storeId,
+            storeName: storeNameOf(store, storeId),
+            merchantRole: role === 'merchant' ? resolveMerchantRole(user, store, user.openid) : '',
+            displayName: displayNameOf(user),
+            openid: String(user.openid || '').trim(),
+            openids,
+            updateTime: createTime
+          }
         },
         upsert: true
+      }
+    });
+    ops.push({
+      deleteMany: {
+        filter: { day, userKey, role: { $ne: role } }
       }
     });
   });
@@ -508,6 +553,7 @@ async function initialize() {
 module.exports = {
   COLLECTION,
   UNBOUND_STORE_NAME,
+  NATURAL_TRAFFIC_NAME,
   cnDayKey,
   cnDayStart,
   normalizeRole,

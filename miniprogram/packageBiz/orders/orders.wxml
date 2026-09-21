@@ -114,7 +114,7 @@
         <button wx:if="{{item.status === 'awaiting_arrival' && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-green" bindtap="onConfirmArrival" data-id="{{item.id}}">{{item.startActionLabel || '确认到店'}}</button>
         <button wx:if="{{item.canDailyCheck && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-blue" bindtap="onDailyCheck" data-id="{{item.id}}">去打卡</button>
         <button wx:if="{{(item.status === 'boarding' || (item.canDailyCheck && item.status === 'awaiting_arrival')) && !item.pricePendingConfirm && !item.editPendingConfirm}}" class="btn-sm btn-red" bindtap="onComplete" data-id="{{item.id}}">{{item.completeActionLabel || '结束寄养'}}</button>
-        <button wx:if="{{(item.status === 'pending' || item.status === 'awaiting_arrival' || item.status === 'boarding') && !item.pricePendingConfirm}}" class="btn-sm btn-orange" bindtap="onEditPrice" data-id="{{item.id}}">修改价格</button>
+        <button wx:if="{{item.canEditPrice}}" class="btn-sm btn-orange" bindtap="onEditPrice" data-id="{{item.id}}">{{item.status === 'completed' ? '修改结算价格' : '修改价格'}}</button>
         <button class="btn-sm btn-gray" bindtap="onDetail" data-id="{{item.id}}">详情</button>
       </view>
     </view>

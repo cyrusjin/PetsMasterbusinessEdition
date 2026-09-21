@@ -1,3 +1,5 @@
+const { formatVisitSlotText } = require('./homeVisitSlots');
+
 function getVisitSnapshot(order) {
   const snap = order && order.feeSnapshot && order.feeSnapshot.visit;
   return snap && typeof snap === 'object' ? snap : {};
@@ -11,17 +13,18 @@ function attachVisitAddressFields(order) {
     visitAddress: String(order.visitAddress || visit.address || '').trim(),
     visitLocationName: String(order.visitLocationName || visit.locationName || '').trim(),
     visitRoomNo: String(order.visitRoomNo || visit.roomNo || '').trim(),
-    visitEntryMethod: String(order.visitEntryMethod || visit.entryMethod || '').trim()
+    visitEntryMethod: String(order.visitEntryMethod || visit.entryMethod || '').trim(),
+    homeVisitTimeText: formatHomeVisitTimeText(order)
   };
 }
 
 function formatHomeVisitTimeText(order) {
   const date = String((order && order.startDate) || '').trim();
   const endDate = String((order && order.endDate) || '').trim();
-  const start = String((order && order.startTime) || '').trim();
-  if (!date && !start) return '';
+  const time = formatVisitSlotText(order);
+  if (!date && !time) return '';
   const dayText = endDate && endDate !== date ? `${date} ~ ${endDate}` : date;
-  return `${dayText} ${start}`.trim();
+  return `${dayText} ${time}`.trim();
 }
 
 module.exports = {

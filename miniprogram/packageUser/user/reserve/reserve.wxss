@@ -820,6 +820,44 @@
   font-size: 30rpx;
   color: #333333;
 }
+.visit-slots {
+  position: relative;
+  z-index: 2;
+}
+.visit-slot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+.visit-slot {
+  background: #F7F8FA;
+  border: 2rpx solid #F2DEC9;
+  border-radius: 12rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #333333;
+  box-sizing: border-box;
+}
+.visit-slot.active {
+  background: #E98657;
+  border-color: #E98657;
+  color: #ffffff;
+  font-weight: 600;
+}
+.visit-slot.disabled {
+  color: #C8C8C8;
+  background: #F3F3F3;
+  border-color: #EEEEEE;
+}
+.visit-slot-hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #E98657;
+}
 .room-select-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

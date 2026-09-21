@@ -363,12 +363,17 @@ Page({
   },
 
   _refreshAnnouncements() {
-    return announcementApi.fetchMerchantAnnouncements({ force: true })
+    return announcementApi.fetchMerchantAnnouncements({ force: false })
       .then((res) => {
-        this.setData({ hasUnreadAnnouncement: !!(res && res.unread) });
+        const next = !!(res && res.unread);
+        if (next !== !!this.data.hasUnreadAnnouncement) {
+          this.setData({ hasUnreadAnnouncement: next });
+        }
       })
       .catch(() => {
-        this.setData({ hasUnreadAnnouncement: false });
+        if (this.data.hasUnreadAnnouncement) {
+          this.setData({ hasUnreadAnnouncement: false });
+        }
       });
   },
 

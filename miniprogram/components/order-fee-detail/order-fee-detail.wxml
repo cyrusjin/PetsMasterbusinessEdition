@@ -187,4 +187,11 @@
     </view>
     <text class="deposit-tip" wx:if="{{detail.showDeposit}}">押金离店无损坏时退还，不计入上方合计</text>
   </block>
+  <view class="merchant-adjusted-block" wx:if="{{detail.merchantPriceAdjusted}}">
+    <view class="fee-extra-row copyable-fee" bindtap="onCopyValue" data-value="结算价格 ¥{{detail.totalFeeText}}">
+      <text class="text-gray">结算价格</text>
+      <text class="fee-highlight">¥{{detail.totalFeeText}}</text>
+    </view>
+    <text class="merchant-adjusted-origin" wx:if="{{detail.showOriginalTotalFee}}">订单原价 ¥{{detail.originalTotalFeeText}}</text>
+  </view>
 </view>

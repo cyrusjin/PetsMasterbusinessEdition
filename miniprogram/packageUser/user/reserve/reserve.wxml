@@ -340,20 +340,33 @@
           <view class="time-picker-box {{startTime ? '' : 'time-picker-placeholder'}}" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
         </view>
       </view>
-      <calendar wx:else startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" bind:dateselect="onDateSelect" />
-      <view wx:if="{{serviceLine !== 'wash' && startDate && endDate}}" class="time-pickers mt-20">
+      <calendar wx:else startDate="{{startDate}}" endDate="{{endDate}}" minDate="{{minDate}}" enabledWeekdays="{{visitEnabledWeekdays}}" bind:dateselect="onDateSelect" />
+      <view wx:if="{{serviceLine === 'boarding' && startDate && endDate}}" class="time-pickers mt-20">
         <view class="time-row">
           <text class="time-label">{{timeLabel}} <text class="required-star">*</text></text>
           <view class="time-picker-box" bindtap="onOpenStartTimePicker">{{startTime || '选择时间'}}</view>
         </view>
-        <view class="time-row" wx:if="{{serviceLine === 'boarding'}}">
+        <view class="time-row">
           <text class="time-label">离店时间 <text class="required-star">*</text></text>
           <view class="time-picker-box" bindtap="onOpenEndTimePicker">{{endTime || '选择时间'}}</view>
         </view>
       </view>
+      <view wx:if="{{serviceLine === 'homeFeeding' && startDate && endDate}}" class="visit-slots mt-20">
+        <text class="time-label">上门时段 <text class="required-star">*</text></text>
+        <view wx:if="{{visitSlotOptions.length}}" class="visit-slot-grid">
+          <view
+            wx:for="{{visitSlotOptions}}"
+            wx:key="key"
+            class="visit-slot {{item.key === visitTimeSlot ? 'active' : ''}} {{item.disabled ? 'disabled' : ''}}"
+            data-key="{{item.key}}"
+            bindtap="onSelectVisitSlot"
+          >{{item.label}}</view>
+        </view>
+        <text wx:if="{{visitSlotHint}}" class="visit-slot-hint">{{visitSlotHint}}</text>
+      </view>
       <view wx:if="{{startDate && (serviceLine === 'wash' || endDate)}}" class="date-summary mt-20">
         <view class="flex-between" wx:if="{{serviceLine === 'boarding'}}"><text>开始：{{startDate}} {{startTime || '待选择'}}</text><text>结束：{{endDate}} {{endTime || '待选择'}}</text></view>
-        <view class="flex-between" wx:elif="{{serviceLine === 'homeFeeding'}}"><text>{{startDate}}{{endDate !== startDate ? ' ~ ' + endDate : ''}} {{startTime || '待选择'}}</text></view>
+        <view class="flex-between" wx:elif="{{serviceLine === 'homeFeeding'}}"><text>{{startDate}}{{endDate !== startDate ? ' ~ ' + endDate : ''}} {{visitTimeSlot || startTime || '待选择'}}</text></view>
 
         <view class="pickup-inline" wx:if="{{serviceLine === 'boarding' && store.hasPickup}}">
           <view class="pickup-inline-head">

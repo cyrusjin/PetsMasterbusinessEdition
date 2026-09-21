@@ -3,7 +3,7 @@ const { copyText } = require('../../utils/clipboard');
 const badgeUtil = require('../../utils/badge');
 const { formatDate } = require('../../utils/util');
 const { buildOrderListPetMeta } = require('../../utils/petSnapshot');
-const { canMerchantModifyOrder } = require('../utils/orderActions');
+const { canMerchantModifyOrder, canMerchantEditPrice } = require('../utils/orderActions');
 const merchantDemo = require('../../utils/merchantDemo');
 const { refreshMerchantOrders, startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../utils/orderRefresh');
 const { redirectToStoreAuthIfNeeded, reLaunchMerchantHomeIfNoBackend } = require('../../utils/shell');
@@ -354,6 +354,7 @@ Page({
           startActionLabel: getStartServiceCopy(order).button,
           completeActionLabel: getCompleteServiceCopy(order).button,
           canDailyCheck: isDailyCheckableOrder(order),
+          canEditPrice: canMerchantEditPrice(order),
           serviceKind,
           serviceLabel: getOrderServiceLabel(serviceKind),
           serviceTimeLabel: getServiceTimeLabel(serviceKind),
@@ -647,8 +648,14 @@ Page({
   onEditPrice(e) {
     const id = e.currentTarget.dataset.id;
     const order = this._getOrderById(id);
-    if (order && order.pricePendingConfirm) {
-      wx.showToast({ title: '价格待用户确认，暂不可改价', icon: 'none' });
+    if (!order) return;
+    if (!canMerchantEditPrice(order)) {
+      wx.showToast({
+        title: order.pricePendingConfirm
+          ? '价格待用户确认，暂不可改价'
+          : (order.paymentMode === 'online' ? '在线付款后不可直接改价' : '当前状态不可改价'),
+        icon: 'none'
+      });
       return;
     }
     wx.navigateTo({ url: '/packageBiz/order-price/order-price?id=' + id });

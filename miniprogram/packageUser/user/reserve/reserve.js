@@ -67,6 +67,7 @@ const {
 const { classifyVisitPets, listVisitServices, calcHomeVisitQuote } = require('../../utils/homeVisitFee');
 const { describeVisitCoverGap, ensureVisitServiceSelection, mergeVisitValueAddedServices, toggleVisitServiceSelection } = require('../../../utils/homeVisitServices');
 const { isSurchargeEnabled } = require('../../../utils/homeVisitPricing');
+const homeVisitSlots = require('../../../utils/homeVisitSlots');
 const {
   listDraftPets,
   createProxyToken,
@@ -226,14 +227,14 @@ function getServiceLineMeta(key) {
   if (key === 'homeFeeding') {
     return {
       navTitle: '预约上门喂养',
-      dateTitle: '选择上门时间段',
-      timeLabel: '上门时间',
-      timePickerTitle: '选择上门时间',
+      dateTitle: '选择上门日期',
+      timeLabel: '上门时段',
+      timePickerTitle: '选择上门时段',
       contractTitle: '上门喂养服务电子协议',
       contractDesc: '含甲乙双方信息、上门服务条款与约定',
       noticeTitle: '上门喂养须知',
       agreeName: '《上门喂养服务电子协议》',
-      feePendingText: '请选择日期、上门时间和地址后查看费用'
+      feePendingText: '请选择日期、上门时段和地址后查看费用'
     };
   }
   return {
@@ -465,6 +466,10 @@ Page({
     endDate: '',
     startTime: '',
     endTime: '',
+    visitTimeSlot: '',
+    visitSlotOptions: [],
+    visitEnabledWeekdays: [],
+    visitSlotHint: '',
     minDate: getTodayStr(),
     showTimePicker: false,
     timePickerTarget: '',
@@ -734,12 +739,23 @@ Page({
     const selectedVisits = (extras.visitServices || []).filter((item) => item.selected);
     const patch = this._applyServiceLineMeta(key, {
       ...extras,
+      store: this.data.store,
       needWash: key === 'wash',
       needPickup: key === 'boarding' ? this.data.needPickup : false,
       valueAddedList: this._buildValueAddedList(this.data.store, key, false, selectedVisits)
     });
     if (key === 'wash' && this.data.startDate) {
       Object.assign(patch, washDatePatch(this.data.startDate, this.data.startTime));
+    }
+    if (key === 'homeFeeding' && this.data.startDate) {
+      const store = this.data.store || {};
+      if (!homeVisitSlots.isBusinessDate(this.data.startDate, store.businessHours, store.hours)) {
+        Object.assign(patch, {
+          startDate: '',
+          endDate: '',
+          ...this._visitSlotState(store, '', '')
+        });
+      }
     }
     this.setData(patch);
     this.calcFee();
@@ -836,6 +852,7 @@ Page({
       endDate: this.data.endDate,
       startTime: this.data.startTime,
       endTime: this.data.endTime,
+      visitTimeSlot: this.data.visitTimeSlot,
       petRoomTypes: { ...(this.data.petRoomTypes || {}) },
       petCustomParents: { ...(this.data.petCustomParents || {}) },
       needPickup: this.data.needPickup,
@@ -924,12 +941,48 @@ Page({
     return buildValueAddedSelectList(source, preserveChecked ? this.data.valueAddedList : []);
   },
 
+  _visitSlotState(store, startDate, selectedKey) {
+    const listed = homeVisitSlots.listHomeVisitSlots(store || {}, startDate);
+    const weekdays = listed.weekdays || [];
+    if (!startDate) {
+      return {
+        visitEnabledWeekdays: weekdays,
+        visitSlotOptions: [],
+        visitTimeSlot: '',
+        visitSlotHint: ''
+      };
+    }
+    if (!listed.isBusinessDate) {
+      return {
+        visitEnabledWeekdays: weekdays,
+        visitSlotOptions: [],
+        visitTimeSlot: '',
+        startTime: '',
+        endTime: '',
+        visitSlotHint: '该日期不在商家营业时间内'
+      };
+    }
+    const options = listed.slots || [];
+    const selected = options.find((item) => item.key === selectedKey && !item.disabled);
+    const allDisabled = options.length > 0 && options.every((item) => item.disabled);
+    return {
+      visitEnabledWeekdays: weekdays,
+      visitSlotOptions: options,
+      visitTimeSlot: selected ? selected.key : '',
+      startTime: selected ? selected.startTime : '',
+      endTime: selected ? selected.endTime : '',
+      visitSlotHint: !options.length
+        ? '商家营业时间不足 2 小时，暂不可预约上门'
+        : (allDisabled ? '当天可预约时段已过，请选择其他日期' : '')
+    };
+  },
+
   _applyServiceLineMeta(serviceLine, extraPatch) {
     const meta = getServiceLineMeta(serviceLine);
     wx.setNavigationBarTitle({
       title: this._proxyMode ? `代下单 · ${meta.navTitle}` : meta.navTitle
     });
-    return {
+    const patch = {
       ...(extraPatch || {}),
       serviceLine,
       dateCardTitle: meta.dateTitle,
@@ -939,6 +992,18 @@ Page({
       contractAgreeName: meta.agreeName,
       feePendingText: meta.feePendingText
     };
+    if (serviceLine === 'homeFeeding') {
+      Object.assign(patch, this._visitSlotState(
+        (extraPatch && extraPatch.store) || this.data.store,
+        (extraPatch && extraPatch.startDate) || this.data.startDate,
+        (extraPatch && extraPatch.visitTimeSlot) || this.data.visitTimeSlot
+      ));
+    } else {
+      patch.visitEnabledWeekdays = [];
+      patch.visitSlotOptions = [];
+      patch.visitSlotHint = '';
+    }
+    return patch;
   },
 
   _buildServiceExtras(store, pets, extras) {
@@ -1159,6 +1224,7 @@ Page({
             : (serviceLine === 'boarding'
               ? prevForm.endTime
               : (prevForm.endTime || bumpEndTime(prevForm.startTime))),
+          visitTimeSlot: serviceLine === 'homeFeeding' ? (prevForm.visitTimeSlot || '') : '',
           needPickup: prevForm.needPickup,
           needWash: prevForm.needWash,
           pickupAddress: prevForm.pickupAddress,
@@ -1175,6 +1241,17 @@ Page({
           emergencyPhone: prevForm.emergencyPhone,
           contactIdCard: prevForm.contactIdCard
         });
+      }
+      if (serviceLine === 'homeFeeding') {
+        Object.assign(patch, this._visitSlotState(
+          store,
+          patch.startDate || '',
+          patch.visitTimeSlot || (preserveForm && prevForm && prevForm.visitTimeSlot) || ''
+        ));
+      } else {
+        patch.visitEnabledWeekdays = [];
+        patch.visitSlotOptions = [];
+        patch.visitSlotHint = '';
       }
       patch.specialNeedGuides = buildSpecialNeedGuides(patch.specialNeeds || this.data.specialNeeds);
       if (serviceLine === 'wash') patch.needWash = true;
@@ -1297,16 +1374,21 @@ Page({
     this._pickupTimeTouched = false;
     const startDate = e.detail.startDate;
     const isWash = this.data.serviceLine === 'wash';
-    this.setData(isWash
+    const isHome = this.data.serviceLine === 'homeFeeding';
+    const patch = isWash
       ? washDatePatch(startDate, this.data.startTime)
       : {
         startDate,
         endDate: e.detail.endDate || startDate,
-        startTime: '',
-        endTime: '',
+        startTime: isHome ? this.data.startTime : '',
+        endTime: isHome ? this.data.endTime : '',
         pickupTime: '',
         pickupTimeDisplay: '选择接送时间'
-      });
+      };
+    if (isHome) {
+      Object.assign(patch, this._visitSlotState(this.data.store, startDate, ''));
+    }
+    this.setData(patch);
     this.calcFee();
   },
 
@@ -1318,6 +1400,7 @@ Page({
   },
 
   onOpenStartTimePicker() {
+    if (this.data.serviceLine === 'homeFeeding') return;
     const meta = getServiceLineMeta(this.data.serviceLine);
     const state = timePicker.buildPickerState(this.data.startTime, '10:00');
     this.setData({
@@ -1368,6 +1451,19 @@ Page({
     } else {
       this.setData({ endTime: time, showTimePicker: false });
     }
+    this.calcFee();
+  },
+
+  onSelectVisitSlot(e) {
+    const key = e.currentTarget.dataset.key;
+    const slot = (this.data.visitSlotOptions || []).find((item) => item.key === key);
+    if (!slot || slot.disabled) return;
+    this._invalidateSignedContract();
+    this.setData({
+      visitTimeSlot: slot.key,
+      startTime: slot.startTime,
+      endTime: slot.endTime
+    });
     this.calcFee();
   },
 
@@ -2226,8 +2322,9 @@ Page({
       if (this.data.visitCoverTip) return this.data.visitCoverTip;
       if (!startDate) return '请选择上门日期';
       if (startDate < getTodayStr()) return '不能选择过去的日期';
-      if (!endDate) return '请选择上门时间段';
-      if (!startTime) return '请选择上门时间';
+      if (!endDate) return '请选择上门日期';
+      if (!this.data.visitTimeSlot) return this.data.visitSlotHint || '请选择上门时段';
+      if (!startTime) return '请选择上门时段';
       if (!this.data.pickupAddress || !this.data.pickupLatitude || !this.data.pickupLongitude) {
         return '请选择小区地址';
       }
@@ -2430,10 +2527,11 @@ Page({
     const resolvedStartTime = startTime;
     const endDate = isHome ? (this.data.endDate || startDate) : startDate;
     const endTime = isHome
-      ? (this.data.endTime || bumpEndTime(resolvedStartTime))
+      ? (this.data.endTime || resolvedStartTime)
       : (isWash
         ? bumpEndTime(resolvedStartTime)
         : (this.data.endTime || bumpEndTime(resolvedStartTime)));
+    const visitTimeSlot = isHome ? (this.data.visitTimeSlot || '') : '';
     const skipContract = isHome || isWash;
     const signTime = (!skipContract && signedContractDraft && signedContractDraft.signTime)
       || new Date().toLocaleString('zh-CN');
@@ -2548,6 +2646,7 @@ Page({
         endDate,
         startTime: resolvedStartTime,
         endTime,
+        visitTimeSlot,
         days: 1,
         boardingFee: 0,
         shippingFee: 0,
@@ -2622,6 +2721,7 @@ Page({
               locationName: this.data.pickupLocationName,
               roomNo: String(this.data.visitRoomNo || '').trim(),
               entryMethod: String(this.data.visitEntryMethod || '').trim(),
+              timeSlot: visitTimeSlot,
               contactName,
               contactPhone,
               catPackageId: this.data.selectedCatPackageId || quote.packageId || ''

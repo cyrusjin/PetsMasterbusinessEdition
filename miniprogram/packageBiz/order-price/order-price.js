@@ -4,6 +4,7 @@ const { formatPickupLegs, formatPickupTripType } = require('../utils/pickupInfo'
 const { formatOrderCreateTime } = require('../../utils/util');
 const { formatHomeVisitTimeText } = require('../../utils/homeVisitAddress');
 const { getOrderServiceKind, getOrderServiceLabel } = require('../../utils/dailyCheckable');
+const { canMerchantEditPrice } = require('../utils/orderActions');
 
 function getServiceTimeLabel(kind) {
   if (kind === 'homeFeeding') return '上门时间';
@@ -73,16 +74,21 @@ Page({
       return;
     }
 
-    if (!['pending', 'awaiting_arrival', 'boarding', 'confirmed'].includes(found.status)) {
-      wx.showToast({ title: '当前状态不可改价', icon: 'none' });
+    if (!canMerchantEditPrice(found)) {
+      wx.showToast({
+        title: found.pricePendingConfirm
+          ? '价格待用户确认，暂不可改价'
+          : (found.paymentMode === 'online' && found.payment && found.payment.status === 'paid'
+            ? '在线付款后不可直接改价'
+            : '当前状态不可改价'),
+        icon: 'none'
+      });
       setTimeout(() => wx.navigateBack(), 800);
       return;
     }
 
-    if (found.pricePendingConfirm) {
-      wx.showToast({ title: '价格待用户确认，暂不可改价', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 800);
-      return;
+    if (found.status === 'completed') {
+      wx.setNavigationBarTitle({ title: '修改结算价格' });
     }
 
     const serviceKind = getOrderServiceKind(found);
@@ -224,6 +230,11 @@ Page({
       totalFee: fees.totalFee,
       merchantPriceAdjust: true
     };
+    if (order.originalTotalFee == null) {
+      updates.originalTotalFee = parseFee(order.totalFee, 0);
+    }
+    updates.merchantPriceAdjusted = true;
+    updates.merchantPriceAdjustedAt = Date.now();
 
     if (order.feeSnapshot) {
       const snap = { ...order.feeSnapshot };

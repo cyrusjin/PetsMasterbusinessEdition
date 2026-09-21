@@ -19,6 +19,14 @@
   display: block;
 }
 
+.summary-final-hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  opacity: 0.9;
+  line-height: 1.5;
+}
+
 .summary-breakdown {
   margin-top: 16rpx;
   font-size: 24rpx;
