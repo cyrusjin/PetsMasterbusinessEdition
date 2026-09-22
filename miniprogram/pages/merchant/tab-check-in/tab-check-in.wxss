@@ -1,0 +1,546 @@
+page {
+  background: #fff6ee;
+}
+
+.check-in-page {
+  min-height: 100%;
+  padding-bottom: 180rpx;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #e56b3a 0%, #f09a68 28%, #ffd2b0 58%, #fff6ee 100%);
+}
+
+.check-in-page.no-tab {
+  padding-bottom: 48rpx;
+}
+
+.page-content {
+  padding: 22rpx 24rpx 50rpx;
+}
+
+.demo-tip,
+.expired-banner {
+  margin-bottom: 16rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1rpx solid rgba(255, 255, 255, 0.32);
+  color: #fff4e4;
+  font-size: 22rpx;
+  text-align: center;
+}
+
+.expired-banner.restored {
+  background: rgba(255, 248, 236, 0.88);
+  border-color: rgba(233, 134, 87, 0.28);
+  color: #c45a28;
+}
+
+.hero-panel {
+  position: relative;
+  min-height: 360rpx;
+  padding: 34rpx 28rpx 140rpx;
+  overflow: hidden;
+  border-radius: 34rpx;
+  background: linear-gradient(145deg, #f09b72, #e07542);
+  border: 2rpx solid rgba(255, 255, 255, 0.28);
+  box-sizing: border-box;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 2;
+  width: 62%;
+}
+
+.activity-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 9rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(140, 52, 24, 0.22);
+  font-size: 20rpx;
+  color: #fff4e0;
+}
+
+.activity-dot {
+  width: 12rpx;
+  height: 12rpx;
+  margin-right: 10rpx;
+  border-radius: 50%;
+  background: #ffd36b;
+}
+
+.hero-title {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 40rpx;
+  line-height: 1.22;
+  font-weight: 900;
+  color: #fff;
+}
+
+.hero-subtitle {
+  display: block;
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 22rpx;
+  line-height: 1.5;
+}
+
+.hero-deadline {
+  display: inline-flex;
+  margin-top: 14rpx;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff8ee;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.gift-scene {
+  position: absolute;
+  right: 12rpx;
+  top: 42rpx;
+  width: 220rpx;
+  height: 200rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gift-mark {
+  font-size: 120rpx;
+  line-height: 1;
+}
+
+.hero-stats {
+  position: absolute;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: 22rpx;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  padding: 18rpx 12rpx;
+  border-radius: 22rpx;
+  background: rgba(140, 52, 24, 0.28);
+  border: 1rpx solid rgba(255, 255, 255, 0.18);
+}
+
+.hero-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 34rpx;
+  font-weight: 900;
+  color: #ffe7b0;
+}
+
+.stat-label {
+  margin-top: 3rpx;
+  font-size: 19rpx;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 46rpx;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.quest-card,
+.reward-guide,
+.rules-card {
+  margin-top: 20rpx;
+  border-radius: 30rpx;
+  background: rgba(255, 252, 248, 0.97);
+  color: #4a3226;
+}
+
+.quest-card {
+  padding: 28rpx 22rpx 24rpx;
+}
+
+.quest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6rpx;
+}
+
+.quest-kicker {
+  display: block;
+  color: #e98657;
+  font-size: 18rpx;
+  font-weight: 800;
+  letter-spacing: 3rpx;
+}
+
+.quest-title {
+  display: block;
+  margin-top: 5rpx;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.quest-progress {
+  padding: 12rpx 18rpx;
+  border-radius: 18rpx;
+  background: #fff1e6;
+  color: #e98657;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.quest-progress text {
+  font-size: 34rpx;
+  color: #d46535;
+}
+
+.quest-rule {
+  display: flex;
+  align-items: center;
+  margin: 20rpx 6rpx 18rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(90deg, #fff1d2, #fff8e8);
+  color: #9e6c34;
+  font-size: 22rpx;
+}
+
+.rule-spark {
+  margin-right: 10rpx;
+  color: #e9a633;
+}
+
+.trail {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 10rpx 0 20rpx;
+}
+
+.trail-node {
+  width: 14.28%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20rpx;
+  box-sizing: border-box;
+}
+
+.node-bubble {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f7eee7;
+  border: 5rpx solid #fff;
+  box-sizing: border-box;
+}
+
+.node-day {
+  color: #c4a898;
+  font-size: 21rpx;
+  font-weight: 800;
+}
+
+.node-check {
+  color: #fff;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.node-gift {
+  font-size: 27rpx;
+  line-height: 1;
+}
+
+.node-reward {
+  margin-top: 8rpx;
+  color: #c4a898;
+  font-size: 16rpx;
+}
+
+.trail-node.completed .node-bubble {
+  background: linear-gradient(145deg, #f09b72, #df734f);
+  border-color: #ffe8d6;
+}
+
+.trail-node.completed .node-reward {
+  color: #e07542;
+  font-weight: 700;
+}
+
+.trail-node.current .node-bubble {
+  background: #fff9e9;
+  border-color: #ffd36b;
+}
+
+.trail-node.current .node-day,
+.trail-node.current .node-gift {
+  color: #d79228;
+}
+
+.trail-node.milestone .node-bubble {
+  width: 64rpx;
+  height: 64rpx;
+}
+
+.trail-node.milestone .node-reward {
+  color: #d46535;
+  font-weight: 800;
+}
+
+.quest-card .btn-primary {
+  margin-top: 8rpx;
+}
+
+.check-hint {
+  display: block;
+  margin-top: 16rpx;
+  text-align: center;
+  color: #b9a89b;
+  font-size: 20rpx;
+}
+
+.enter-home {
+  margin-top: 18rpx;
+}
+
+.reward-guide {
+  padding: 28rpx 24rpx 10rpx;
+}
+
+.guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.guide-title {
+  font-size: 31rpx;
+  font-weight: 900;
+}
+
+.guide-tag {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  color: #4fa66d;
+  background: #e9f8ee;
+  font-size: 18rpx;
+  font-weight: 700;
+}
+
+.guide-item {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #f2e4d8;
+}
+
+.guide-item.last {
+  border-bottom: 0;
+}
+
+.guide-icon {
+  width: 70rpx;
+  height: 70rpx;
+  margin-right: 18rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 25rpx;
+  font-weight: 900;
+}
+
+.guide-icon.daily {
+  background: linear-gradient(145deg, #f09b72, #df734f);
+}
+
+.guide-icon.monthly {
+  background: linear-gradient(145deg, #ffc763, #e88a37);
+}
+
+.guide-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+
+.guide-desc {
+  display: block;
+  margin-top: 5rpx;
+  color: #b9a89b;
+  font-size: 20rpx;
+  line-height: 1.45;
+}
+
+.guide-state {
+  margin-left: 12rpx;
+  color: #e98657;
+  font-size: 19rpx;
+  font-weight: 700;
+}
+
+.guide-state.gold {
+  color: #d48b31;
+}
+
+.rules-card {
+  padding: 28rpx 26rpx;
+}
+
+.rules-title {
+  display: block;
+  margin-bottom: 16rpx;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.rules-row {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 13rpx;
+  color: #9a8476;
+  font-size: 21rpx;
+  line-height: 1.55;
+}
+
+.rules-row > text {
+  margin-right: 14rpx;
+  color: #e98657;
+  font-size: 18rpx;
+  font-weight: 900;
+}
+
+.reward-modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  box-sizing: border-box;
+}
+
+.reward-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(92, 42, 24, 0.56);
+}
+
+.reward-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 610rpx;
+  padding: 72rpx 36rpx 34rpx;
+  border-radius: 42rpx;
+  text-align: center;
+  color: #4a3226;
+  background: linear-gradient(165deg, #fffdf7, #fff5dc);
+  border: 3rpx solid rgba(255, 226, 151, 0.85);
+  box-sizing: border-box;
+}
+
+.reward-medal {
+  width: 116rpx;
+  height: 116rpx;
+  margin: -22rpx auto 22rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #ffd76a, #ed9c3d);
+  border: 8rpx solid #fff2be;
+  color: #fff;
+  font-size: 58rpx;
+  font-weight: 900;
+}
+
+.reward-title {
+  display: block;
+  font-size: 46rpx;
+  font-weight: 900;
+}
+
+.reward-subtitle {
+  display: block;
+  margin-top: 8rpx;
+  color: #9a876f;
+  font-size: 23rpx;
+}
+
+.reward-ticket {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin: 26rpx 38rpx 18rpx;
+  padding: 18rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #f09a68, #e07542);
+  color: #fff;
+}
+
+.ticket-plus {
+  font-size: 28rpx;
+}
+
+.ticket-number {
+  margin: 0 8rpx;
+  font-size: 58rpx;
+  font-weight: 900;
+}
+
+.ticket-unit {
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.bonus-ticket {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16rpx;
+  padding: 18rpx;
+  border-radius: 18rpx;
+  background: #fff0c9;
+  color: #a66b23;
+  font-size: 21rpx;
+}
+
+.bonus-ticket-value {
+  margin-top: 7rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.reward-progress {
+  color: #b9a89b;
+  font-size: 21rpx;
+}
+
+.reward-panel .btn-primary {
+  margin-top: 26rpx;
+}

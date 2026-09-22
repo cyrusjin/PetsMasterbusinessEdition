@@ -46,6 +46,8 @@ storeRouter.post('/', authRequired, guardedExceptActions([
   'submitMerchantApply',
   'acceptStaffInvite',
   'getMembershipStatus',
+  'getDailyCheckInStatus',
+  'claimDailyCheckIn',
   'getPromotionTasks',
   'submitPromotionProof',
   'createMembershipPay',

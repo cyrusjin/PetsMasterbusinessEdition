@@ -18,6 +18,9 @@ const DEFAULT_MEMBERSHIP = {
   trialDaysRemaining: 0,
   enabled: true,
   payConfigured: false,
+  checkInCampaignActive: true,
+  checkInCampaignDaysLeft: 21,
+  checkedToday: false,
   canPurchase: false
 };
 
@@ -49,9 +52,15 @@ function normalizeMembership(raw) {
     statusDesc = expireAtText ? `订阅有效期至 ${expireAtText}` : '已解锁平台全部经营功能';
   } else if (promotionActive) {
     statusType = 'granted';
-    statusLabel = '推广权益中';
-    statusTitle = '推广奖励已生效';
-    statusDesc = expireAtText ? `使用权限有效期至 ${expireAtText}` : '推广审核已通过，平台功能已开放';
+    if (source.paymentMethod === 'checkin') {
+      statusLabel = '签到权益中';
+      statusTitle = '签到奖励已生效';
+      statusDesc = expireAtText ? `使用权限有效期至 ${expireAtText}` : '每日签到奖励已到账，平台功能已开放';
+    } else {
+      statusLabel = '推广权益中';
+      statusTitle = '推广奖励已生效';
+      statusDesc = expireAtText ? `使用权限有效期至 ${expireAtText}` : '推广审核已通过，平台功能已开放';
+    }
   } else if (migrationActive) {
     statusType = 'granted';
     statusLabel = '老用户限免';
@@ -79,7 +88,10 @@ function normalizeMembership(raw) {
     statusDesc,
     expireAtText,
     trialExpireAtText,
-    trialDaysRemaining: Number(source.trialDaysRemaining != null ? source.trialDaysRemaining : source.trial_days_remaining) || 0
+    trialDaysRemaining: Number(source.trialDaysRemaining != null ? source.trialDaysRemaining : source.trial_days_remaining) || 0,
+    checkInCampaignActive: source.checkInCampaignActive !== false,
+    checkInCampaignDaysLeft: Math.max(0, Number(source.checkInCampaignDaysLeft) || 0),
+    checkedToday: !!source.checkedToday
   };
 }
 
@@ -132,7 +144,15 @@ Page({
   _leaveLockedPageIfActive(membership, delay = 300) {
     if (!this.data.accessRequired || !(membership && membership.accessActive)) return;
     setTimeout(() => {
-      wx.reLaunch({ url: '/pages/merchant/tab-daily/tab-daily' });
+      let url = '/pages/merchant/tab-daily/tab-daily';
+      try {
+        const stay = String((app && app._merchantTabStayRoute) || '');
+        const until = Number((app && app._merchantTabStayUntil) || 0);
+        if (stay && until > Date.now()) url = `/${stay}`;
+      } catch (err) {
+        // keep daily home
+      }
+      wx.reLaunch({ url });
     }, delay);
   },
 
@@ -163,6 +183,20 @@ Page({
 
   onGoPromotion() {
     wx.navigateTo({ url: '/packageExtra/promotion-tasks/promotion-tasks' });
+  },
+
+  onGoCheckIn() {
+    if (this.data.membership && this.data.membership.checkInCampaignActive === false) {
+      wx.showToast({ title: '签到活动已结束', icon: 'none' });
+      return;
+    }
+    const fromExpired = this.data.accessRequired && !(this.data.membership && this.data.membership.accessActive);
+    const url = '/pages/merchant/tab-check-in/tab-check-in' + (fromExpired ? '?fromExpired=1' : '');
+    if (fromExpired) {
+      wx.navigateTo({ url });
+      return;
+    }
+    wx.redirectTo({ url });
   },
 
   onRedeemInput(e) {

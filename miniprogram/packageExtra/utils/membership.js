@@ -45,6 +45,16 @@ function getPromotionTasks(storeId) {
     .then((res) => rejectOnFailure(res, '加载推广任务失败'));
 }
 
+function getDailyCheckInStatus(storeId) {
+  return callStoreMembership('getDailyCheckInStatus', { store_id: storeId || '' })
+    .then((res) => rejectOnFailure(res, '加载签到活动失败'));
+}
+
+function claimDailyCheckIn(storeId) {
+  return callStoreMembership('claimDailyCheckIn', { store_id: storeId || '' })
+    .then((res) => rejectOnFailure(res, '签到失败'));
+}
+
 function submitPromotionProof(storeId, taskCode, proofUrl) {
   return callStoreMembership('submitPromotionProof', {
     store_id: storeId || '',
@@ -114,6 +124,8 @@ module.exports = {
   handleMembershipRequiredError,
   getMembershipPageUrl,
   getPromotionTasks,
+  getDailyCheckInStatus,
+  claimDailyCheckIn,
   submitPromotionProof,
   requestMembershipPayment,
   pollMembershipPaid

@@ -11,6 +11,7 @@
       "name": "packageMerchant",
       "pages": [
         "tab-daily/tab-daily",
+        "tab-check-in/tab-check-in",
         "tab-statistics/tab-statistics",
         "tab-guide/tab-guide",
         "tab-store/tab-store",

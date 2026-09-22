@@ -14,9 +14,6 @@
 .service-desc { display: none; margin-top: 3rpx; color: #aa968a; font-size: 17rpx; white-space: nowrap; }
 .poster-stage { position: relative; width: 600rpx; height: 800rpx; margin: 0 auto; overflow: hidden; border-radius: 30rpx; background: #eee9e4; box-shadow: 0 22rpx 54rpx rgba(91, 67, 52, .16); }
 .poster-canvas { width: 600rpx; height: 800rpx; }
-.poster-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18rpx; color: #fff; font-size: 23rpx; background: rgba(64, 52, 43, .30); backdrop-filter: blur(4rpx); }
-.loading-dot { width: 28rpx; height: 28rpx; border: 5rpx solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 .copy-section { margin-top: 26rpx; }
 .section-head { display: flex; align-items: center; justify-content: space-between; }
 .change-background { padding: 8rpx 16rpx; border-radius: 999rpx; color: #df7952; font-size: 20rpx; background: #fff0e9; }

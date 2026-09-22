@@ -5,7 +5,6 @@
 const { isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled } = require('./role');
 const { isMerchantUiBlocked, fetchMerchantSwitchEnabled, applyMerchantSwitchToApp } = require('./merchantSwitch');
 const { isBasicStoreComplete } = require('./storeForm');
-
 const USER_TAB_ROUTES = [
   'pages/index/index',
   'pages/butler/butler',
@@ -15,6 +14,7 @@ const USER_TAB_ROUTES = [
 
 const MERCHANT_TAB_ROUTES = [
   'pages/merchant/tab-daily/tab-daily',
+  'pages/merchant/tab-check-in/tab-check-in',
   'pages/merchant/tab-statistics/tab-statistics',
   'pages/merchant/tab-guide/tab-guide',
   'pages/merchant/tab-store/tab-store'
@@ -61,9 +61,53 @@ function pageStackHasMerchantStay() {
   }
 }
 
+function normalizeStayRoute(url) {
+  return String(url || '').replace(/^\//, '').split('?')[0];
+}
+
+/** 用户刚点了商家底栏：后续落地 / 会员拦截不要把目标页清掉 */
+function beginMerchantTabStay(url) {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (!app) return;
+    app._merchantTabStayUntil = Date.now() + 5000;
+    app._merchantTabStayRoute = normalizeStayRoute(url) || getCurrentRoute();
+    app._resumeKeepPage = true;
+  } catch (err) {
+    // ignore
+  }
+}
+
+function getMerchantTabStayRoute() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (!app) return '';
+    const until = Number(app._merchantTabStayUntil || 0);
+    const route = String(app._merchantTabStayRoute || '');
+    if (route && until && Date.now() < until) return route;
+    if (route && getCurrentRoute() === route) return route;
+    return '';
+  } catch (err) {
+    return '';
+  }
+}
+
+function isMerchantTabStayActive() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (!app) return false;
+    if (Number(app._merchantTabStayUntil || 0) > Date.now()) return true;
+    const stayRoute = String(app._merchantTabStayRoute || '');
+    return !!(stayRoute && getCurrentRoute() === stayRoute);
+  } catch (err) {
+    return false;
+  }
+}
+
 /** 选图/定位/预览/切后台返回：商家业务页不要被落地逻辑清栈 */
 function shouldSkipMerchantReland() {
   try {
+    if (isMerchantTabStayActive()) return true;
     const app = typeof getApp === 'function' ? getApp() : null;
     return !!(app && app._resumeKeepPage);
   } catch (err) {
@@ -242,13 +286,43 @@ function hasActiveMembershipAccess(membership) {
   );
 }
 
+function isCheckInCampaignActive() {
+  try {
+    const app = typeof getApp === 'function' ? getApp() : null;
+    if (app && app.isMerchantDemoMode && app.isMerchantDemoMode()) return true;
+    const shop = (app && typeof app.getShop === 'function' ? app.getShop() : null)
+      || (app && app.globalData && app.globalData.shop)
+      || {};
+    const membership = (shop && shop.membership) || {};
+    return membership.checkInCampaignActive !== false;
+  } catch (err) {
+    return true;
+  }
+}
+
+function isMembershipExemptRoute(route) {
+  if ((route || getCurrentRoute()) !== 'pages/merchant/tab-check-in/tab-check-in') return false;
+  return isCheckInCampaignActive();
+}
+
+function isCurrentPage(page) {
+  try {
+    const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+    return !!(page && pages.length && pages[pages.length - 1] === page);
+  } catch (err) {
+    return false;
+  }
+}
+
 function ensureMembershipAccess(app) {
   if (shouldSkipMerchantReland()) return Promise.resolve(false);
+  if (isMembershipExemptRoute()) return Promise.resolve(false);
   if (!app || (app.isMerchantDemoMode && app.isMerchantDemoMode())) return Promise.resolve(false);
   if (!app.isMerchantApproved || !app.isMerchantApproved()) return Promise.resolve(false);
   if (typeof app.ensureMerchantStore !== 'function') return Promise.resolve(false);
   return app.ensureMerchantStore({ force: false }).then((shop) => {
     if (shouldSkipMerchantReland()) return false;
+    if (isMembershipExemptRoute()) return false;
     if (!shop || !shop.store_id) return false;
     const membership = shop.membership;
     if (!isMembershipAccessKnown(membership) || hasActiveMembershipAccess(membership)) return false;
@@ -261,13 +335,14 @@ function ensureMembershipAccess(app) {
  * 先拉远程开关再决定是否拦截商家页；用于避免默认值误放行。
  * resolve(true) 表示已跳走 / 应中止页面逻辑。
  */
-function ensureMerchantPageAllowed() {
+function ensureMerchantPageAllowed(options = {}) {
   const app = typeof getApp === 'function' ? getApp() : null;
+  const skipMembership = !!(options && options.skipMembership) || isMembershipExemptRoute();
   if (redirectToUserIfMerchantUiBlocked()) return Promise.resolve(true);
   if (shouldSkipMerchantReland()) return Promise.resolve(false);
   // 启动时已拉过开关且允许进入，切 Tab 不再重复打远程接口
   if (app && app.globalData && app.globalData.merchantSwitchEnabled === true) {
-    return ensureMembershipAccess(app);
+    return skipMembership ? Promise.resolve(false) : ensureMembershipAccess(app);
   }
   return fetchMerchantSwitchEnabled({ force: false }).then((enabled) => {
     applyMerchantSwitchToApp(app, enabled);
@@ -283,7 +358,7 @@ function ensureMerchantPageAllowed() {
       }
       return true;
     }
-    return ensureMembershipAccess(app);
+    return skipMembership ? false : ensureMembershipAccess(app);
   });
 }
 
@@ -350,6 +425,9 @@ function guardUserTabPage() {
     if (shouldSkipMerchantReland() || pageStackHasMerchantStay()) {
       return false;
     }
+    const route = getCurrentRoute();
+    // 冷启动 / redirectTo 过程中页面栈可能为空，不能当成「停在用户 Tab」误踢回日常
+    if (!route || !isUserTabRoute(route)) return false;
     if (app.canAccessMerchantBackend && app.canAccessMerchantBackend() && !(app.isUserClientMode && app.isUserClientMode())) {
       wx.reLaunch({ url: getMerchantLandingUrl() });
       return true;
@@ -373,6 +451,9 @@ module.exports = {
   isMerchantStayRoute,
   pageStackHasMerchantStay,
   shouldSkipMerchantReland,
+  beginMerchantTabStay,
+  isMerchantTabStayActive,
+  getMerchantTabStayRoute,
   installMerchantPickerStayGuard,
   redirectToUserIfClientMode,
   reLaunchMerchantHomeIfNoBackend,
@@ -384,6 +465,10 @@ module.exports = {
   redirectToStoreAuthIfNeeded,
   redirectToUserIfMerchantUiBlocked,
   ensureMerchantPageAllowed,
+  isMembershipExemptRoute,
+  isCheckInCampaignActive,
   hasActiveMembershipAccess,
-  hasCompletedBasicSetup
+  isMembershipAccessKnown,
+  hasCompletedBasicSetup,
+  isCurrentPage
 };

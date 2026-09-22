@@ -21,6 +21,7 @@ const destinations = {
   storeHome: '/pages/merchant/tab-store/tab-store?tab=homeFeeding',
   staff: '/packageExtra/staff-manage/staff-manage',
   membership: '/packageExtra/membership/membership',
+  checkIn: '/pages/merchant/tab-check-in/tab-check-in',
   insurance: '/packageBiz/insurance-promotion/insurance-promotion',
   holiday: '/packageBiz/holiday-pricing/holiday-pricing?serviceLine=boarding',
   announcements: '/packageExtra/announcements/announcements',

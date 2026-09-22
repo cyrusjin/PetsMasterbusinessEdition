@@ -30,17 +30,21 @@
       <view><text class="notice-title">订阅状态暂不可用</text><text class="notice-text">请稍后重试，或联系平台客服</text></view>
     </view>
 
-    <view class="required-card" wx:if="{{accessRequired && !membership.accessActive}}">
-      <view class="required-lock">锁</view>
-      <view class="required-copy"><text class="required-title">试用权益已到期</text><text class="required-desc">选择下方任一套餐完成订阅，即可继续进入商家经营端</text></view>
-    </view>
-
     <view class="promise-strip">
       <view class="promise-item"><text class="promise-icon">7</text><text>注册即享 7 天试用</text></view>
       <view class="promise-line"></view>
       <view class="promise-item"><text class="promise-icon">✓</text><text>所有功能完整开放</text></view>
       <view class="promise-line"></view>
       <view class="promise-item"><text class="promise-icon">∞</text><text>不按宠物数量收费</text></view>
+    </view>
+
+    <view class="promotion-entry check-in-entry" wx:if="{{membership.checkInCampaignActive}}" bindtap="onGoCheckIn">
+      <view class="promotion-entry-icon check-in-entry-icon">🎁</view>
+      <view class="promotion-entry-copy">
+        <view class="promotion-entry-title-row"><text class="promotion-entry-title">每日签到领会员</text><text class="promotion-entry-tag">{{membership.checkedToday ? '今日已领' : (accessRequired && !membership.accessActive ? '领回 1 天' : '每天 +1 天')}}</text></view>
+        <text class="promotion-entry-desc">{{accessRequired && !membership.accessActive ? '会员刚到期也能进，签到立刻领回 1 天使用权' : '连续签到 21 天，再额外赠送 1 个月会员'}}</text>
+      </view>
+      <text class="promotion-entry-arrow">›</text>
     </view>
 
     <view class="promotion-entry" bindtap="onGoPromotion">
@@ -102,7 +106,7 @@
     <view class="rules-card">
       <view class="rule-row"><text class="rule-dot"></text><text>本次服务上线前注册的老用户，可免费使用至 2026 年 9 月 10 日</text></view>
       <view class="rule-row"><text class="rule-dot"></text><text>新门店注册成功后自动获得 7 天完整功能试用</text></view>
-      <view class="rule-row"><text class="rule-dot"></text><text>试用或会员到期后，需续费才能继续使用平台功能</text></view>
+      <view class="rule-row"><text class="rule-dot"></text><text>试用或会员到期后，可先到签到页领取 1 天会员立刻恢复使用，也可续费继续使用平台功能</text></view>
       <view class="rule-row"><text class="rule-dot"></text><text>推广截图需经官网后台人工审核，审核通过后才发放权限</text></view>
     </view>
     <text class="footer-brand">PETMASTER · 专注照护，也专注经营</text>

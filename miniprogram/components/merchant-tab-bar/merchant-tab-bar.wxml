@@ -8,6 +8,18 @@
 />
 
 <view class="merchant-tab-bar" wx:if="{{showBizTabs}}">
+  <view class="tab-item {{active === 'checkIn' ? 'active' : ''}}" wx:if="{{showCheckInTab}}">
+    <view class="tab-icon-v2 tab-icon-check-in">
+      <view class="tab-symbol"></view>
+      <view class="tab-gift {{showCheckInHint ? 'visible' : ''}}" wx:if="{{showCheckInHint}}" aria-hidden="true">
+        <text class="tab-gift-box">🎁</text>
+        <view class="tab-gift-spark tab-gift-spark-one"></view>
+        <view class="tab-gift-spark tab-gift-spark-two"></view>
+      </view>
+    </view>
+    <view class="tab-text">签到</view>
+    <view class="tab-hit" hover-class="none" catchtap="onTabCheckIn" />
+  </view>
   <view class="tab-item {{active === 'daily' ? 'active' : ''}}">
     <view class="tab-icon-v2 tab-icon-daily"><view class="tab-symbol"></view></view>
     <view class="tab-text">日常管理</view>

@@ -95,7 +95,7 @@ function parsePosterQrScene(options) {
   } catch (err) {
     scene = String(raw).trim();
   }
-  const match = scene.match(/^(store_[^|]+)\|([bwh])$/);
+  const match = scene.match(/^(store_[a-zA-Z0-9_-]+)(?:[|~]([bwh]))$/i);
   if (!match) return { storeId: '', serviceLine: '' };
   const lineMap = { b: 'boarding', w: 'wash', h: 'homeFeeding' };
   return { storeId: match[1], serviceLine: lineMap[match[2]] || '' };

@@ -97,6 +97,18 @@
       rejected: 'status-rejected'
     };
 
+    const MEMBERSHIP_PAYMENT_LABELS = {
+      purchase: '购买',
+      redemption: '兑换',
+      promotion: '推广赠送',
+      checkin: '签到获得',
+      migration: '老店赠送',
+      trial: '免费试用',
+      other: '其他',
+      disabled: '无需会员',
+      none: '--'
+    };
+
     const WEEKDAY_LABELS = {
       1: '周一', 2: '周二', 3: '周三', 4: '周四',
       5: '周五', 6: '周六', 7: '周日'
@@ -642,6 +654,38 @@
       return sectionCard('接送设置', '<div class="apply-detail">' + rows.join('') + '</div>');
     }
 
+    function membershipStatusLabel(membership) {
+      const item = membership || {};
+      if (item.accessType === 'disabled') return '会员功能关闭';
+      if (!item.active) return '非会员';
+      if (item.statusType === 'trial') return '免费试用中';
+      if (item.statusType === 'subscribed') return '付费会员中';
+      if (item.paymentMethod === 'checkin') return '签到权益中';
+      if (item.statusType === 'granted') return '赠送会员中';
+      return '会员中';
+    }
+
+    function renderMembershipSection(store) {
+      const membership = store.membership || {};
+      const isMember = !!membership.active && membership.accessType !== 'disabled';
+      const statusClass = isMember ? 'status-approved' : 'status-disabled';
+      const paymentLabel = MEMBERSHIP_PAYMENT_LABELS[membership.paymentMethod] || '--';
+      const campaignText = membership.checkInCampaignActive
+        ? ('进行中 · 剩余 ' + (membership.checkInCampaignDaysLeft || 0) + ' 天')
+        : '已结束';
+      const statusHtml = '<span class="store-status ' + statusClass + '">' + PetAdmin.escapeHtml(membershipStatusLabel(membership)) + '</span>';
+      return sectionCard('会员购买状态', [
+        '<div class="apply-detail">',
+        kvRow('会员状态', statusHtml, { html: true }),
+        kvRow('开通方式', paymentLabel),
+        kvRow('有效期至', membership.expireAtText || '--'),
+        kvRow('签到活动', campaignText),
+        kvRow('累计签到', membership.checkInTotal != null ? (String(membership.checkInTotal) + ' 次') : '--'),
+        kvRow('最近签到', membership.lastCheckInDate || '--'),
+        '</div>'
+      ].join(''));
+    }
+
     function renderStore(store, insights, orderData) {
       const status = store.merchantApplyStatus || '';
       const statusLabel = STATUS_LABELS[status] || status || '--';
@@ -708,6 +752,7 @@
         '</div></div></section>',
 
         renderStoreDashboard((insights && insights.dashboard) || {}),
+        renderMembershipSection(store),
         renderStoreOrders((orderData && orderData.orders) || [], orderData && orderData.total),
         renderStorePets((insights && insights.pets) || []),
 

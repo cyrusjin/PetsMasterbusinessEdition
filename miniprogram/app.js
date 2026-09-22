@@ -8,7 +8,7 @@ const storeApi = require('./utils/store');
 const { API_BASE_URL } = require('./config/api');
 const { ensureLogin, clearToken } = require('./utils/api');
 const { normalizeIsMerchant, resolveRole, isMerchantApproved, isMerchantPending, isMerchantRejected, isMerchantDisabled, isMerchantStaff, isStaffOfStore, isStoreOwner, getMerchantStoreId, getVisitStoreId, hasMerchantCapability } = require('./utils/role');
-const { applyRoleShell: applyTabShell, getMerchantLandingUrl, getUserLandingUrl, isUserTabRoute, isMerchantStayRoute, pageStackHasMerchantStay, installMerchantPickerStayGuard } = require('./utils/shell');
+const { applyRoleShell: applyTabShell, getMerchantLandingUrl, getUserLandingUrl, isUserTabRoute, isMerchantStayRoute, pageStackHasMerchantStay, installMerchantPickerStayGuard, isMerchantTabStayActive } = require('./utils/shell');
 const { mergeBillingRules, buildUserStoreView, prepareUserStoreView } = require('./utils/storeContext');
 const storeDebug = require('./utils/storeDebug');
 const petApi = require('./utils/pet');
@@ -18,6 +18,7 @@ const { dedupeDailyLogs, getLogId } = require('./utils/dailyLogUtil');
 const merchantDemo = require('./utils/merchantDemo');
 const { mergeMerchantShop } = require('./utils/storeSync');
 const { clearImageFileCache } = require('./utils/imageCache');
+const { prefetchStoreQrCodes } = require('./utils/storeQrCode');
 const { attachOrderDisplayNo, attachStoreDisplayNo, buildOrderDisplayNo } = require('./utils/displayNo');
 const badgeUtil = require('./utils/badge');
 const userFeed = require('./utils/userFeed');
@@ -421,9 +422,13 @@ App({
         if (!keepMerchantPage) this._ensureDefaultLanding(entry);
       })
       .then(() => {
-        setTimeout(() => { this._resumeKeepPage = false; }, 800);
+        setTimeout(() => {
+          if (!isMerchantTabStayActive()) this._resumeKeepPage = false;
+        }, 800);
       }, () => {
-        setTimeout(() => { this._resumeKeepPage = false; }, 800);
+        setTimeout(() => {
+          if (!isMerchantTabStayActive()) this._resumeKeepPage = false;
+        }, 800);
       });
   },
 
@@ -558,6 +563,7 @@ App({
     // 打卡 / 代下单 / 订单 / 门店设置等业务页，以及选图定位返回：必须留在当前页。
     if (
       this._resumeKeepPage
+      || isMerchantTabStayActive()
       || !route
       || isMerchantStayRoute(route)
       || pageStackHasMerchantStay()
@@ -674,7 +680,9 @@ App({
       if (sceneParam.includes('store_id=')) {
         return sceneParam.split('store_id=')[1].split('&')[0];
       }
-      if (sceneParam.startsWith('store_')) return sceneParam.split('|')[0];
+      if (sceneParam.startsWith('store_')) {
+        return sceneParam.split('|')[0].replace(/[~./][bwhp]$/i, '');
+      }
     }
 
     const scene = options.scene;
@@ -684,7 +692,9 @@ App({
       if (decoded.includes('store_id=')) {
         return decoded.split('store_id=')[1].split('&')[0];
       }
-      if (decoded.startsWith('store_')) return decoded.split('|')[0];
+      if (decoded.startsWith('store_')) {
+        return decoded.split('|')[0].replace(/[~./][bwhp]$/i, '');
+      }
     }
     return '';
   },
@@ -1426,6 +1436,9 @@ App({
             isStoreOwner(this.globalData.userInfo) ? 'owner' : 'staff'
           );
           this._merchantStoreFetchedAt = Date.now();
+          if (!(this.isMerchantDemoMode && this.isMerchantDemoMode())) {
+            prefetchStoreQrCodes(merged).catch(() => {});
+          }
           if (merged.billingRules && Object.keys(merged.billingRules).length) {
             // 以云端为准，不要把上一店本地计费残留合并进来
             this.saveBillingRules({
@@ -2236,7 +2249,7 @@ App({
       try {
         const pages = getCurrentPages();
         const route = pages.length ? (pages[pages.length - 1].route || '') : '';
-        if (route !== 'pages/merchant/tab-store/tab-store') {
+        if (route !== 'pages/merchant/tab-store/tab-store' && !isMerchantTabStayActive()) {
           wx.reLaunch({ url: getMerchantLandingUrl() });
         }
       } catch (err) {

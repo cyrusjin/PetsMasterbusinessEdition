@@ -157,10 +157,6 @@ Page({
     capturePromotionEntry(options || {});
   },
 
-  onReady() {
-    this._ensureCanvas().catch(() => {});
-  },
-
   onShow() {
     this._hydrate(this._entryPetId);
     if (wx.showShareMenu) {
@@ -203,6 +199,12 @@ Page({
     const existing = pet.personality || null;
     const currentId = this.data.petId;
     const keepStep = currentId && currentId === pet.id && this.data.step !== 'intro';
+    const hydrateKey = `${pets.map((item) => item.id).join(',')}|${pet.id}|${(existing && existing.typeId) || ''}|${keepStep ? this.data.step : 'intro'}`;
+    if (this._hydrateKey === hydrateKey) {
+      this._prefetchPetShareImage(pet.photo);
+      return;
+    }
+    this._hydrateKey = hydrateKey;
     this.setData({
       pets,
       hasSavedPets: true,
@@ -486,7 +488,7 @@ Page({
           return;
         }
         this._canvas = item.node;
-        const dpr = (wx.getSystemInfoSync().pixelRatio || 2);
+        const dpr = Math.min(2, Number(wx.getSystemInfoSync().pixelRatio) || 2);
         this._canvas.width = POSTER_WIDTH * dpr;
         this._canvas.height = POSTER_HEIGHT * dpr;
         this._ctx = this._canvas.getContext('2d');
@@ -731,7 +733,6 @@ Page({
     }
     this.setData({ sharingPoster: true });
     this._exportPoster().then((path) => {
-      this._personalityShareConfig();
       if (typeof wx.showShareImageMenu === 'function') {
         wx.showShareImageMenu({ path });
         return;

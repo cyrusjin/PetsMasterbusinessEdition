@@ -24,7 +24,6 @@
 
   <view class="poster-stage">
     <canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>
-    <view class="poster-loading" wx:if="{{rendering}}"><view class="loading-dot"></view><text>{{qrLoading ? '正在生成预约二维码' : '正在生成海报'}}</text></view>
   </view>
 
   <view class="copy-section">

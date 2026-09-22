@@ -34,8 +34,17 @@
   color: #E98657;
 }
 
-.tab-icon-v2 { display: flex; align-items: center; justify-content: center; width: 44rpx; height: 44rpx; border-radius: 14rpx; color: #a9988c; background: #f1ebe6; transition: all .18s ease; }
+.tab-icon-v2 { position: relative; display: flex; align-items: center; justify-content: center; width: 44rpx; height: 44rpx; border-radius: 14rpx; color: #a9988c; background: #f1ebe6; transition: all .18s ease; }
 .tab-symbol { position: relative; display: block; color: inherit; box-sizing: border-box; }
+.tab-icon-check-in .tab-symbol { width: 25rpx; height: 25rpx; border: 3rpx solid currentColor; border-radius: 8rpx; }
+.tab-icon-check-in .tab-symbol::before { content: ''; position: absolute; left: 4rpx; top: 8rpx; width: 10rpx; height: 5rpx; border-left: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(-45deg); }
+.tab-icon-check-in .tab-symbol::after { content: ''; position: absolute; left: 3rpx; right: 3rpx; top: -6rpx; height: 7rpx; border-left: 3rpx solid currentColor; border-right: 3rpx solid currentColor; }
+.tab-gift { position: absolute; right: -16rpx; top: -18rpx; width: 28rpx; height: 28rpx; pointer-events: none; z-index: 3; animation: tabGiftBounce 1.15s ease-in-out infinite; }
+.tab-gift-box { font-size: 22rpx; line-height: 1; display: block; filter: drop-shadow(0 4rpx 6rpx rgba(176, 92, 42, .28)); }
+.tab-gift-spark { position: absolute; width: 6rpx; height: 6rpx; border-radius: 50%; background: #ffd36b; box-shadow: 0 0 8rpx #ffd36b; animation: tabGiftSpark 1.15s ease-in-out infinite; }
+.tab-gift-spark-one { left: -4rpx; top: 2rpx; }
+.tab-gift-spark-two { right: -2rpx; bottom: 0; animation-delay: .35s; }
+.tab-item.active .tab-gift-box { filter: drop-shadow(0 4rpx 8rpx rgba(255, 214, 140, .45)); }
 .tab-icon-daily .tab-symbol { width: 7rpx; height: 7rpx; margin: -9rpx 9rpx 9rpx -9rpx; border-radius: 2rpx; background: currentColor; box-shadow: 13rpx 0 0 currentColor, 0 13rpx 0 currentColor, 13rpx 13rpx 0 currentColor; }
 .tab-icon-statistics .tab-symbol { width: 6rpx; height: 13rpx; margin: 10rpx 18rpx 0 0; border-radius: 2rpx 2rpx 0 0; background: currentColor; box-shadow: 9rpx -7rpx 0 currentColor, 18rpx -14rpx 0 currentColor; }
 .tab-icon-store .tab-symbol { width: 25rpx; height: 20rpx; margin-top: 8rpx; border: 3rpx solid currentColor; border-top: 0; border-radius: 0 0 4rpx 4rpx; }
@@ -258,4 +267,15 @@
 .open-success-advanced-hint {
   font-size: 22rpx;
   color: #B9A89B;
+}
+
+@keyframes tabGiftBounce {
+  0%, 100% { transform: translateY(0) rotate(-8deg) scale(1); }
+  40% { transform: translateY(-7rpx) rotate(8deg) scale(1.12); }
+  70% { transform: translateY(-2rpx) rotate(-4deg) scale(1.04); }
+}
+
+@keyframes tabGiftSpark {
+  0%, 100% { opacity: .2; transform: scale(.6); }
+  50% { opacity: 1; transform: scale(1.15); }
 }

@@ -14,9 +14,10 @@ const { hideHomeButton, getCustomNavMetrics } = require('../../../utils/navBar')
 const { handlePageSecretTap } = require('../../../utils/hiddenAdmin');
 const { startMerchantOrdersPoll, stopMerchantOrdersPoll } = require('../../../utils/orderRefresh');
 const { isMerchantRejected } = require('../../../utils/role');
-const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed, redirectToUserIfClientMode } = require('../../../utils/shell');
+const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, ensureMerchantPageAllowed, redirectToUserIfClientMode, isCurrentPage } = require('../../../utils/shell');
 const announcementApi = require('../utils/announcements');
 const { getPromotionStats } = require('../../../utils/growth');
+const { prefetchStoreQrCodes } = require('../../../utils/storeQrCode');
 
 const STAFF_COUNT_TTL = 60 * 1000;
 const DAILY_POLL_MS = 60 * 1000;
@@ -220,7 +221,7 @@ Page({
     // 非正式版 / 开关关闭：硬拦截（含员工邀请路径也不进商家界面）
     if (redirectToUserIfMerchantUiBlocked()) return;
     ensureMerchantPageAllowed().then((blocked) => {
-      if (blocked) return;
+      if (blocked || !isCurrentPage(this)) return;
       this._onShowAfterGate();
     });
   },
@@ -272,6 +273,7 @@ Page({
     if (redirectToStoreAuthIfNeeded()) return;
 
     app.ensureCloudAndLogin({}).then(() => {
+      if (!isCurrentPage(this)) return null;
       this._syncTabBar();
       if (redirectToStoreAuthIfNeeded()) return null;
 
@@ -282,6 +284,7 @@ Page({
 
       return this._bootstrapPage();
     }).then(() => {
+      if (!isCurrentPage(this)) return;
       this._openOrdersFromNotify();
     }).catch((err) => {
       console.error('[日常管理] onShow 初始化失败', err);
@@ -602,6 +605,9 @@ Page({
       });
       this._syncNavTitle(storeShop);
       prefetchStoreShareImage(storeShop);
+      if (!app.isMerchantDemoMode || !app.isMerchantDemoMode()) {
+        prefetchStoreQrCodes(storeShop);
+      }
     };
 
     if (app.isMerchantDemoMode()) {
@@ -781,6 +787,7 @@ Page({
   },
   onGoPromoPoster() {
     if (!this._guardMerchantFeature()) return;
+    prefetchStoreQrCodes(this.data.shop || app.getShop());
     wx.navigateTo({ url: '/packageExtra/promo-poster/promo-poster' });
   },
   onGoGuide() {

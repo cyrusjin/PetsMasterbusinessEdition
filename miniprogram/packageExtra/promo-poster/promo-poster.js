@@ -1,8 +1,8 @@
 const app = getApp();
-const storeApi = require('../../utils/store');
 const { resolveImageUrl } = require('../../utils/imageCache');
 const { SERVICE_LINE_DEFS, normalizeServiceLines } = require('../../utils/serviceLines');
 const { buildMerchantShareConfig, buildMerchantTimelineShareConfig } = require('../../utils/storeShare');
+const { peekStoreQrCode, ensureStoreQrCode, prefetchStoreQrCodes } = require('../../utils/storeQrCode');
 
 const POSTER_WIDTH = 750;
 const POSTER_HEIGHT = 1000;
@@ -51,17 +51,6 @@ function shopContact(shop) {
   if (clean(shop.contactPhone)) return `电话 ${clean(shop.contactPhone)}`;
   if (clean(shop.wechatId)) return `微信 ${clean(shop.wechatId)}`;
   return '欢迎微信咨询预约';
-}
-
-function getEnvVersion() {
-  try {
-    const account = wx.getAccountInfoSync();
-    const version = account && account.miniProgram && account.miniProgram.envVersion;
-    if (['release', 'trial', 'develop'].includes(version)) return version;
-  } catch (err) {
-    // ignore
-  }
-  return 'trial';
 }
 
 function listPosterServices(shop) {
@@ -145,8 +134,7 @@ Page({
     addressText: '',
     storeName: '宠物寄养小店',
     shop: {},
-    rendering: true,
-    qrLoading: false,
+    rendering: false,
     saving: false,
     sharing: false
   },
@@ -162,6 +150,10 @@ Page({
     this._qrPaths = {};
     this._qrPromises = {};
     this._logoSource = clean(shop.logo);
+    this._posterDirty = true;
+    const storeId = clean(shop.store_id);
+    const cachedQr = peekStoreQrCode(storeId, serviceLine);
+    if (cachedQr) this._qrPaths[serviceLine] = cachedQr;
     this.setData({
       shop,
       serviceOptions,
@@ -175,7 +167,8 @@ Page({
       contactText: shopContact(shop),
       addressText: shopAddress(shop)
     });
-    this._ensureQr(serviceLine, { silent: true }).catch(() => {});
+    this._ensureQr(serviceLine, { silent: true, storeId }).catch(() => {});
+    prefetchStoreQrCodes(shop, { storeId, preferredLine: serviceLine });
   },
 
   onReady() {
@@ -187,7 +180,7 @@ Page({
         return;
       }
       this._canvas = item.node;
-      const dpr = wx.getSystemInfoSync().pixelRatio || 2;
+      const dpr = Math.min(2, Number(wx.getSystemInfoSync().pixelRatio) || 2);
       this._canvas.width = POSTER_WIDTH * dpr;
       this._canvas.height = POSTER_HEIGHT * dpr;
       this._ctx = this._canvas.getContext('2d');
@@ -205,6 +198,9 @@ Page({
     if (!SERVICE_POSTERS[serviceLine] || serviceLine === this.data.serviceLine) return;
     const config = SERVICE_POSTERS[serviceLine];
     const firstCopy = config.copies[0];
+    const cachedQr = peekStoreQrCode(clean(this.data.shop && this.data.shop.store_id), serviceLine);
+    if (cachedQr) this._qrPaths[serviceLine] = cachedQr;
+    this._posterDirty = true;
     this.setData({
       serviceLine,
       copyTemplates: config.copies,
@@ -216,10 +212,12 @@ Page({
     this._ensureQr(serviceLine, { silent: true }).catch(() => {});
   },
 
+
   onSelectCopy(e) {
     const id = e.currentTarget.dataset.id;
     const copy = this.data.copyTemplates.find((item) => item.id === id);
     if (!copy) return;
+    this._posterDirty = true;
     this.setData({ selectedCopyId: id, headline: copy.headline, copyText: copy.copyText }, () => {
       this._scheduleRender(0);
     });
@@ -233,6 +231,7 @@ Page({
       success: (res) => {
         const file = res.tempFiles && res.tempFiles[0];
         if (!file || !file.tempFilePath) return;
+        this._posterDirty = true;
         this.setData({ backgroundPath: file.tempFilePath }, () => this._scheduleRender(0));
       }
     });
@@ -241,6 +240,7 @@ Page({
   onFieldInput(e) {
     const field = e.currentTarget.dataset.field;
     if (!['headline', 'copyText', 'contactText', 'addressText'].includes(field)) return;
+    this._posterDirty = true;
     this.setData({ [field]: e.detail.value });
     this._scheduleRender(180);
   },
@@ -255,19 +255,18 @@ Page({
 
   _ensureQr(serviceLine, options) {
     const line = serviceLine || this.data.serviceLine;
-    if (this._qrPaths[line]) return Promise.resolve(this._qrPaths[line]);
+    const storeId = clean((options && options.storeId) || (this.data.shop && this.data.shop.store_id));
+    const cached = this._qrPaths[line] || peekStoreQrCode(storeId, line);
+    if (cached) {
+      this._qrPaths[line] = cached;
+      return Promise.resolve(cached);
+    }
     if (this._qrPromises[line]) return this._qrPromises[line];
-    const storeId = clean(this.data.shop && this.data.shop.store_id);
     if (!storeId) return Promise.reject(new Error('请先开通店铺再生成预约二维码'));
-    this.setData({ qrLoading: true, rendering: true });
-    const promise = storeApi.getStoreQrCode(storeId, line, getEnvVersion()).then((res) => {
-      if (!res || !res.success) throw new Error((res && res.errMsg) || '预约二维码生成失败');
-      const source = res.tempFileURL || res.fileID || '';
-      if (!source) throw new Error('预约二维码地址为空');
-      return resolveImageUrl(source);
-    }).then((path) => {
+    const promise = ensureStoreQrCode(storeId, line).then((path) => {
       this._qrPaths[line] = path;
-      return this._renderPoster().then(() => path);
+      if (line === this.data.serviceLine) return this._renderPoster().then(() => path);
+      return path;
     }).catch((err) => {
       if (!(options && options.silent)) {
         wx.showToast({ title: err.message || '二维码生成失败', icon: 'none' });
@@ -275,7 +274,6 @@ Page({
       throw err;
     }).finally(() => {
       delete this._qrPromises[line];
-      if (line === this.data.serviceLine) this.setData({ qrLoading: false, rendering: false });
     });
     this._qrPromises[line] = promise;
     return promise;
@@ -304,8 +302,8 @@ Page({
     if (!this._ctx || !this._canvas) return Promise.resolve();
     const token = (this._renderToken || 0) + 1;
     this._renderToken = token;
-    this.setData({ rendering: true });
-    const qrPath = this._qrPaths[this.data.serviceLine] || '';
+    const qrPath = this._qrPaths[this.data.serviceLine] || peekStoreQrCode(clean(this.data.shop && this.data.shop.store_id), this.data.serviceLine);
+    if (qrPath) this._qrPaths[this.data.serviceLine] = qrPath;
     return Promise.all([
       this._loadImage(this.data.backgroundPath),
       this._resolveLogo().then((path) => this._loadImage(path)),
@@ -313,12 +311,13 @@ Page({
     ]).then(([background, logo, qrImage]) => {
       if (token !== this._renderToken) return;
       this._drawPoster(background, logo, qrImage);
+      this._posterDirty = false;
       this._posterPath = '';
     }).catch((err) => {
       console.error('[宣传海报] 生成失败', err);
       wx.showToast({ title: '海报生成失败，请重试', icon: 'none' });
     }).finally(() => {
-      if (token === this._renderToken && !this.data.qrLoading) this.setData({ rendering: false });
+      if (token === this._renderToken) this.setData({ rendering: false });
     });
   },
 
@@ -392,13 +391,8 @@ Page({
     if (qrImage) {
       ctx.drawImage(qrImage, 68, 771, 156, 156);
     } else {
-      ctx.fillStyle = '#f0ece8';
+      ctx.fillStyle = '#f4f0ec';
       ctx.fillRect(68, 771, 156, 156);
-      ctx.fillStyle = '#aa9b91';
-      ctx.font = '18px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('预约码生成中', 146, 855);
-      ctx.textAlign = 'left';
     }
 
     ctx.fillStyle = '#3f332c';
@@ -425,7 +419,7 @@ Page({
         wx.canvasToTempFilePath({
           canvas: this._canvas,
           fileType: 'jpg',
-          quality: 0.95,
+          quality: 0.88,
           destWidth: 1500,
           destHeight: 2000,
           success: (res) => {

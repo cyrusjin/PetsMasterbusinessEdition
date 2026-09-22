@@ -1058,6 +1058,7 @@ async function getMyStore(openid) {
   const storeDoc = await resolveMerchantStoreDoc(openid);
 
   if (storeDoc) {
+    await membershipService.ensureCheckInVersionSeen(storeDoc);
     const membership = await membershipService.buildMembership(storeDoc.store_id);
     const formattedStore = formatStore(storeDoc);
     const visibleStore = membership.active || membership.enabled === false
@@ -1071,12 +1072,14 @@ async function getMyStore(openid) {
           merchantApplyStatus: formattedStore.merchantApplyStatus,
           membership
         };
-    return {
+    const result = {
       success: true,
       store: { ...visibleStore, membership },
       membership,
       accessRole: resolveAccessRole(storeDoc, openid, userDoc)
     };
+    scheduleStoreQrWarmup(storeDoc, openid);
+    return result;
   }
 
   const reconciled = await clearStaleMerchantLink(openid);
@@ -1592,6 +1595,7 @@ async function getAdminStoreDetail(event = {}) {
   const store = await resolveStoreMediaUrls(formatStore(storeDoc));
   const oaBind = await resolveOwnerOaBind(storeDoc.ownerOpenid || applicant.applicantOpenid || '');
   const staffOpenids = Array.isArray(store.staffOpenids) ? store.staffOpenids : [];
+  const membership = await membershipService.buildAdminMembershipView(storeDoc.store_id);
 
   return {
     success: true,
@@ -1610,7 +1614,8 @@ async function getAdminStoreDetail(event = {}) {
       hasCoopContract: !!(storeDoc.coopContractSnapshot && storeDoc.coopContractSigned),
       coopContractSignTime: storeDoc.coopContractSignTime || '',
       staffCount: staffOpenids.length,
-      staffOpenids
+      staffOpenids,
+      membership
     }
   };
 }
@@ -1848,7 +1853,9 @@ async function listAdminStores(query = {}) {
         accessType: membership.accessType || 'expired',
         paymentMethod: membership.paymentMethod || 'none',
         expireAt: membership.expireAt || null,
-        expireAtText: membership.expireAtText || ''
+        expireAtText: membership.expireAtText || '',
+        checkInCampaignActive: membership.checkInCampaignActive !== false,
+        checkInCampaignDaysLeft: Number(membership.checkInCampaignDaysLeft) || 0
       }
     });
   }
@@ -2238,12 +2245,68 @@ async function acceptStaffInvite(event, openid) {
   return { success: true, store, accessRole: 'staff' };
 }
 
+const STORE_QR_LINE_MAP = { boarding: 'b', wash: 'w', homeFeeding: 'h' };
+// getwxacodeunlimit 的 scene 只允许 0-9a-zA-Z 和 !#$&'()*+,/:;=?@-._~ ，不能用 |
+const STORE_QR_SCENE_SEP = '~';
+const storeQrWarmupBusy = new Set();
+
+function listStoreQrLines(storeDoc) {
+  const raw = (storeDoc && storeDoc.serviceLines) || {};
+  const lines = [];
+  if (raw.boarding !== false) lines.push('boarding');
+  if (raw.wash === true) lines.push('wash');
+  if (raw.homeFeeding === true) lines.push('homeFeeding');
+  return lines.length ? lines : ['boarding'];
+}
+
+function scheduleStoreQrWarmup(storeDoc, openid) {
+  const storeId = String((storeDoc && storeDoc.store_id) || '').trim();
+  if (!storeId || !openid) return;
+  if (storeDoc.merchantApplyStatus === 'pending') return;
+  const key = `${storeId}:${openid}`;
+  if (storeQrWarmupBusy.has(key)) return;
+  storeQrWarmupBusy.add(key);
+  setImmediate(() => {
+    Promise.all(listStoreQrLines(storeDoc).map((line) => (
+      getStoreQrCode({ store_id: storeId, service_line: line, env_version: 'release' }, openid)
+        .catch((err) => {
+          console.warn('[storeQr] warmup failed', storeId, line, err && err.message);
+          return null;
+        })
+    ))).finally(() => {
+      storeQrWarmupBusy.delete(key);
+    });
+  });
+}
+
+async function generateUnlimitedQrBuffer(scene, requestedVersion) {
+  const order = [];
+  [requestedVersion, 'release', 'trial'].forEach((item) => {
+    if (item && !order.includes(item)) order.push(item);
+  });
+  let lastErr = null;
+  for (const envVersion of order) {
+    try {
+      const buffer = await wechat.getUnlimitedQrCode({
+        scene,
+        page: 'packageUser/user/reserve/reserve',
+        envVersion,
+        width: 280,
+        client: 'user'
+      });
+      return buffer;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('生成二维码失败');
+}
+
 async function getStoreQrCode(event, openid) {
   const storeId = String(event.store_id || '').trim();
   const envVersion = event.env_version;
   const requestedLine = String(event.service_line || event.serviceLine || 'boarding').trim();
-  const lineCodeMap = { boarding: 'b', wash: 'w', homeFeeding: 'h' };
-  const lineCode = lineCodeMap[requestedLine];
+  const lineCode = STORE_QR_LINE_MAP[requestedLine];
   if (!storeId) {
     return { success: false, errMsg: '缺少 store_id' };
   }
@@ -2262,24 +2325,27 @@ async function getStoreQrCode(event, openid) {
     return { success: false, errMsg: '无权生成该店铺二维码' };
   }
 
-  const scene = `${storeId}|${lineCode}`;
+  const scene = `${storeId}${STORE_QR_SCENE_SEP}${lineCode}`;
   if (Buffer.byteLength(scene, 'utf8') > 32) {
     return { success: false, errMsg: '店铺编号过长，无法生成二维码' };
   }
   const version = envVersion === 'release' || envVersion === 'develop' || envVersion === 'trial'
     ? envVersion
     : 'trial';
+  const objectKey = `store-qrcodes/${storeId}-${lineCode}-${version}.png`;
+  if (oss.mediaFileExists(objectKey)) {
+    const publicUrl = oss.buildPublicUrl(objectKey);
+    return {
+      success: true,
+      fileID: publicUrl,
+      tempFileURL: publicUrl,
+      serviceLine: requestedLine
+    };
+  }
 
   try {
-    // 店铺码面向宠主，必须用宠主端小程序凭证生成
-    const buffer = await wechat.getUnlimitedQrCode({
-      scene,
-      page: 'packageUser/user/reserve/reserve',
-      envVersion: version,
-      width: 430,
-      client: 'user'
-    });
-    const objectKey = `store-qrcodes/${storeId}-${lineCode}.png`;
+    // 店铺码面向宠主。当前环境若尚未发布，则回退到正式版/体验版，避免海报一直停在生成中。
+    const buffer = await generateUnlimitedQrBuffer(scene, version);
     const publicUrl = await oss.uploadBuffer(objectKey, buffer, 'image/png');
     return {
       success: true,
@@ -2484,6 +2550,10 @@ async function handle(event, openid, req) {
       return getStoreOaShareLink(event, openid);
     case 'getMembershipStatus':
       return membershipService.getMembershipStatus(event, openid);
+    case 'getDailyCheckInStatus':
+      return membershipService.getDailyCheckInStatus(event, openid);
+    case 'claimDailyCheckIn':
+      return membershipService.claimDailyCheckIn(event, openid);
     case 'getPromotionTasks':
       return membershipService.getPromotionTasks(event, openid);
     case 'submitPromotionProof':

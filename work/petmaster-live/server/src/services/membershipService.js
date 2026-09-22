@@ -38,7 +38,8 @@ function ensureCollections() {
       'membership_settings',
       'membership_promotion_tasks',
       'membership_task_submissions',
-      'membership_task_rewards'
+      'membership_task_rewards',
+      'membership_daily_checkins'
     ]).then(async () => {
       await Promise.all([
         db.collection('store_subscriptions').createIndex({ store_id: 1 }, { unique: true }),
@@ -57,7 +58,9 @@ function ensureCollections() {
         db.collection('membership_task_submissions').createIndex({ store_id: 1, task_code: 1 }, { unique: true }),
         db.collection('membership_task_submissions').createIndex({ status: 1, submittedAt: -1 }),
         db.collection('membership_task_rewards').createIndex({ store_id: 1, task_code: 1, subject_key: 1 }, { unique: true }),
-        db.collection('membership_task_rewards').createIndex({ store_id: 1, createdAt: -1 })
+        db.collection('membership_task_rewards').createIndex({ store_id: 1, createdAt: -1 }),
+        db.collection('membership_daily_checkins').createIndex({ store_id: 1, date_key: 1 }, { unique: true }),
+        db.collection('membership_daily_checkins').createIndex({ store_id: 1, createdAt: -1 })
       ]);
     }).catch((err) => {
       collectionsPromise = null;
@@ -145,8 +148,15 @@ function formatDate(timestamp) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+const CHECK_IN_CAMPAIGN_DAYS = 21;
+
+function isCheckInSource(source) {
+  return /^daily_checkin/.test(String(source || ''));
+}
+
 function paymentMethodForMembership(accessType, source) {
   const normalizedSource = String(source || '').trim();
+  if (isCheckInSource(normalizedSource)) return 'checkin';
   if (normalizedSource === 'wechat_pay') return 'purchase';
   if (normalizedSource === 'redeem_code') return 'redemption';
   if (accessType === 'promotion') return 'promotion';
@@ -154,6 +164,49 @@ function paymentMethodForMembership(accessType, source) {
   if (accessType === 'trial') return 'trial';
   if (accessType === 'subscription') return 'other';
   return 'none';
+}
+
+function checkInCampaignStartAt(store) {
+  return Number((store && store.checkInVersionSeenAt) || 0);
+}
+
+function buildCheckInCampaign(store, now = Date.now()) {
+  const startAt = checkInCampaignStartAt(store);
+  if (!startAt) {
+    return {
+      checkInCampaignActive: true,
+      checkInCampaignStartAt: null,
+      checkInCampaignExpireAt: null,
+      checkInCampaignDaysLeft: CHECK_IN_CAMPAIGN_DAYS
+    };
+  }
+  const expireAt = startAt + CHECK_IN_CAMPAIGN_DAYS * 86400000;
+  const active = now < expireAt;
+  return {
+    checkInCampaignActive: active,
+    checkInCampaignStartAt: startAt,
+    checkInCampaignExpireAt: expireAt,
+    checkInCampaignDaysLeft: active ? Math.max(1, Math.ceil((expireAt - now) / 86400000)) : 0
+  };
+}
+
+async function ensureCheckInVersionSeen(store) {
+  if (!store || !store.store_id) return store;
+  if (Number(store.checkInVersionSeenAt)) return store;
+  const startAt = Date.now();
+  await db.collection('stores').updateOne(
+    {
+      store_id: store.store_id,
+      $or: [
+        { checkInVersionSeenAt: { $exists: false } },
+        { checkInVersionSeenAt: null },
+        { checkInVersionSeenAt: 0 }
+      ]
+    },
+    { $set: { checkInVersionSeenAt: startAt } }
+  );
+  store.checkInVersionSeenAt = startAt;
+  return store;
 }
 
 async function getStore(storeId) {
@@ -235,6 +288,7 @@ async function buildMembership(storeId) {
     getRolloutSettings()
   ]);
   await ensureBootstrapEntitlements(store, rollout);
+  const checkedToday = await hasGrantedCheckInToday(storeId, now);
   const entitlements = await db.collection('membership_entitlements').find({
     store_id: storeId,
     status: 'active',
@@ -258,7 +312,9 @@ async function buildMembership(storeId) {
       enabled: false,
       payConfigured: false,
       canPurchase: false,
-      paymentMethod: 'disabled'
+      paymentMethod: 'disabled',
+      checkedToday,
+      ...buildCheckInCampaign(store, now)
     };
   }
   const subscriptionExpireAt = Number(subscription && subscription.expireAt) || 0;
@@ -305,7 +361,9 @@ async function buildMembership(storeId) {
     trialExpireAtText: trialExpireAt ? formatDate(trialExpireAt) : '',
     trialDaysRemaining: trialActive ? Math.max(1, Math.ceil((trialExpireAt - now) / 86400000)) : 0,
     enabled: config.membership.enabled,
-    payConfigured: config.membership.payEnabled && wechatPayService.credentialsReady()
+    payConfigured: config.membership.payEnabled && wechatPayService.credentialsReady(),
+    checkedToday,
+    ...buildCheckInCampaign(store, now)
   };
 }
 
@@ -314,6 +372,7 @@ async function getMembershipStatus(event, openid) {
   const store = await getStore(storeId);
   if (!store) return { success: false, errMsg: '店铺不存在' };
   if (!await canManageStore(store, openid)) return { success: false, errMsg: '无权查看该门店订阅' };
+  await ensureCheckInVersionSeen(store);
   const membership = await buildMembership(storeId);
   membership.canPurchase = store.ownerOpenid === openid;
   return {
@@ -323,8 +382,186 @@ async function getMembershipStatus(event, openid) {
   };
 }
 
+const CHECK_IN_CYCLE_DAYS = CHECK_IN_CAMPAIGN_DAYS;
+const CHECK_IN_DAILY_REWARD_DAYS = 1;
+const CHECK_IN_STREAK_REWARD_MONTHS = 1;
+
+function chinaDateKey(timestamp = Date.now()) {
+  return new Date(Number(timestamp) + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function buildCheckInProgress(cycleDay = 0) {
+  const completed = Math.max(0, Math.min(CHECK_IN_CYCLE_DAYS, Number(cycleDay) || 0));
+  return Array.from({ length: CHECK_IN_CYCLE_DAYS }, (_, index) => {
+    const day = index + 1;
+    return {
+      day,
+      completed: day <= completed,
+      current: day === Math.min(completed + 1, CHECK_IN_CYCLE_DAYS),
+      milestone: day === 7 || day === 14 || day === CHECK_IN_CYCLE_DAYS,
+      rewardText: day === CHECK_IN_CYCLE_DAYS ? '1个月' : '+1天'
+    };
+  });
+}
+
+async function getDailyCheckInSnapshot(storeId) {
+  const todayKey = chinaDateKey();
+  const yesterdayKey = chinaDateKey(Date.now() - 86400000);
+  const [today, yesterday, totalCheckIns] = await Promise.all([
+    db.collection('membership_daily_checkins').findOne({ store_id: storeId, date_key: todayKey, status: 'granted' }),
+    db.collection('membership_daily_checkins').findOne({ store_id: storeId, date_key: yesterdayKey, status: 'granted' }),
+    db.collection('membership_daily_checkins').countDocuments({ store_id: storeId, status: 'granted' })
+  ]);
+  const anchor = today || yesterday;
+  const currentStreak = Math.max(0, Number(anchor && anchor.streakCount) || 0);
+  const rawCycleDay = currentStreak > 0 ? ((currentStreak - 1) % CHECK_IN_CYCLE_DAYS) + 1 : 0;
+  const cycleDay = !today && rawCycleDay === CHECK_IN_CYCLE_DAYS ? 0 : rawCycleDay;
+  return {
+    checkedToday: !!today,
+    currentStreak,
+    cycleDay,
+    daysToBonus: cycleDay === CHECK_IN_CYCLE_DAYS ? 0 : CHECK_IN_CYCLE_DAYS - cycleDay,
+    totalCheckIns,
+    todayRewardDays: CHECK_IN_DAILY_REWARD_DAYS,
+    streakRewardMonths: CHECK_IN_STREAK_REWARD_MONTHS,
+    cycleDays: CHECK_IN_CYCLE_DAYS
+  };
+}
+
+async function hasGrantedCheckInToday(storeId, now = Date.now()) {
+  if (!storeId) return false;
+  await ensureCollections();
+  const row = await db.collection('membership_daily_checkins').findOne({
+    store_id: storeId,
+    date_key: chinaDateKey(now),
+    status: 'granted'
+  });
+  return !!row;
+}
+
+async function attachCheckInClientHints(membership, storeId) {
+  if (!membership || !storeId) return membership;
+  membership.checkedToday = await hasGrantedCheckInToday(storeId);
+  return membership;
+}
+
+async function membershipAfterCheckIn(storeId) {
+  const membership = await buildMembership(storeId);
+  membership.checkedToday = true;
+  return membership;
+}
+
+async function getDailyCheckInStatus(event, openid) {
+  await ensureCollections();
+  const storeId = String(event.store_id || '').trim();
+  const store = await ensureCheckInVersionSeen(await getStore(storeId));
+  if (!store) return { success: false, errMsg: '店铺不存在' };
+  if (!await canManageStore(store, openid)) return { success: false, errMsg: '无权查看该门店签到活动' };
+  const membership = await buildMembership(storeId);
+  const checkIn = await getDailyCheckInSnapshot(storeId);
+  membership.checkedToday = !!checkIn.checkedToday;
+  return {
+    success: true,
+    activity: {
+      title: '会员能量补给站',
+      subtitle: '每天来冒险，会员时长天天领',
+      status: membership.checkInCampaignActive ? 'ongoing' : 'ended'
+    },
+    checkIn,
+    membership
+  };
+}
+
+async function claimDailyCheckIn(event, openid) {
+  await ensureCollections();
+  const storeId = String(event.store_id || '').trim();
+  const store = await ensureCheckInVersionSeen(await getStore(storeId));
+  if (!store) return { success: false, errMsg: '店铺不存在' };
+  if (!await canManageStore(store, openid)) return { success: false, errMsg: '无权参与该门店签到活动' };
+  if (!buildCheckInCampaign(store).checkInCampaignActive) {
+    return { success: false, errCode: 'CHECK_IN_ENDED', errMsg: '签到活动已结束' };
+  }
+
+  const now = Date.now();
+  const dateKey = chinaDateKey(now);
+  const yesterdayKey = chinaDateKey(now - 86400000);
+  let record = await db.collection('membership_daily_checkins').findOne({ store_id: storeId, date_key: dateKey });
+  if (record && record.status === 'granted') {
+    return {
+      success: true,
+      duplicate: true,
+      rewardDays: CHECK_IN_DAILY_REWARD_DAYS,
+      bonusMonths: Number(record.bonusMonths) || 0,
+      checkIn: await getDailyCheckInSnapshot(storeId),
+      membership: await membershipAfterCheckIn(storeId)
+    };
+  }
+
+  if (!record) {
+    const yesterday = await db.collection('membership_daily_checkins').findOne({
+      store_id: storeId,
+      date_key: yesterdayKey,
+      status: 'granted'
+    });
+    const streakCount = Math.max(0, Number(yesterday && yesterday.streakCount) || 0) + 1;
+    try {
+      const inserted = await db.collection('membership_daily_checkins').insertOne({
+        store_id: storeId,
+        date_key: dateKey,
+        streakCount,
+        status: 'granting',
+        claimedBy: openid,
+        createdAt: now,
+        updateTime: now
+      });
+      record = { _id: inserted.insertedId, streakCount, status: 'granting' };
+    } catch (err) {
+      if (!(err && err.code === 11000)) throw err;
+      record = await db.collection('membership_daily_checkins').findOne({ store_id: storeId, date_key: dateKey });
+    }
+  }
+
+  if (!record) return { success: false, errMsg: '签到状态异常，请稍后重试' };
+  if (record.status === 'granted') {
+    return {
+      success: true,
+      duplicate: true,
+      rewardDays: CHECK_IN_DAILY_REWARD_DAYS,
+      bonusMonths: Number(record.bonusMonths) || 0,
+      checkIn: await getDailyCheckInSnapshot(storeId),
+      membership: await membershipAfterCheckIn(storeId)
+    };
+  }
+  const streakCount = Math.max(1, Number(record.streakCount) || 1);
+  const bonusMonths = streakCount % CHECK_IN_CYCLE_DAYS === 0 ? CHECK_IN_STREAK_REWARD_MONTHS : 0;
+  await extendSubscriptionDays(storeId, CHECK_IN_DAILY_REWARD_DAYS, 'daily_checkin', openid, dateKey);
+  if (bonusMonths) {
+    await extendSubscription(storeId, bonusMonths, 'daily_checkin_streak', openid, `${CHECK_IN_CYCLE_DAYS}:${dateKey}`);
+  }
+  await db.collection('membership_daily_checkins').updateOne(
+    { _id: record._id },
+    {
+      $set: {
+        status: 'granted',
+        rewardDays: CHECK_IN_DAILY_REWARD_DAYS,
+        bonusMonths,
+        grantedAt: Date.now(),
+        updateTime: Date.now()
+      }
+    }
+  );
+  return {
+    success: true,
+    duplicate: false,
+    rewardDays: CHECK_IN_DAILY_REWARD_DAYS,
+    bonusMonths,
+    checkIn: await getDailyCheckInSnapshot(storeId),
+    membership: await membershipAfterCheckIn(storeId)
+  };
+}
+
 function sourceTypeFor(source) {
-  return /^task_/.test(String(source || '')) ? 'promotion' : 'subscription';
+  return /^(task_|daily_checkin)/.test(String(source || '')) ? 'promotion' : 'subscription';
 }
 
 async function idempotentUpsert(collectionName, filter, update) {
@@ -1392,11 +1629,31 @@ async function voidRedeemCode(id, adminUsername) {
   return { success: true };
 }
 
+async function buildAdminMembershipView(storeId) {
+  const membership = await buildMembership(storeId);
+  await ensureCollections();
+  const [totalCheckIns, last] = await Promise.all([
+    db.collection('membership_daily_checkins').countDocuments({ store_id: storeId, status: 'granted' }),
+    db.collection('membership_daily_checkins').find({ store_id: storeId, status: 'granted' }).sort({ date_key: -1, grantedAt: -1 }).limit(1).next()
+  ]);
+  return {
+    ...membership,
+    checkInTotal: totalCheckIns,
+    lastCheckInDate: (last && last.date_key) || '',
+    lastCheckInAt: Number(last && (last.grantedAt || last.createdAt)) || 0
+  };
+}
+
 module.exports = {
   PLANS,
   buildMembership,
+  buildAdminMembershipView,
+  ensureCheckInVersionSeen,
+  attachCheckInClientHints,
   paymentMethodForMembership,
   getMembershipStatus,
+  getDailyCheckInStatus,
+  claimDailyCheckIn,
   redeemMembershipCode,
   createMembershipPay,
   queryMembershipPay,

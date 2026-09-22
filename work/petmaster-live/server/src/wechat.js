@@ -138,7 +138,9 @@ async function getUnlimitedQrCode({
   if (asText.includes('errcode')) {
     try {
       const err = JSON.parse(buffer.toString('utf8'));
-      throw new Error(err.errmsg || '生成小程序码失败');
+      const raw = String(err.errmsg || '');
+      if (/invalid scene/i.test(raw)) throw new Error('预约码参数不合法');
+      throw new Error(raw || '生成小程序码失败');
     } catch (parseErr) {
       if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
       throw new Error('生成小程序码失败');

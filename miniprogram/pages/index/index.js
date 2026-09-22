@@ -1,6 +1,6 @@
 const app = getApp();
 const { capturePromotionEntry } = require('../../utils/growth');
-const { guardUserTabPage } = require('../../utils/shell');
+const { guardUserTabPage, isCurrentPage } = require('../../utils/shell');
 const { buildStoreShareConfig, buildTimelineShareConfig, resolveShareStoreId, listGuestShareCards, prefetchStoreShareImage } = require('../../utils/storeShare');
 const storeDebug = require('../../utils/storeDebug');
 const { refreshUserOrders } = require('../../utils/orderRefresh');
@@ -338,7 +338,7 @@ Page({
     }
 
     app.ensureCloudAndLogin({ silent: true }).then(() => {
-      if (gen !== this._showGen || guardUserTabPage()) return;
+      if (gen !== this._showGen || !isCurrentPage(this) || guardUserTabPage()) return;
       this._lastHomeRefreshAt = Date.now();
 
       const tasks = [
