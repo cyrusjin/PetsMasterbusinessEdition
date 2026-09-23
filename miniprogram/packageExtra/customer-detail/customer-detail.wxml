@@ -52,6 +52,18 @@
       </view>
     </view>
 
+    <view class="card wallet-card">
+      <view class="card-title">客户账户</view>
+      <view class="wallet-row">
+        <view><text class="wallet-label">账户余额</text><text class="wallet-balance">¥{{wallet.balance || '0.00'}}</text></view>
+        <view class="wallet-detail-actions">
+          <button class="wallet-btn wallet-btn-recharge" bindtap="onRecharge">＋ 充值</button>
+          <button class="wallet-btn wallet-btn-consume" bindtap="onConsume">✓ 核销</button>
+        </view>
+      </view>
+      <text class="wallet-hint">充值或核销费用都会记录账户流水，余额可用于商家代下单。</text>
+    </view>
+
     <view class="card">
       <view class="card-title">宠物管理 ({{customer.petCount}})</view>
 

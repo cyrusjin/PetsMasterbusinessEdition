@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const membershipService = require('./membershipService');
 const { normalizePersonality, pickPersonality } = require('./petPersonality');
 const { resolveHomeVisitOrderTimes } = require('../utils/homeVisitSlots');
+const customerService = require('./customerService');
 
 const INSURANCE_SHARE_COLLECTION = 'insurance_share_links';
 const INSURANCE_EVENT_COLLECTION = 'insurance_events';
@@ -636,7 +637,40 @@ async function createOrder(event, openid) {
     orderData.paymentConfirmedAt = 0;
     orderData.payment = { status: 'unpaid' };
   }
-  await db.insertOne('orders', orderData);
+  const insertedOrder = await db.insertOne('orders', orderData);
+  orderData._id = insertedOrder._id;
+
+  const requestedPaymentMethod = String(payload.paymentMethod || payload.payMethod || '').trim().toLowerCase();
+  if (requestedPaymentMethod === 'balance' || requestedPaymentMethod === 'wallet') {
+    const walletPhone = customerService.phoneOf(orderData.contactPhone || orderData.userPhone);
+    const debit = await customerService.debitWallet({
+      storeId: orderData.store_id, phone: walletPhone, amount: orderData.totalFee,
+      orderId: orderData.order_id, operator: openid
+    });
+    if (!debit.success) {
+      await db.collection('orders').deleteOne({ _id: orderData._id });
+      return debit;
+    }
+    orderData.paymentMode = 'balance';
+    orderData.payment = { status: 'paid', method: 'balance', paidAt: Date.now(), amount: orderData.totalFee };
+    orderData.paymentConfirmedAt = Date.now();
+    await db.updateOne('orders', { _id: orderData._id }, { paymentMode: 'balance', payment: orderData.payment, paymentConfirmedAt: orderData.paymentConfirmedAt });
+  }
+
+  // 新客户模型以手机号串联订单；旧订单仍保留原有 openid 字段。
+  const customerPhone = customerService.phoneOf(orderData.contactPhone || orderData.userPhone);
+  if (customerPhone && customerService.validPhone(customerPhone)) {
+    try {
+      await customerService.ensure();
+      const existing = await db.findOne('customer_profiles', { store_id: orderData.store_id, phone: customerPhone });
+      const profile = existing || await db.insertOne('customer_profiles', {
+        store_id: orderData.store_id, phone: customerPhone, name: orderData.contactName || '',
+        platformIds: { wechatOpenid: openid }, tags: [], createTime: Date.now(), updateTime: Date.now()
+      });
+      await db.updateOne('orders', { _id: orderData._id }, { customerId: String(profile._id), customerPhone }, {});
+      orderData.customerId = String(profile._id); orderData.customerPhone = customerPhone;
+    } catch (err) { console.warn('[order] customer profile link skipped:', err.message || err); }
+  }
 
   if (orderData.promotion) {
     recordPromotionEvent({

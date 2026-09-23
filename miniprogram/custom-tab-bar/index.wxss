@@ -28,6 +28,8 @@
   padding-bottom: env(safe-area-inset-bottom);
   box-sizing: border-box;
 }
+.tab-bar-item::before { content:''; position:absolute; top:10rpx; width:76rpx; height:54rpx; border-radius:20rpx; background:transparent; transition:background .2s ease; }
+.tab-bar-item.active::before { background:rgba(232,120,99,.10); }
 
 .tab-bar-icon {
   width: 44rpx;
@@ -46,6 +48,7 @@
 
 .tab-bar-text.active {
   color: #E98657;
+  font-weight: 650;
 }
 
 .tab-bar-hit {

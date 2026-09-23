@@ -22,12 +22,14 @@
   color: #999999;
 }
 .tab-item.active { color: #E77952; }
+.tab-item { position: relative; gap: 2rpx; transition: color .2s ease; }
+.tab-item.active::before { content:''; position:absolute; top:10rpx; width:76rpx; height:54rpx; border-radius:20rpx; background:rgba(232,120,99,.10); z-index:-1; }
 .tab-icon-img {
   width: 44rpx;
   height: 44rpx;
   display: block;
 }
-.tab-text { font-size: 22rpx; margin-top: 6rpx; font-weight: 500; }
+.tab-text { font-size: 21rpx; margin-top: 6rpx; font-weight: 600; letter-spacing:.2rpx; }
 .merchant-page {
   min-height: 100vh;
   box-sizing: border-box;

@@ -1,6 +1,6 @@
 <view class="tab-bar" wx:if="{{!hidden}}">
   <view
-    class="tab-bar-item"
+    class="tab-bar-item {{selected === index ? 'active' : ''}}"
     wx:for="{{list}}"
     wx:key="pagePath"
   >

@@ -9,29 +9,22 @@
 
 <view class="merchant-tab-bar" wx:if="{{showBizTabs}}">
   <view class="tab-item {{active === 'checkIn' ? 'active' : ''}}" wx:if="{{showCheckInTab}}">
-    <view class="tab-icon-v2 tab-icon-check-in">
-      <view class="tab-symbol"></view>
-      <view class="tab-gift {{showCheckInHint ? 'visible' : ''}}" wx:if="{{showCheckInHint}}" aria-hidden="true">
-        <text class="tab-gift-box">🎁</text>
-        <view class="tab-gift-spark tab-gift-spark-one"></view>
-        <view class="tab-gift-spark tab-gift-spark-two"></view>
-      </view>
-    </view>
+    <view class="merchant-tab-icon-wrap"><image class="merchant-tab-icon" src="{{active === 'checkIn' ? '/images/tab/tab-checkin-active.png' : '/images/tab/tab-checkin.png'}}" mode="aspectFit"/><view class="merchant-tab-dot" wx:if="{{showCheckInHint}}" /></view>
     <view class="tab-text">签到</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabCheckIn" />
   </view>
   <view class="tab-item {{active === 'daily' ? 'active' : ''}}">
-    <view class="tab-icon-v2 tab-icon-daily"><view class="tab-symbol"></view></view>
+    <view class="merchant-tab-icon-wrap"><image class="merchant-tab-icon" src="{{active === 'daily' ? '/images/tab/tab-merchant-daily-active.png' : '/images/tab/tab-merchant-daily.png'}}" mode="aspectFit"/></view>
     <view class="tab-text">日常管理</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabDaily" />
   </view>
   <view class="tab-item {{active === 'statistics' ? 'active' : ''}}">
-    <view class="tab-icon-v2 tab-icon-statistics"><view class="tab-symbol"></view></view>
+    <view class="merchant-tab-icon-wrap"><image class="merchant-tab-icon" src="{{active === 'statistics' ? '/images/tab/tab-statistics-active.png' : '/images/tab/tab-statistics.png'}}" mode="aspectFit"/></view>
     <view class="tab-text">营收统计</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStatistics" />
   </view>
   <view class="tab-item {{active === 'store' ? 'active' : ''}}">
-    <view class="tab-icon-v2 tab-icon-store"><view class="tab-symbol"></view></view>
+    <view class="merchant-tab-icon-wrap"><image class="merchant-tab-icon" src="{{active === 'store' ? '/images/tab/tab-store-active.png' : '/images/tab/tab-store.png'}}" mode="aspectFit"/></view>
     <view class="tab-text">我的门店</view>
     <view class="tab-hit" hover-class="none" catchtap="onTabStore" />
   </view>

@@ -38,7 +38,7 @@ function buildRecommendedNotes(service, petType) {
 
 Page({
   data: {
-    petName: '', petType: '狗', contactName: '', note: '', services: [], serviceNames: [],
+    petName: '', petType: '狗', contactName: '', contactPhone: '', note: '', amount: '', consumeBalance: false, services: [], serviceNames: [],
     serviceIndex: 0, recommendedNotes: [], formReady: false, submitting: false, createdOrder: null
   },
 
@@ -91,6 +91,7 @@ Page({
     const note = this.data.recommendedNotes[index];
     if (note) this.setData({ note });
   },
+  onToggleBalance() { this.setData({ consumeBalance: !this.data.consumeBalance }); },
 
   onValidate() { wx.showToast({ title: '请先填写宠物名字', icon: 'none' }); },
 
@@ -99,6 +100,9 @@ Page({
     const petName = String(this.data.petName || '').trim();
     const service = (this.data.services || [])[this.data.serviceIndex];
     if (!petName || !service) return;
+    if (this.data.consumeBalance && (!/^\+?[0-9]{6,20}$/.test(String(this.data.contactPhone || '').replace(/[\s-]/g, '')) || !(Number(this.data.amount) > 0))) {
+      wx.showToast({ title: '核销需填写有效手机号和费用', icon: 'none' }); return;
+    }
     const shop = app.getShop() || {};
     const date = today();
     const order = {
@@ -107,9 +111,10 @@ Page({
       serviceRecord: true, placedByMerchant: true, proxyClaimToken: createToken(), proxyClaimed: false,
       proxyOwnerPending: true, status: 'completed', serviceLine: service.key,
       serviceType: service.name || service.pickerTitle || '宠物服务', petName, petType: this.data.petType,
-      contactName: String(this.data.contactName || '').trim(), specialNeeds: String(this.data.note || '').trim(),
+      contactName: String(this.data.contactName || '').trim(), contactPhone: String(this.data.contactPhone || '').trim(), specialNeeds: String(this.data.note || '').trim(),
       startDate: date, endDate: date, startTime: '00:00', endTime: '23:59', days: 1,
-      totalFee: 0, basePrice: 0, billingMode: 'custom'
+      totalFee: Number(this.data.amount) || 0, basePrice: Number(this.data.amount) || 0, billingMode: 'custom',
+      paymentMethod: this.data.consumeBalance ? 'balance' : 'offline'
     };
     this._shareOrder = order;
     this.setData({ submitting: true });

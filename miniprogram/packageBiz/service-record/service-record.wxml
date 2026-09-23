@@ -13,6 +13,13 @@
     <view class="form-group"><view class="form-label">顾客称呼 <text class="optional">选填</text></view>
     <input class="form-input" placeholder="例如：王女士" data-field="contactName" value="{{contactName}}" bindinput="onInput" />
     </view>
+    <view class="form-group"><view class="form-label">客户手机号 <text class="optional">用于关联客户账户</text></view>
+    <input class="form-input" type="number" placeholder="输入手机号，可关联余额" data-field="contactPhone" value="{{contactPhone}}" bindinput="onInput" />
+    </view>
+    <view class="form-group"><view class="form-label">本次费用 <text class="optional">选填</text></view>
+    <input class="form-input" type="digit" placeholder="不收费可留空" data-field="amount" value="{{amount}}" bindinput="onInput" />
+    <label class="balance-check"><checkbox checked="{{consumeBalance}}" bindtap="onToggleBalance"/>从客户余额核销</label>
+    </view>
     <view class="form-group"><view class="form-label">服务备注 <text class="optional">选填</text></view>
     <view class="note-suggestions" wx:if="{{recommendedNotes.length}}">
       <view class="note-suggestion" wx:for="{{recommendedNotes}}" wx:key="*this" data-index="{{index}}" bindtap="onPickNote">{{item}}</view>

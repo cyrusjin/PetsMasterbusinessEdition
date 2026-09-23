@@ -255,3 +255,13 @@
   font-size: 22rpx;
   color: #999999;
 }
+.wallet-card { background: linear-gradient(135deg, #fff8f1, #fffdf9); }
+.wallet-row { display: block; }
+.wallet-label { display: block; color: #9b8172; font-size: 22rpx; }
+.wallet-balance { display: block; margin-top: 6rpx; color: #c96f45; font-size: 42rpx; font-weight: 700; }
+.wallet-detail-actions { display:flex; gap:12rpx; width:100%; margin-top:18rpx; box-sizing:border-box; }
+.wallet-btn { display:flex; align-items:center; justify-content:center; flex:1; min-width:0; width:auto; height:72rpx; margin:0; padding:0 10rpx; border:0; border-radius:16rpx; font-size:25rpx; font-weight:650; line-height:1; box-sizing:border-box; }
+.wallet-btn::after { border:0; }
+.wallet-btn-recharge { background:#E87863; color:#fff; box-shadow:0 6rpx 14rpx rgba(224,111,81,.18); }
+.wallet-btn-consume { background:#fff; border:1rpx solid #E87863; color:#C85F43; }
+.wallet-hint { display: block; margin-top: 16rpx; color: #a58f82; font-size: 21rpx; }

@@ -10,6 +10,7 @@ const API_ROUTES = {
   petService: '/api/pet',
   dailyService: '/api/daily',
   ledgerService: '/api/ledger',
+  customerService: '/api/customer',
   /** AI 问诊代理：服务端实现 action=petConsult 后可返回大模型回复 */
   aiService: '/api/ai'
 };
@@ -32,6 +33,7 @@ function setToken(token) {
   } catch (err) {
     // ignore
   }
+  if (typeof serviceCache !== 'undefined') serviceCache.clear();
 }
 
 function clearToken() {
@@ -49,6 +51,13 @@ function normalizeApiError(err, label) {
 // 只合并完全相同的 GET 请求，避免首页/Tab onShow 同时触发重复网络请求。
 // POST/PUT 等写操作永远不合并，保持原有语义和时序。
 const pendingGetRequests = new Map();
+const pendingServiceRequests = new Map();
+const serviceCache = new Map();
+const READ_ACTIONS = new Set([
+  'getUserInfo', 'getMyStore', 'getStore', 'listUserOrders', 'listMerchantOrders',
+  'listCustomers', 'customerLedger', 'listStoreCustomerTags', 'getMembershipStatus',
+  'getDailyCheckInStatus', 'getPromotionStats', 'listLedger', 'listPets', 'listDailyLogs'
+]);
 
 function buildRequestKey(url, method, data, token) {
   let payload = '';
@@ -175,7 +184,16 @@ function callApiService(service, data = {}, options = {}) {
     return Promise.resolve({ success: false, errMsg: '未配置 API_BASE_URL' });
   }
 
-  return ensureLogin()
+  const action = String(data.action || '');
+  const cacheable = options.cache !== false && READ_ACTIONS.has(action);
+  const cacheKey = cacheable ? buildRequestKey(path, 'POST', data, '') : '';
+  const now = Date.now();
+  if (cacheable) {
+    const cached = serviceCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) return Promise.resolve(cached.value);
+    if (pendingServiceRequests.has(cacheKey)) return pendingServiceRequests.get(cacheKey);
+  }
+  const task = ensureLogin()
     .then(() => request(path, data, options))
     .then((res) => {
       if (res && res.unauthorized) {
@@ -187,6 +205,15 @@ function callApiService(service, data = {}, options = {}) {
       success: false,
       errMsg: normalizeApiError(err, service)
     }));
+  if (cacheable) {
+    pendingServiceRequests.set(cacheKey, task);
+    task.then((value) => {
+      pendingServiceRequests.delete(cacheKey);
+      if (value && value.success !== false) serviceCache.set(cacheKey, { value, expiresAt: Date.now() + (options.cacheTtl || 3000) });
+    }, () => pendingServiceRequests.delete(cacheKey));
+  }
+  else task.then(() => serviceCache.clear(), () => serviceCache.clear());
+  return task;
 }
 
 function requestUploadSign(folder, ext) {
@@ -219,5 +246,6 @@ module.exports = {
   clearToken,
   request,
   requestUploadSign,
+  invalidateServiceCache: () => serviceCache.clear(),
   TOKEN_KEY
 };

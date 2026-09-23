@@ -3,6 +3,7 @@ const { findCustomerById, listCustomerOrders } = require('../utils/customers');
 const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const { redirectToStoreAuthIfNeeded } = require('../../utils/shell');
 const { listCustomerTags, updateCustomerTags } = require('../../utils/growth');
+const { listCustomers, rechargeCustomer, issueCustomerCoupon } = require('../utils/customer');
 
 Page({
   data: {
@@ -13,6 +14,7 @@ Page({
     expandedPetKey: '',
     tagMap: {},
     tagSaving: false
+    ,wallet: null
   },
 
   onLoad(options) {
@@ -43,6 +45,34 @@ Page({
     if (customer) {
       wx.setNavigationBarTitle({ title: customer.name || '客户详情' });
     }
+  },
+
+  _loadWallet() {
+    const phone = this.data.customer && this.data.customer.phone;
+    const store_id = this._storeId();
+    if (!phone || !store_id) return;
+    listCustomers({ store_id, keyword: phone, limit: 5 }).then((res) => {
+      const row = (res.customers || []).find((item) => item.phone === phone);
+      if (row) this.setData({ wallet: row.wallet || { balance: 0 } });
+    }).catch(() => {});
+  },
+
+  onRecharge() {
+    const customer = this.data.customer; const store_id = this._storeId();
+    if (!customer || !customer.phone || !store_id) return;
+    wx.showModal({ title: '客户充值', editable: true, placeholderText: '输入充值金额', success: (res) => {
+      if (!res.confirm) return; const amount = Number(res.content);
+      rechargeCustomer({ store_id, phone: customer.phone, name: customer.name, amount }).then((out) => {
+        if (!out.success) throw new Error(out.errMsg || '充值失败');
+        wx.showToast({ title: '充值成功', icon: 'success' }); this.setData({ 'wallet.balance': out.balance });
+      }).catch((e) => wx.showToast({ title: e.message || '充值失败', icon: 'none' }));
+    }});
+  },
+
+  onConsume() {
+    const customer = this.data.customer;
+    if (!customer || !customer.phone) return;
+    wx.navigateTo({ url: `/packageExtra/customer-account/customer-account?mode=consume&phone=${encodeURIComponent(customer.phone)}` });
   },
 
   _storeId() {
@@ -96,6 +126,7 @@ Page({
     return refreshMerchantOrders(app, { force })
       .then(() => {
         this._publishCustomer(app.getOrders());
+        this._loadWallet();
       })
       .catch((err) => {
         console.error('[客户详情] 加载失败', err);

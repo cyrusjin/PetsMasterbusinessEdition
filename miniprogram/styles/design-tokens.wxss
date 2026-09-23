@@ -29,4 +29,12 @@ page {
   --radius-md: 16rpx;
   --radius-sm: 12rpx;
   --radius-pill: 999rpx;
+  --space-1: 8rpx;
+  --space-2: 16rpx;
+  --space-3: 24rpx;
+  --space-4: 32rpx;
+  --control-height: 88rpx;
+  --control-height-sm: 72rpx;
+  --icon-size-sm: 40rpx;
+  --icon-size-md: 52rpx;
 }

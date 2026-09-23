@@ -11,7 +11,28 @@ page {
 /* 统一微信 button 的尺寸计算，避免不同基础库下文字或 loading 图标挤压。 */
 button {
   box-sizing: border-box;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
+
+/* Cross-page control baseline. Page-specific components can still opt into a denser layout. */
+input, textarea, picker, checkbox, radio {
+  font-family: inherit;
+  color: var(--color-text-primary);
+}
+button:not(.button-reset)::after { border-radius: inherit; }
+button:active { opacity: .84; }
+.icon-badge {
+  width: var(--icon-size-md); height: var(--icon-size-md); display: inline-flex;
+  align-items: center; justify-content: center; flex: 0 0 auto;
+  border-radius: 18rpx; background: var(--color-accent-bg); color: var(--color-primary);
+  font-size: 26rpx; font-weight: 700; line-height: 1;
+}
+.icon-badge.is-small { width: var(--icon-size-sm); height: var(--icon-size-sm); border-radius: 14rpx; font-size: 22rpx; }
+.control-row { display:flex; align-items:center; gap: var(--space-2); min-height: var(--control-height); }
+.control-row > input, .control-row > textarea { flex:1; min-width:0; }
+.page-title { margin: 8rpx 4rpx 24rpx; color: var(--color-text-heading); font-size: 40rpx; font-weight: 750; letter-spacing: .5rpx; }
+.page-subtitle { display:block; margin:-14rpx 4rpx 24rpx; color:var(--color-text-tertiary); font-size:24rpx; line-height:1.5; }
 
 .container { padding: 20rpx 20rpx 40rpx; }
 .card:last-child { margin-bottom: 0; }

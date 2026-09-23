@@ -17,6 +17,7 @@ const {
   petRouter,
   dailyRouter,
   ledgerRouter,
+  customerRouter,
   uploadRouter
 } = require('./routes/api');
 const { startDailyScheduleWorker, initDailyDatabase } = require('./services/dailyService');
@@ -27,6 +28,11 @@ const { initialize: initializeUserActivity } = require('./services/userActivityS
 async function main() {
   await connectDb();
   console.log('[db] connected');
+  try {
+    await require('./services/performanceService').initialize();
+  } catch (err) {
+    console.warn('[performance] index initialization failed', (err && err.message) || err);
+  }
 
   oss.ensureMediaRoot();
   try {
@@ -95,6 +101,7 @@ async function main() {
   app.use('/api/pet', petRouter);
   app.use('/api/daily', dailyRouter);
   app.use('/api/ledger', ledgerRouter);
+  app.use('/api/customer', customerRouter);
   app.use('/api/upload', uploadRouter);
   app.use('/api/map', mapRouter);
 

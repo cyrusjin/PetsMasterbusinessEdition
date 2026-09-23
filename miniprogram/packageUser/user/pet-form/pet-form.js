@@ -155,7 +155,10 @@ Page({
       mediaType: ['image'],
       sourceType: ['album', 'camera'],
       success: (r) => {
-        this.setData({ photo: r.tempFiles[0].tempFilePath });
+        const source = r.tempFiles[0].tempFilePath;
+        wx.compressImage({ src: source, quality: 82, success: (compressed) => {
+          this.setData({ photo: compressed.tempFilePath || source });
+        }, fail: () => this.setData({ photo: source }) });
       }
     });
   },

@@ -9,6 +9,7 @@ const orderService = require('../services/orderService');
 const petService = require('../services/petService');
 const dailyService = require('../services/dailyService');
 const ledgerService = require('../services/ledgerService');
+const customerService = require('../services/customerService');
 const mediaCheckService = require('../services/mediaCheckService');
 const membershipService = require('../services/membershipService');
 const oss = require('../oss');
@@ -75,6 +76,10 @@ dailyRouter.post('/', authRequired, guardedAction('*', (event, openid) => dailyS
 
 const ledgerRouter = express.Router();
 ledgerRouter.post('/', authRequired, guardedAction('*', (event, openid) => ledgerService.handle(event, openid)));
+
+// 客户档案、余额和代金券使用独立接口，兼容旧版从订单聚合客户的客户端。
+const customerRouter = express.Router();
+customerRouter.post('/', authRequired, guardedAction('*', (event, openid) => customerService.handle(event, openid)));
 
 const uploadDir = path.join(config.media.root, '_tmp');
 
@@ -207,5 +212,6 @@ module.exports = {
   petRouter,
   dailyRouter,
   ledgerRouter,
+  customerRouter,
   uploadRouter
 };

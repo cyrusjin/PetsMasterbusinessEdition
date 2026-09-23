@@ -71,3 +71,5 @@
   box-shadow: none;
   opacity: .48;
 }
+.balance-check { display:flex; align-items:center; gap:10rpx; margin-top:18rpx; color:var(--color-text-secondary); font-size:24rpx; }
+.balance-check checkbox { transform:scale(.82); }

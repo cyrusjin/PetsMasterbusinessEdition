@@ -96,6 +96,7 @@
         "announcement-detail/announcement-detail",
         "customers/customers",
         "customer-detail/customer-detail",
+        "customer-account/customer-account",
         "ledger/ledger",
         "ledger/ledger-edit",
         "membership/membership",

@@ -4,6 +4,7 @@ const { refreshMerchantOrders } = require('../../utils/orderRefresh');
 const { redirectToStoreAuthIfNeeded, redirectToUserIfMerchantUiBlocked, reLaunchMerchantHomeIfNoBackend } = require('../../utils/shell');
 const { listGuestShareCards } = require('../../utils/storeShare');
 const { listCustomerTags, updateCustomerTags } = require('../../utils/growth');
+const { listCustomers } = require('../utils/customer');
 const {
   startProxySessionFromCustomer,
   openProxyReserve,
@@ -90,7 +91,11 @@ Page({
   },
 
   _applyFilter(allCustomers, keyword) {
-    const list = Array.isArray(allCustomers) ? allCustomers : [];
+    const list = (Array.isArray(allCustomers) ? allCustomers : []).map(item => ({
+      ...item,
+      // 每个客户都显示账户余额；没有充值记录的客户账户余额为 0。
+      balanceText: Number(this._balances && item.phone ? this._balances[item.phone] : 0).toFixed(2)
+    }));
     const kw = keyword == null ? this.data.keyword : keyword;
     this.setData({
       allCustomers: list,
@@ -114,7 +119,7 @@ Page({
       const tagMap = (res && res.success && res.tags) || {};
       this.setData({ tagMap });
       if (this._isProxy) this._applyGuestFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
-      else this._applyFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
+      else this._applyFilter(this._decorate(this.data.allCustomers));
     }).catch(() => {}).finally(() => { this._tagLoading = false; });
   },
 
@@ -143,6 +148,7 @@ Page({
           return;
         }
         this._applyFilter(this._decorate(buildCustomersFromOrders(app.getOrders())));
+        this._loadCustomerBalances();
         this._loadTags();
       })
       .catch((err) => {
@@ -160,6 +166,37 @@ Page({
         this.setData({ loading: false });
       });
   },
+
+  async _loadCustomerBalances() {
+    const store_id = this._storeId();
+    if (!store_id || this._balanceLoading) return;
+    this._balanceLoading = true;
+    try {
+      const rows = [];
+      let more = true;
+      while (more) {
+        const res = await listCustomers({ store_id, limit: 500, offset: rows.length });
+        if (!res.success) throw new Error(res.errMsg);
+        rows.push(...res.customers); more = res.hasMore;
+      }
+      this._balances = {};
+      rows.forEach(row => { this._balances[row.phone] = row.wallet.balance; });
+      const all = buildCustomersFromOrders(app.getOrders());
+      const phones = new Set(all.map(c => c.phone));
+      rows.forEach(row => {
+        if (!phones.has(row.phone)) all.push({ id: `phone:${row.phone}`, phone: row.phone, name: row.name || row.phone,
+          avatarText: (row.name || '客')[0], pets: [], petCount: 0, orderCount: 0, metaText: row.phone });
+      });
+      all.forEach(c => { if (c.phone && this._balances[c.phone] == null) this._balances[c.phone] = 0; });
+      this._applyFilter(this._decorate(all));
+    } catch (err) {
+      this._balances = null;
+      this._applyFilter(this.data.allCustomers);
+      wx.showToast({ title: '余额加载失败，请下拉重试', icon: 'none' });
+    } finally { this._balanceLoading = false; }
+  },
+
+  onNewCustomer() { wx.navigateTo({ url: '/packageExtra/customer-account/customer-account?mode=create' }); },
 
   _loadGuests({ force, showLoading } = {}) {
     if (showLoading) this.setData({ loading: true });
@@ -234,6 +271,24 @@ Page({
       url: `/packageExtra/customer-detail/customer-detail?id=${encodeURIComponent(id)}`
     });
   },
+
+  onConsumeBalance(e) {
+    if (!String(e.currentTarget.dataset.phone || '').trim()) {
+      wx.showToast({ title: '请先补充客户手机号', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: `/packageExtra/customer-account/customer-account?mode=consume&phone=${encodeURIComponent(e.currentTarget.dataset.phone || '')}` });
+  },
+
+  onRechargeBalance(e) {
+    if (!String(e.currentTarget.dataset.phone || '').trim()) {
+      wx.showToast({ title: '请先补充客户手机号', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: `/packageExtra/customer-account/customer-account?mode=recharge&phone=${encodeURIComponent(e.currentTarget.dataset.phone || '')}` });
+  },
+
+  onWalletAreaTap() {},
 
   onOrder(e) {
     const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;

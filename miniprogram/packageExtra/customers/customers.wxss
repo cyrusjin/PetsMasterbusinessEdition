@@ -87,6 +87,9 @@
   font-weight: 600;
   color: #333333;
 }
+.customer-role-tag { display:inline-block; margin-left:10rpx; padding:4rpx 10rpx; border-radius:999rpx; font-size:19rpx; font-weight:650; vertical-align:middle; }
+.customer-role-owner { color:#A66B18; background:#FFF0C9; }
+.customer-role-staff { color:#4C7C89; background:#E5F4F4; }
 .customer-meta {
   display: block;
   margin-top: 6rpx;
@@ -96,6 +99,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.customer-wallet { display:block; margin-top:14rpx; padding:16rpx; border:1rpx solid #F4D9CC; border-radius:18rpx; background:linear-gradient(135deg,#FFF8F1,#FFF1E9); box-sizing:border-box; width:100%; }
+.balance-display { min-width:0; display:flex; align-items:baseline; justify-content:space-between; }
+.balance-caption { display:block; color:#A98972; font-size:20rpx; line-height:1.2; }
+.balance-value { display:block; color:#C85F43; font-size:32rpx; font-weight:750; line-height:1.1; }
+.wallet-actions { display:flex; gap:12rpx; width:100%; margin-top:14rpx; box-sizing:border-box; }
+.wallet-action { display:flex; align-items:center; justify-content:center; gap:4rpx; flex:1; min-width:0; width:auto; height:64rpx; margin:0; padding:0 8rpx; border:0; border-radius:14rpx; font-size:24rpx; font-weight:650; line-height:1; box-sizing:border-box; }
+.wallet-action::after { border:0; }
+.wallet-action-recharge { background:#E87863; color:#fff; box-shadow:0 6rpx 14rpx rgba(224,111,81,.18); }
+.wallet-action-consume { background:#FFF; border:1rpx solid #E87863; color:#C85F43; }
+.wallet-action-disabled { opacity:.5; }
+.wallet-action-icon { font-size:27rpx; line-height:1; }
+.new-customer-btn { display:flex; align-items:center; justify-content:center; gap:8rpx; height:72rpx; margin:0 28rpx 18rpx; border:0; border-radius:20rpx; background:var(--color-primary); color:#fff; font-size:26rpx; font-weight:600; box-shadow:var(--shadow-btn); }
+.new-customer-btn::after { border:0; }
+.action-icon { font-size:34rpx; line-height:1; font-weight:300; }
 .customer-tags { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 8rpx; }
 .customer-tag { padding: 4rpx 10rpx; border-radius: 999rpx; background: #FFF1E7; color: #C96F45; font-size: 20rpx; line-height: 1.35; }
 .customer-arrow {
